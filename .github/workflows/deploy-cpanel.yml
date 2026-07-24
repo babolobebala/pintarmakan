@@ -67,13 +67,57 @@ jobs:
           name: cpanel-release
           path: .deploy
 
+      - name: Resolve FTP configuration
+        env:
+          FTP_SERVER_SECRET: ${{ secrets.FTP_SERVER }}
+          FTP_SERVER_VAR: ${{ vars.FTP_SERVER }}
+          FTP_USERNAME_SECRET: ${{ secrets.FTP_USERNAME }}
+          FTP_USERNAME_VAR: ${{ vars.FTP_USERNAME }}
+          FTP_PASSWORD_SECRET: ${{ secrets.FTP_PASSWORD }}
+          FTP_PASSWORD_VAR: ${{ vars.FTP_PASSWORD }}
+          FTP_PORT_SECRET: ${{ secrets.FTP_PORT }}
+          FTP_PORT_VAR: ${{ vars.FTP_PORT }}
+          FTP_SERVER_DIR_SECRET: ${{ secrets.FTP_SERVER_DIR }}
+          FTP_SERVER_DIR_VAR: ${{ vars.FTP_SERVER_DIR }}
+        run: |
+          set -eu
+
+          FTP_SERVER_VALUE="${FTP_SERVER_SECRET:-${FTP_SERVER_VAR:-}}"
+          FTP_USERNAME_VALUE="${FTP_USERNAME_SECRET:-${FTP_USERNAME_VAR:-}}"
+          FTP_PASSWORD_VALUE="${FTP_PASSWORD_SECRET:-${FTP_PASSWORD_VAR:-}}"
+          FTP_PORT_VALUE="${FTP_PORT_SECRET:-${FTP_PORT_VAR:-21}}"
+          FTP_SERVER_DIR_VALUE="${FTP_SERVER_DIR_SECRET:-${FTP_SERVER_DIR_VAR:-}}"
+
+          test -n "$FTP_SERVER_VALUE" || { echo "Missing FTP_SERVER secret or variable"; exit 1; }
+          test -n "$FTP_USERNAME_VALUE" || { echo "Missing FTP_USERNAME secret or variable"; exit 1; }
+          test -n "$FTP_PASSWORD_VALUE" || { echo "Missing FTP_PASSWORD secret or variable"; exit 1; }
+          test -n "$FTP_SERVER_DIR_VALUE" || { echo "Missing FTP_SERVER_DIR secret or variable"; exit 1; }
+
+          {
+            echo "FTP_SERVER=$FTP_SERVER_VALUE"
+            echo "FTP_USERNAME=$FTP_USERNAME_VALUE"
+            echo "FTP_PASSWORD=$FTP_PASSWORD_VALUE"
+            echo "FTP_PORT=$FTP_PORT_VALUE"
+            echo "FTP_SERVER_DIR=$FTP_SERVER_DIR_VALUE"
+          } >> "$GITHUB_ENV"
+
+      - name: Install lftp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+
       - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT }}
-          local-dir: .deploy/
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}/
-          dangerous-clean-slate: true
+        env:
+          FTP_SERVER: ${{ env.FTP_SERVER }}
+          FTP_USERNAME: ${{ env.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ env.FTP_PASSWORD }}
+          FTP_PORT: ${{ env.FTP_PORT }}
+          FTP_SERVER_DIR: ${{ env.FTP_SERVER_DIR }}
+        run: |
+          set -eu
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" -p "$FTP_PORT" "$FTP_SERVER" <<EOF
+          set ssl:verify-certificate no
+          set ftp:ssl-allow true
+          mirror --reverse --delete --verbose .deploy "$FTP_SERVER_DIR"
+          bye
+          EOF

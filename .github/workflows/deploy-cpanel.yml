@@ -43,6 +43,7 @@ jobs:
           mkdir -p .deploy/release/tmp
           printf '%s\n' "${GITHUB_SHA}" > DEPLOY_COMMIT
           cp -R .output .deploy/release/.output
+          find .deploy/release/.output -type f -name "*.map" -delete
           cp app.cjs .deploy/release/app.cjs
           cp package.json .deploy/release/package.json
           cp DEPLOY_COMMIT .deploy/release/DEPLOY_COMMIT
@@ -119,6 +120,6 @@ jobs:
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" -p "$FTP_PORT" "$FTP_SERVER" <<EOF
           set ssl:verify-certificate no
           set ftp:ssl-allow true
-          mirror --reverse --delete --verbose .deploy "$FTP_SERVER_DIR"
+          mirror --reverse --delete --verbose --parallel=6 .deploy "$FTP_SERVER_DIR"
           bye
           EOF

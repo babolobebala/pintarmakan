@@ -22,7 +22,7 @@ const baseStats = [{
   minVariation: -15,
   maxVariation: 25
 }, {
-  title: 'Conversions',
+  title: 'INI BERUBAH COK BANGSAT',
   icon: 'i-lucide-chart-pie',
   minValue: 1000,
   maxValue: 2000,

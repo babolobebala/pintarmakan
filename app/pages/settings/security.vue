@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  permission: 'settings.security.view'
+})
+
 import * as z from 'zod'
 import type { FormError } from '@nuxt/ui'
 

@@ -1,4 +1,5 @@
 import { sub } from 'date-fns'
+import { requirePermission } from '~~/server/utils/rbac'
 
 const mails = [{
   id: 1,
@@ -686,6 +687,7 @@ Emergency: (555) 987-6544`,
   date: sub(new Date(), { months: 2 }).toISOString()
 }]
 
-export default eventHandler(async () => {
+export default eventHandler(async (event) => {
+  await requirePermission(event, 'inbox.view')
   return mails
 })

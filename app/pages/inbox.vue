@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  permission: 'inbox.view'
+})
+
 import { computed, ref, watch } from 'vue'
 import { breakpointsTailwind } from '@vueuse/core'
 import type { Mail } from '~/types'

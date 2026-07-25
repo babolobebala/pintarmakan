@@ -7,17 +7,28 @@ defineProps<{
 
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
+const router = useRouter()
+const auth = useAuth()
+const { data: currentUser } = await useCurrentUser()
 
 const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone', 'taupe', 'mauve', 'mist', 'olive']
 
-const user = ref({
-  name: 'Benjamin Canac',
-  avatar: {
-    src: 'https://github.com/benjamincanac.png',
-    alt: 'Benjamin Canac'
-  }
-})
+const user = computed(() => ({
+  name: currentUser.value?.user.name || 'Account',
+  avatar: currentUser.value?.user.image
+    ? {
+        src: currentUser.value.user.image,
+        alt: currentUser.value.user.name
+      }
+    : undefined
+}))
+
+async function signOut() {
+  await auth.signOut()
+  clearNuxtData('auth:me')
+  await router.push('/login')
+}
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',
@@ -26,9 +37,6 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 }], [{
   label: 'Profile',
   icon: 'i-lucide-user'
-}, {
-  label: 'Billing',
-  icon: 'i-lucide-credit-card'
 }, {
   label: 'Settings',
   icon: 'i-lucide-settings',
@@ -147,7 +155,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   target: '_blank'
 }, {
   label: 'Log out',
-  icon: 'i-lucide-log-out'
+  icon: 'i-lucide-log-out',
+  onSelect: () => signOut()
 }]]))
 </script>
 

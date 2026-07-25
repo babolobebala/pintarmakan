@@ -1,31 +1,27 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
 import type { Member } from '~/types'
 
 defineProps<{
   members: Member[]
 }>()
 
-const items = [{
-  label: 'Edit member',
-  onSelect: () => console.log('Edit member')
-}, {
-  label: 'Remove member',
-  color: 'error' as const,
-  onSelect: () => console.log('Remove member')
-}] satisfies DropdownMenuItem[]
+defineEmits<{
+  password: [member: Member]
+}>()
 </script>
 
 <template>
   <ul role="list" class="divide-y divide-default">
     <li
       v-for="(member, index) in members"
-      :key="index"
-      class="flex items-center justify-between gap-3 py-3 px-4 sm:px-6"
+      :key="member.id || index"
+      class="flex flex-col gap-4 py-4 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between"
     >
       <div class="flex items-center gap-3 min-w-0">
         <UAvatar
           v-bind="member.avatar"
+          :alt="member.name"
+          :text="member.name.slice(0, 1)"
           size="md"
         />
 
@@ -34,26 +30,37 @@ const items = [{
             {{ member.name }}
           </p>
           <p class="text-muted truncate">
-            {{ member.username }}
+            {{ member.email }}
           </p>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <USelect
-          :model-value="member.role"
-          :items="['member', 'owner']"
-          color="neutral"
-          :ui="{ value: 'capitalize', item: 'capitalize' }"
+      <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+        <UBadge
+          :color="member.isActive ? 'success' : 'warning'"
+          variant="subtle"
+          :label="member.isActive ? 'Active' : 'Inactive'"
         />
-
-        <UDropdownMenu :items="items" :content="{ align: 'end' }">
-          <UButton
-            icon="i-lucide-ellipsis-vertical"
-            color="neutral"
-            variant="ghost"
-          />
-        </UDropdownMenu>
+        <UBadge
+          :color="member.hasPassword ? 'primary' : 'neutral'"
+          variant="subtle"
+          :label="member.hasPassword ? 'Password ready' : 'Google-only for now'"
+        />
+        <UBadge
+          v-for="role in member.roles"
+          :key="role"
+          color="neutral"
+          variant="outline"
+          class="capitalize"
+          :label="role"
+        />
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="subtle"
+          :label="member.hasPassword ? 'Reset password' : 'Set password'"
+          @click="$emit('password', member)"
+        />
       </div>
     </li>
   </ul>

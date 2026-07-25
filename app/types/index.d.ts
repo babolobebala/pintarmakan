@@ -22,10 +22,31 @@ export interface Mail {
 }
 
 export interface Member {
+  id: string
   name: string
-  username: string
-  role: 'member' | 'owner'
-  avatar: AvatarProps
+  email: string
+  avatar?: AvatarProps
+  roles: string[]
+  isActive: boolean
+  hasPassword: boolean
+}
+
+export interface AuthSessionUser {
+  id: string
+  name: string
+  email: string
+  image?: string | null
+  isActive: boolean
+  roles: string[]
+  permissions: string[]
+}
+
+export interface AuthSessionResponse {
+  user: AuthSessionUser
+  session: {
+    id: string
+    expiresAt: string | Date
+  }
 }
 
 export interface Stat {

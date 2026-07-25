@@ -1,0 +1,31 @@
+{
+  "tables": [
+    {
+      "model": "user",
+      "action": "upsert",
+      "rows": [
+        {
+          "where": {
+            "email": "fatihmahawisesa@gmail.com"
+          },
+          "create": {
+            "id": {
+              "$uuid": true
+            },
+            "name": "Super Admin",
+            "email": "fatihmahawisesa@gmail.com",
+            "emailVerified": true,
+            "role": "super-admin",
+            "isActive": true
+          },
+          "update": {
+            "name": "Super Admin",
+            "emailVerified": true,
+            "role": "super-admin",
+            "isActive": true
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  permission: 'dashboard.view'
+})
+
 import { sub } from 'date-fns'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { Period, Range } from '~/types'

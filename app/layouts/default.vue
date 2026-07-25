@@ -3,11 +3,23 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 const route = useRoute()
 const toast = useToast()
+const { data: currentUser } = await useCurrentUser()
 
 const open = ref(false)
 const pwaToastId = 'pwa-install'
 
-const links = [[{
+const links = computed(() => {
+  const permissionByPath: Record<string, string | undefined> = {
+    '/': 'dashboard.view',
+    '/inbox': 'inbox.view',
+    '/customers': 'customers.view',
+    '/settings': 'settings.view',
+    '/settings/members': 'settings.members.view',
+    '/settings/notifications': 'settings.notifications.view',
+    '/settings/security': 'settings.security.view'
+  }
+
+  const items = [[{
   label: 'Home',
   icon: 'i-lucide-house',
   to: '/',
@@ -73,10 +85,21 @@ const links = [[{
   target: '_blank'
 }]] satisfies NavigationMenuItem[][]
 
+  return items.map((group) => {
+    return group.filter((item) => {
+      const permission = item.to && typeof item.to === 'string'
+        ? permissionByPath[item.to]
+        : undefined
+
+      return !permission || currentUser.value?.user.permissions.includes(permission)
+    })
+  })
+})
+
 const groups = computed(() => [{
   id: 'links',
   label: 'Go to',
-  items: links.flat()
+  items: links.value.flat()
 }, {
   id: 'code',
   label: 'Code',

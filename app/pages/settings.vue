@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 
-const links = [[{
+definePageMeta({
+  permission: 'settings.view'
+})
+
+const { data: currentUser } = await useCurrentUser()
+
+const links = computed(() => [[{
   label: 'General',
   icon: 'i-lucide-user',
   to: '/settings',
@@ -23,7 +29,22 @@ const links = [[{
   icon: 'i-lucide-book-open',
   to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
   target: '_blank'
-}]] satisfies NavigationMenuItem[][]
+}]].map((group) => {
+  return group.filter((item) => {
+    const permissionByPath: Record<string, string | undefined> = {
+      '/settings': 'settings.view',
+      '/settings/members': 'settings.members.view',
+      '/settings/notifications': 'settings.notifications.view',
+      '/settings/security': 'settings.security.view'
+    }
+
+    const permission = item.to && typeof item.to === 'string'
+      ? permissionByPath[item.to]
+      : undefined
+
+    return !permission || currentUser.value?.user.permissions.includes(permission)
+  })
+}) satisfies NavigationMenuItem[][])
 </script>
 
 <template>

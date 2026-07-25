@@ -1,4 +1,5 @@
 import type { User } from '~/types'
+import { requirePermission } from '~~/server/utils/rbac'
 
 const customers: User[] = [{
   id: 1,
@@ -182,6 +183,7 @@ const customers: User[] = [{
   location: 'London, UK'
 }]
 
-export default eventHandler(async () => {
+export default eventHandler(async (event) => {
+  await requirePermission(event, 'customers.view')
   return customers
 })

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  permission: 'settings.view'
+})
+
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 

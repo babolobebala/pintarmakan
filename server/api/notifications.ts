@@ -1,4 +1,5 @@
 import { sub } from 'date-fns'
+import { requirePermission } from '~~/server/utils/rbac'
 
 const notifications = [{
   id: 1,
@@ -251,6 +252,7 @@ const notifications = [{
   date: sub(new Date(), { days: 22 }).toISOString()
 }]
 
-export default eventHandler(async () => {
+export default eventHandler(async (event) => {
+  await requirePermission(event, 'dashboard.view')
   return notifications
 })

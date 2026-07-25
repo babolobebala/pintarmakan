@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": [
+    "prisma.config.ts",
+    "prisma/**/*.ts",
+    "prisma/**/*.mts",
+    "prisma/**/*.cts",
+    "prisma/**/*.js",
+    "prisma/**/*.mjs",
+    "lib/**/*.ts"
+  ]
+}

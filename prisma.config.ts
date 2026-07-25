@@ -1,8 +1,11 @@
+import fs from 'node:fs'
 import path from 'node:path'
 
 import { defineConfig } from 'prisma/config'
 
-process.loadEnvFile?.()
+if (fs.existsSync(path.resolve('.env'))) {
+  process.loadEnvFile?.()
+}
 
 function getDatabaseURL() {
   if (process.env.DATABASE_URL) {

@@ -1,10 +1,13 @@
 import { PrismaMariaDb } from '@prisma/adapter-mariadb'
 import { PrismaClient } from '@prisma/client'
+import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 
-process.loadEnvFile?.()
+if (existsSync(path.resolve('.env'))) {
+  process.loadEnvFile?.()
+}
 
 const supportedActions = new Set(['upsert', 'create', 'update', 'delete'])
 

@@ -35,9 +35,6 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   label: user.value.name,
   avatar: user.value.avatar
 }], [{
-  label: 'Profile',
-  icon: 'i-lucide-user'
-}, {
   label: 'Settings',
   icon: 'i-lucide-settings',
   to: '/settings'
@@ -113,47 +110,6 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     }
   }]
 }], [{
-  label: 'Templates',
-  icon: 'i-lucide-layout-template',
-  children: [{
-    label: 'Starter',
-    to: 'https://starter-template.nuxt.dev/'
-  }, {
-    label: 'Landing',
-    to: 'https://landing-template.nuxt.dev/'
-  }, {
-    label: 'Docs',
-    to: 'https://docs-template.nuxt.dev/'
-  }, {
-    label: 'SaaS',
-    to: 'https://saas-template.nuxt.dev/'
-  }, {
-    label: 'Dashboard',
-    to: 'https://dashboard-template.nuxt.dev/',
-    color: 'primary',
-    checked: true,
-    type: 'checkbox'
-  }, {
-    label: 'Chat',
-    to: 'https://chat-template.nuxt.dev/'
-  }, {
-    label: 'Portfolio',
-    to: 'https://portfolio-template.nuxt.dev/'
-  }, {
-    label: 'Changelog',
-    to: 'https://changelog-template.nuxt.dev/'
-  }]
-}], [{
-  label: 'Documentation',
-  icon: 'i-lucide-book-open',
-  to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
-  target: '_blank'
-}, {
-  label: 'GitHub repository',
-  icon: 'i-simple-icons-github',
-  to: 'https://github.com/nuxt-ui-templates/dashboard',
-  target: '_blank'
-}, {
   label: 'Log out',
   icon: 'i-lucide-log-out',
   onSelect: () => signOut()
@@ -183,9 +139,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     />
 
     <template #chip-leading="{ item }">
-      <div class="inline-flex items-center justify-center shrink-0 size-5">
+      <div class="inline-flex size-5 shrink-0 items-center justify-center">
         <span
-          class="rounded-full ring ring-bg bg-(--chip-light) dark:bg-(--chip-dark) size-2"
+          class="size-2 rounded-full bg-(--chip-light) ring ring-bg dark:bg-(--chip-dark)"
           :style="{
             '--chip-light': `var(--color-${(item as any).chip}-500)`,
             '--chip-dark': `var(--color-${(item as any).chip}-400)`

@@ -16,26 +16,11 @@ const links = computed(() => [[{
   label: 'Members',
   icon: 'i-lucide-users',
   to: '/settings/members'
-}, {
-  label: 'Notifications',
-  icon: 'i-lucide-bell',
-  to: '/settings/notifications'
-}, {
-  label: 'Security',
-  icon: 'i-lucide-shield',
-  to: '/settings/security'
-}], [{
-  label: 'Documentation',
-  icon: 'i-lucide-book-open',
-  to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
-  target: '_blank'
 }]].map((group) => {
   return group.filter((item) => {
     const permissionByPath: Record<string, string | undefined> = {
       '/settings': 'settings.view',
-      '/settings/members': 'settings.members.view',
-      '/settings/notifications': 'settings.notifications.view',
-      '/settings/security': 'settings.security.view'
+      '/settings/members': 'settings.members.view'
     }
 
     const permission = item.to && typeof item.to === 'string'
@@ -57,13 +42,12 @@ const links = computed(() => [[{
       </UDashboardNavbar>
 
       <UDashboardToolbar>
-        <!-- NOTE: The `-mx-1` class is used to align with the `DashboardSidebarCollapse` button here. -->
         <UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
       </UDashboardToolbar>
     </template>
 
     <template #body>
-      <div class="flex flex-col gap-4 sm:gap-6 lg:gap-12 w-full lg:max-w-2xl mx-auto">
+      <div class="flex w-full flex-col gap-4 sm:gap-6 lg:mx-auto lg:max-w-2xl lg:gap-12">
         <NuxtPage />
       </div>
     </template>

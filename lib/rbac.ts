@@ -7,12 +7,8 @@ export type AppRole = typeof appRoleOptions[number]
 export const ac = createAccessControl({
   ...defaultStatements,
   dashboard: ['view'],
-  inbox: ['view'],
-  customers: ['view', 'create', 'update', 'delete'],
   settings: ['view'],
   settingsMembers: ['view', 'manage'],
-  settingsNotifications: ['view'],
-  settingsSecurity: ['view'],
   users: ['view', 'create', 'update', 'assign-role', 'deactivate'],
   roles: ['view', 'manage'],
   permissions: ['view', 'manage'],
@@ -23,12 +19,8 @@ export const authRoles = {
   'super-admin': ac.newRole({
     ...adminAc.statements,
     dashboard: ['view'],
-    inbox: ['view'],
-    customers: ['view', 'create', 'update', 'delete'],
     settings: ['view'],
     settingsMembers: ['view', 'manage'],
-    settingsNotifications: ['view'],
-    settingsSecurity: ['view'],
     users: ['view', 'create', 'update', 'assign-role', 'deactivate'],
     roles: ['view', 'manage'],
     permissions: ['view', 'manage'],
@@ -37,28 +29,19 @@ export const authRoles = {
   admin: ac.newRole({
     ...adminAc.statements,
     dashboard: ['view'],
-    inbox: ['view'],
-    customers: ['view', 'create', 'update', 'delete'],
     settings: ['view'],
     settingsMembers: ['view', 'manage'],
-    settingsNotifications: ['view'],
-    settingsSecurity: ['view'],
     users: ['view', 'create', 'update', 'assign-role', 'deactivate'],
     roles: ['view'],
     auditLogs: ['view']
   }),
   manager: ac.newRole({
     dashboard: ['view'],
-    inbox: ['view'],
-    customers: ['view', 'create', 'update'],
     settings: ['view'],
-    settingsMembers: ['view'],
-    settingsNotifications: ['view']
+    settingsMembers: ['view']
   }),
   staff: ac.newRole({
-    dashboard: ['view'],
-    inbox: ['view'],
-    customers: ['view']
+    dashboard: ['view']
   })
 } as const
 
@@ -66,16 +49,9 @@ export const defaultUserRole: AppRole = 'staff'
 
 export const permissionRequests = {
   'dashboard.view': { dashboard: ['view'] },
-  'inbox.view': { inbox: ['view'] },
-  'customers.view': { customers: ['view'] },
-  'customers.create': { customers: ['create'] },
-  'customers.update': { customers: ['update'] },
-  'customers.delete': { customers: ['delete'] },
   'settings.view': { settings: ['view'] },
   'settings.members.view': { settingsMembers: ['view'] },
   'settings.members.manage': { settingsMembers: ['manage'] },
-  'settings.notifications.view': { settingsNotifications: ['view'] },
-  'settings.security.view': { settingsSecurity: ['view'] },
   'users.view': { users: ['view'] },
   'users.create': { users: ['create'] },
   'users.update': { users: ['update'] },

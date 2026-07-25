@@ -5,6 +5,7 @@ const route = useRoute()
 const toast = useToast()
 
 const open = ref(false)
+const pwaToastId = 'pwa-install'
 
 const links = [[{
   label: 'Home',
@@ -88,28 +89,62 @@ const groups = computed(() => [{
   }]
 }])
 
-onMounted(async () => {
-  const cookie = useCookie('cookie-consent')
-  if (cookie.value === 'accepted') {
+onMounted(() => {
+  const pwa = usePWA()
+  if (!pwa) {
     return
   }
 
-  toast.add({
-    title: 'We use first-party cookies to enhance your experience on our website.',
-    duration: 0,
-    close: false,
-    actions: [{
-      label: 'Accept',
-      color: 'neutral',
-      variant: 'outline',
-      onClick: () => {
-        cookie.value = 'accepted'
-      }
-    }, {
-      label: 'Opt out',
-      color: 'neutral',
-      variant: 'ghost'
-    }]
+  const showInstallToast = () => {
+    if (!pwa.showInstallPrompt || pwa.isPWAInstalled) {
+      toast.remove(pwaToastId)
+      return
+    }
+
+    toast.add({
+      id: pwaToastId,
+      title: 'Install this app',
+      description: 'Add this dashboard to your device for faster access and a more app-like experience.',
+      color: 'primary',
+      duration: 0,
+      actions: [{
+        label: 'Install',
+        onClick: async () => {
+          await pwa.install()
+          toast.remove(pwaToastId)
+        }
+      }, {
+        label: 'Later',
+        color: 'neutral',
+        variant: 'subtle',
+        onClick: () => {
+          toast.remove(pwaToastId)
+        }
+      }, {
+        label: 'Don\'t show again',
+        color: 'neutral',
+        variant: 'ghost',
+        onClick: () => {
+          pwa.cancelInstall()
+          toast.remove(pwaToastId)
+        }
+      }]
+    })
+  }
+
+  watch(() => pwa.showInstallPrompt, (show) => {
+    if (show) {
+      showInstallToast()
+      return
+    }
+
+    toast.remove(pwaToastId)
+  }, { immediate: true })
+
+  watch(() => pwa.isPWAInstalled, (installed) => {
+    if (installed) {
+      toast.remove(pwaToastId)
+    }
   })
 })
 </script>

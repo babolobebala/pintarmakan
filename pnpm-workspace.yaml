@@ -1,4 +1,5 @@
 allowBuilds:
+  '@prisma/client': true
   '@parcel/watcher': false
   '@prisma/engines': true
   '@tailwindcss/oxide': false

@@ -84,8 +84,6 @@ jobs:
           SSH_PRIVATE_KEY_VAR: ${{ vars.SSH_PRIVATE_KEY }}
           APP_PATH_SECRET: ${{ secrets.APP_PATH }}
           APP_PATH_VAR: ${{ vars.APP_PATH }}
-          NODE_BIN_SECRET: ${{ secrets.NODE_BIN }}
-          NODE_BIN_VAR: ${{ vars.NODE_BIN }}
         run: |
           set -eu
 
@@ -94,7 +92,6 @@ jobs:
           SSH_PORT_VALUE="${SSH_PORT_SECRET:-${SSH_PORT_VAR:-22}}"
           SSH_PRIVATE_KEY_VALUE="${SSH_PRIVATE_KEY_SECRET:-${SSH_PRIVATE_KEY_VAR:-}}"
           APP_PATH_VALUE="${APP_PATH_SECRET:-${APP_PATH_VAR:-}}"
-          NODE_BIN_VALUE="${NODE_BIN_SECRET:-${NODE_BIN_VAR:-}}"
 
           test -n "$SSH_HOST_VALUE" || { echo "Missing SSH_HOST secret or variable"; exit 1; }
           test -n "$SSH_USERNAME_VALUE" || { echo "Missing SSH_USERNAME secret or variable"; exit 1; }
@@ -106,7 +103,6 @@ jobs:
             echo "SSH_USERNAME=$SSH_USERNAME_VALUE"
             echo "SSH_PORT=$SSH_PORT_VALUE"
             echo "APP_PATH=$APP_PATH_VALUE"
-            echo "NODE_BIN=$NODE_BIN_VALUE"
           } >> "$GITHUB_ENV"
 
           printf '%s\n' "$SSH_PRIVATE_KEY_VALUE" > .deploy/id_ed25519
@@ -128,20 +124,18 @@ jobs:
           scp -i .deploy/id_ed25519 -P "${SSH_PORT}" .deploy/cpanel-release.tar.gz \
             "${SSH_USERNAME}@${SSH_HOST}:${APP_PATH}/release.tar.gz"
 
-      - name: Extract archive, run migrations, and restart app
+      - name: Extract archive and restart app
         env:
           SSH_HOST: ${{ env.SSH_HOST }}
           SSH_USERNAME: ${{ env.SSH_USERNAME }}
           SSH_PORT: ${{ env.SSH_PORT }}
           APP_PATH: ${{ env.APP_PATH }}
-          NODE_BIN: ${{ env.NODE_BIN }}
         run: |
           set -eu
           ssh -i .deploy/id_ed25519 -p "${SSH_PORT}" "${SSH_USERNAME}@${SSH_HOST}" <<EOF
           set -eu
           APP_PATH="${APP_PATH}"
           RELEASE_DIR="\$APP_PATH/.release"
-          NODE_BIN="${NODE_BIN}"
 
           mkdir -p "\$APP_PATH/tmp"
           rm -rf "\$RELEASE_DIR"
@@ -157,31 +151,6 @@ jobs:
           mv -f "\$RELEASE_DIR/package.json" "\$APP_PATH/package.json"
           mv -f "\$RELEASE_DIR/prisma.config.ts" "\$APP_PATH/prisma.config.ts"
           mv -f "\$RELEASE_DIR/DEPLOY_COMMIT" "\$APP_PATH/DEPLOY_COMMIT"
-
-          if [ -f "\$HOME/.bashrc" ]; then
-            . "\$HOME/.bashrc"
-          fi
-
-          if [ -f "\$HOME/.profile" ]; then
-            . "\$HOME/.profile"
-          fi
-
-          if [ -n "\$NODE_BIN" ]; then
-            if [ ! -x "\$NODE_BIN" ]; then
-              echo "Configured NODE_BIN is not executable: \$NODE_BIN" >&2
-              exit 1
-            fi
-          else
-            NODE_BIN="\$(command -v node || true)"
-          fi
-
-          if [ -z "\$NODE_BIN" ]; then
-            echo "Unable to find Node.js in the SSH shell PATH. Set NODE_BIN in GitHub Actions secrets or vars to the full cPanel node path." >&2
-            exit 1
-          fi
-
-          cd "\$APP_PATH"
-          "\$NODE_BIN" .output/server/node_modules/prisma/build/index.js migrate deploy --config ./prisma.config.ts --schema ./prisma/schema.prisma
 
           rm -rf "\$RELEASE_DIR"
           rm -f "\$APP_PATH/release.tar.gz"

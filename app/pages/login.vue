@@ -7,10 +7,14 @@ definePageMeta({
   public: true
 })
 
-const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const auth = useAuth()
+const appConfig = useAppConfig()
+const redirectCookie = useCookie<string | null>('auth_redirect', {
+  sameSite: 'lax',
+  path: '/'
+})
 
 const schema = z.object({
   email: z.email('Please enter a valid email address'),
@@ -26,9 +30,10 @@ const state = reactive<Schema>({
 
 const loading = ref(false)
 const googleLoading = ref(false)
+const brandName = computed(() => appConfig.appName || 'Internal Dashboard')
 
 const redirectTo = computed(() => {
-  const redirect = route.query.redirect
+  const redirect = redirectCookie.value
   return typeof redirect === 'string' && redirect.startsWith('/')
     ? redirect
     : '/'
@@ -37,7 +42,9 @@ const redirectTo = computed(() => {
 const { data: session } = await auth.useSession(useFetch)
 
 if (session.value?.user) {
-  await navigateTo(redirectTo.value)
+  const target = redirectTo.value
+  redirectCookie.value = null
+  await navigateTo(target)
 }
 
 async function signInWithGoogle() {
@@ -79,47 +86,33 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     return
   }
 
-  await router.push(redirectTo.value)
+  const target = redirectTo.value
+  redirectCookie.value = null
+  await router.push(target)
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-(--ui-bg) px-4 py-10">
-    <div class="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center">
-      <UCard class="w-full">
-        <template #header>
-          <div class="space-y-1">
-            <p class="text-sm font-medium text-muted">
-              Internal access only
-            </p>
-            <h1 class="text-2xl font-semibold text-highlighted">
-              Sign in to continue
+  <div class="min-h-screen bg-zinc-100 px-4 py-8 text-zinc-950 transition-colors dark:bg-[#1f1f21] dark:text-white">
+    <div class="mx-auto flex min-h-[calc(100vh-4rem)] max-w-sm items-center justify-center">
+      <UCard
+        class="w-full rounded-[2rem] border border-zinc-200/80 bg-white/95 px-6 py-8 shadow-[0_24px_80px_-36px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#2a2a2d] dark:shadow-[0_28px_80px_-32px_rgba(0,0,0,0.7)]"
+        :ui="{
+          root: 'overflow-hidden',
+          body: 'p-0',
+          header: 'p-0',
+          footer: 'p-0'
+        }"
+      >
+        <div class="space-y-7">
+          <div class="space-y-5 text-center">
+            <div class="mx-auto flex size-16 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <UIcon name="i-lucide-sparkles" class="size-6 text-zinc-800 dark:text-white" />
+            </div>
+
+            <h1 class="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+              {{ brandName }}
             </h1>
-            <p class="text-sm text-muted">
-              Use your approved Google account or your assigned email and password.
-            </p>
-          </div>
-        </template>
-
-        <div class="space-y-6">
-          <UButton
-            block
-            color="neutral"
-            icon="i-simple-icons-google"
-            :loading="googleLoading"
-            label="Continue with Google"
-            @click="signInWithGoogle"
-          />
-
-          <div class="relative">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-default" />
-            </div>
-            <div class="relative flex justify-center">
-              <span class="bg-default px-3 text-xs font-medium uppercase tracking-[0.2em] text-muted">
-                Or
-              </span>
-            </div>
           </div>
 
           <UForm
@@ -128,31 +121,67 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             class="space-y-4"
             @submit="onSubmit"
           >
-            <UFormField label="Email" name="email">
+            <UFormField name="email">
               <UInput
                 v-model="state.email"
                 class="w-full"
+                size="xl"
+                color="neutral"
+                variant="soft"
+                placeholder="Email"
                 autocomplete="email"
                 type="email"
+                :ui="{
+                  base: 'rounded-xl border border-zinc-200 bg-zinc-50/90 dark:border-white/12 dark:bg-white/[0.06]',
+                  leadingIcon: 'text-zinc-400'
+                }"
               />
             </UFormField>
 
-            <UFormField label="Password" name="password">
+            <UFormField name="password">
               <UInput
                 v-model="state.password"
                 class="w-full"
+                size="xl"
+                color="neutral"
+                variant="soft"
+                placeholder="Password"
                 autocomplete="current-password"
                 type="password"
+                :ui="{
+                  base: 'rounded-xl border border-zinc-200 bg-zinc-50/90 dark:border-white/12 dark:bg-white/[0.06]',
+                  leadingIcon: 'text-zinc-400'
+                }"
               />
             </UFormField>
 
             <UButton
               block
+              size="xl"
+              color="neutral"
+              variant="soft"
               type="submit"
               :loading="loading"
-              label="Sign in with password"
+              label="Sign in"
+              class="mt-2 rounded-xl"
             />
           </UForm>
+
+          <UButton
+            block
+            size="xl"
+            color="neutral"
+            variant="soft"
+            icon="i-simple-icons-google"
+            :loading="googleLoading"
+            label="Sign in with Google"
+            class="rounded-xl"
+            @click="signInWithGoogle"
+          />
+
+          <p class="text-center text-sm text-zinc-500 dark:text-zinc-400">
+            Account access is managed by your administrator.
+          </p>
         </div>
       </UCard>
     </div>

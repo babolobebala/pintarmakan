@@ -15,14 +15,18 @@ const { data: currentUser } = await useCurrentUser()
     <div class="space-y-6 text-sm">
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
-          <p class="text-muted">Signed-in name</p>
+          <p class="text-muted">
+            Signed-in name
+          </p>
           <p class="font-medium text-highlighted">
             {{ currentUser?.user.name || '-' }}
           </p>
         </div>
 
         <div>
-          <p class="text-muted">Email</p>
+          <p class="text-muted">
+            Email
+          </p>
           <p class="font-medium text-highlighted">
             {{ currentUser?.user.email || '-' }}
           </p>
@@ -32,7 +36,9 @@ const { data: currentUser } = await useCurrentUser()
       <USeparator />
 
       <div>
-        <p class="mb-2 text-muted">Assigned roles</p>
+        <p class="mb-2 text-muted">
+          Assigned roles
+        </p>
         <div class="flex flex-wrap gap-2">
           <UBadge
             v-for="role in currentUser?.user.roles || []"

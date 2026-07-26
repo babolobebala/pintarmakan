@@ -16,6 +16,11 @@ const quickLinks = [{
   description: 'Approve internal users and assign access roles.',
   to: '/settings/members',
   icon: 'i-lucide-users'
+}, {
+  label: 'Manage roles',
+  description: 'Create custom roles and define their permission sets.',
+  to: '/settings/roles',
+  icon: 'i-lucide-shield-check'
 }]
 </script>
 
@@ -63,13 +68,17 @@ const quickLinks = [{
         >
           <div class="space-y-3 text-sm">
             <div>
-              <p class="text-muted">Name</p>
+              <p class="text-muted">
+                Name
+              </p>
               <p class="font-medium text-highlighted">
                 {{ currentUser?.user.name || '-' }}
               </p>
             </div>
             <div>
-              <p class="text-muted">Email</p>
+              <p class="text-muted">
+                Email
+              </p>
               <p class="font-medium text-highlighted">
                 {{ currentUser?.user.email || '-' }}
               </p>

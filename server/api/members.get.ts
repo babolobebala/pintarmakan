@@ -1,5 +1,5 @@
-import { db } from '~~/lib/db'
-import { parseStoredRoles } from '~~/lib/rbac'
+import { parseStoredRoles } from '#shared/rbac'
+import { db } from '#server/utils/db'
 import { requirePermission } from '~~/server/utils/rbac'
 
 export default defineEventHandler(async (event) => {

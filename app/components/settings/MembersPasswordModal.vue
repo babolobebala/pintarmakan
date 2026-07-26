@@ -56,15 +56,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     state.password = ''
     open.value = false
     emit('updated')
-  }
-  catch (error) {
+  } catch (error) {
     toast.add({
       title: 'Unable to save password',
       description: error instanceof Error ? error.message : 'Please try again.',
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

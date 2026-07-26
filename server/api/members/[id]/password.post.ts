@@ -1,8 +1,8 @@
 import { createError, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
 
-import { auth } from '~~/lib/auth'
-import { db } from '~~/lib/db'
+import { auth } from '#server/utils/auth-instance'
+import { db } from '#server/utils/db'
 import { requirePermission } from '~~/server/utils/rbac'
 
 const setPasswordSchema = z.object({

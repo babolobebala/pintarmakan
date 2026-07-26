@@ -6,12 +6,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const { data, error } = await useCurrentUser()
 
   if (error.value || !data.value?.user) {
-    return navigateTo({
-      path: '/login',
-      query: {
-        redirect: to.fullPath
-      }
+    const redirectCookie = useCookie<string | null>('auth_redirect', {
+      sameSite: 'lax',
+      path: '/'
     })
+
+    redirectCookie.value = to.fullPath
+
+    return navigateTo('/login')
   }
 
   const requiredPermissions = to.meta.permission

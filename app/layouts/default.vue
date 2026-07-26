@@ -12,7 +12,8 @@ const links = computed(() => {
   const permissionByPath: Record<string, string | undefined> = {
     '/': 'dashboard.view',
     '/settings': 'settings.view',
-    '/settings/members': 'settings.members.view'
+    '/settings/members': 'settings.members.view',
+    '/settings/roles': 'roles.view'
   }
 
   const items = [[{
@@ -41,6 +42,12 @@ const links = computed(() => {
       onSelect: () => {
         open.value = false
       }
+    }, {
+      label: 'Roles',
+      to: '/settings/roles',
+      onSelect: () => {
+        open.value = false
+      }
     }]
   }]] satisfies NavigationMenuItem[][]
 
@@ -54,7 +61,7 @@ const links = computed(() => {
         return !permission || currentUser.value?.user.permissions.includes(permission)
       })
     })
-    .filter((group) => group.length > 0)
+    .filter(group => group.length > 0)
 })
 
 const brand = computed(() => ({

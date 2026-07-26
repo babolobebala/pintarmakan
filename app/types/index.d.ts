@@ -1,4 +1,5 @@
 import type { AvatarProps } from '@nuxt/ui'
+import type { AppPermission } from '#shared/rbac'
 
 export interface Member {
   id: string
@@ -26,4 +27,19 @@ export interface AuthSessionResponse {
     id: string
     expiresAt: string | Date
   }
+}
+
+export interface RoleOption {
+  slug: string
+  name: string
+  description: string
+  isSystem: boolean
+}
+
+export interface RoleRecord extends RoleOption {
+  id: string
+  permissions: AppPermission[]
+  canEdit: boolean
+  canDelete: boolean
+  assignedUserCount: number
 }

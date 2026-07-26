@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import { appRoleOptions } from '~~/lib/rbac'
+import type { RoleOption } from '~/types'
 
 const emit = defineEmits<{
   created: []
@@ -10,7 +10,12 @@ const emit = defineEmits<{
 const open = ref(false)
 const toast = useToast()
 
-const roleOptions = [...appRoleOptions]
+const { data: roles } = await useFetch<RoleOption[]>('/api/roles/options', {
+  default: () => []
+})
+
+const roleOptions = computed(() => roles.value)
+const roleSlugs = computed(() => roleOptions.value.map(role => role.slug))
 
 const schema = z.object({
   name: z.string().min(2, 'Too short'),
@@ -19,7 +24,19 @@ const schema = z.object({
     z.literal(''),
     z.string().min(8, 'Password must be at least 8 characters')
   ]),
-  roles: z.array(z.enum(appRoleOptions)).min(1, 'Select at least one role')
+  roles: z.array(z.string()).min(1, 'Select at least one role').superRefine((value, ctx) => {
+    const availableRoles = new Set(roleSlugs.value)
+
+    for (const role of value) {
+      if (!availableRoles.has(role)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Select a valid role.'
+        })
+        return
+      }
+    }
+  })
 })
 
 type Schema = z.output<typeof schema>
@@ -32,6 +49,20 @@ const state = reactive<Schema>({
 })
 
 const loading = ref(false)
+
+watch(roleSlugs, (value) => {
+  if (value.length === 0) {
+    state.roles = []
+    return
+  }
+
+  state.roles = state.roles.filter(role => value.includes(role))
+
+  if (state.roles.length === 0) {
+    const fallbackRole = value.includes('staff') ? 'staff' : value[0]
+    state.roles = fallbackRole ? [fallbackRole] : []
+  }
+}, { immediate: true })
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
@@ -51,18 +82,16 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     state.name = ''
     state.email = ''
     state.password = ''
-    state.roles = ['staff']
+    state.roles = roleSlugs.value.includes('staff') ? ['staff'] : roleSlugs.value.slice(0, 1)
     open.value = false
     emit('created')
-  }
-  catch (error) {
+  } catch (error) {
     toast.add({
       title: 'Unable to save member',
       description: error instanceof Error ? error.message : 'Please try again.',
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -116,21 +145,21 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           <div class="grid gap-2 sm:grid-cols-2">
             <label
               v-for="role in roleOptions"
-              :key="role"
+              :key="role.slug"
               class="flex items-center gap-2 rounded-lg border border-default px-3 py-2 text-sm"
             >
               <UCheckbox
-                :model-value="state.roles.includes(role)"
+                :model-value="state.roles.includes(role.slug)"
                 @update:model-value="(checked: boolean | 'indeterminate') => {
                   if (checked) {
-                    state.roles = Array.from(new Set([...state.roles, role]))
+                    state.roles = Array.from(new Set([...state.roles, role.slug]))
                     return
                   }
 
-                  state.roles = state.roles.filter(value => value !== role)
+                  state.roles = state.roles.filter(value => value !== role.slug)
                 }"
               />
-              <span class="capitalize">{{ role }}</span>
+              <span>{{ role.name }}</span>
             </label>
           </div>
         </UFormField>

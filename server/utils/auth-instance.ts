@@ -3,8 +3,8 @@ import { betterAuth } from 'better-auth'
 import { APIError } from 'better-auth/api'
 import { admin } from 'better-auth/plugins'
 
-import { db } from './db'
-import { ac, authRoles, defaultUserRole } from './rbac'
+import { ac, authRoles, defaultUserRole } from '#shared/rbac'
+import { db } from '#server/utils/db'
 
 const baseURL = process.env.BETTER_AUTH_URL || process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 

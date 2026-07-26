@@ -16,11 +16,16 @@ const links = computed(() => [[{
   label: 'Members',
   icon: 'i-lucide-users',
   to: '/settings/members'
+}, {
+  label: 'Roles',
+  icon: 'i-lucide-shield-check',
+  to: '/settings/roles'
 }]].map((group) => {
   return group.filter((item) => {
     const permissionByPath: Record<string, string | undefined> = {
       '/settings': 'settings.view',
-      '/settings/members': 'settings.members.view'
+      '/settings/members': 'settings.members.view',
+      '/settings/roles': 'roles.view'
     }
 
     const permission = item.to && typeof item.to === 'string'

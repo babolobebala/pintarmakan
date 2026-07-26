@@ -3,6 +3,7 @@ import type { Member } from '~/types'
 
 defineProps<{
   members: Member[]
+  canManagePassword?: boolean
 }>()
 
 defineEmits<{
@@ -55,6 +56,7 @@ defineEmits<{
           :label="role"
         />
         <UButton
+          v-if="canManagePassword"
           size="xs"
           color="neutral"
           variant="subtle"

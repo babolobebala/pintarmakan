@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { createError } from 'h3'
 
-import { auth } from '~~/lib/auth'
+import { auth } from '#server/utils/auth-instance'
 
 export async function getAuthSession(event: H3Event) {
   return auth.api.getSession({

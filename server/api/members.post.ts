@@ -1,22 +1,22 @@
 import { readBody } from 'h3'
 import { z } from 'zod'
 
-import { db } from '~~/lib/db'
-import { appRoleOptions } from '~~/lib/rbac'
-import { requirePermission } from '~~/server/utils/rbac'
+import { db } from '#server/utils/db'
+import { auth } from '#server/utils/auth-instance'
+import { ensureRolesExist, requirePermission } from '~~/server/utils/rbac'
 
 const createMemberSchema = z.object({
   name: z.string().trim().min(2).max(191),
   email: z.email().trim().max(191),
   password: z.string().min(8).max(128).optional().or(z.literal('')),
-  roles: z.array(z.enum(appRoleOptions))
-    .min(1)
+  roles: z.array(z.string().trim().min(1)).min(1)
 })
 
 export default defineEventHandler(async (event) => {
   const session = await requirePermission(event, 'users.create')
   const body = createMemberSchema.parse(await readBody(event))
   const password = body.password?.trim() || undefined
+  const roles = await ensureRolesExist(body.roles)
 
   const user = await db.$transaction(async (tx) => {
     const savedUser = await tx.user.upsert({
@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
       },
       update: {
         name: body.name,
+        role: roles.join(','),
         isActive: true,
         emailVerified: true
       },
@@ -32,6 +33,7 @@ export default defineEventHandler(async (event) => {
         id: crypto.randomUUID(),
         name: body.name,
         email: body.email,
+        role: roles.join(','),
         emailVerified: true,
         isActive: true
       }
@@ -45,23 +47,13 @@ export default defineEventHandler(async (event) => {
         entityId: savedUser.id,
         metadata: {
           email: savedUser.email,
-          roles: body.roles,
+          roles,
           passwordProvisioned: !!password
         }
       }
     })
 
     return savedUser
-  })
-
-  const { auth } = await import('~~/lib/auth')
-
-  await auth.api.setRole({
-    headers: event.headers,
-    body: {
-      userId: user.id,
-      role: body.roles
-    }
   })
 
   if (password) {

@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import type { Member } from '~/types'
+
 definePageMeta({
   permission: 'settings.members.view'
 })
 
-import type { Member } from '~/types'
-
+const { data: currentUser } = await useCurrentUser()
 const { data: members, refresh } = await useFetch<Member[]>('/api/members', { default: () => [] })
 
 const q = ref('')
 const selectedMember = ref<Member | null>(null)
 const passwordModalOpen = ref(false)
+const canCreateMembers = computed(() => currentUser.value?.user.permissions.includes('users.create') ?? false)
+const canUpdateMembers = computed(() => currentUser.value?.user.permissions.includes('users.update') ?? false)
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -38,7 +41,11 @@ const filteredMembers = computed(() => {
       orientation="horizontal"
       class="mb-4"
     >
-      <SettingsMembersCreateModal class="w-fit lg:ms-auto" @created="refresh()" />
+      <SettingsMembersCreateModal
+        v-if="canCreateMembers"
+        class="w-fit lg:ms-auto"
+        @created="refresh()"
+      />
     </UPageCard>
 
     <UPageCard variant="subtle" :ui="{ container: 'p-0 sm:p-0 gap-y-0', wrapper: 'items-stretch', header: 'p-4 mb-0 border-b border-default' }">
@@ -52,10 +59,15 @@ const filteredMembers = computed(() => {
         />
       </template>
 
-      <SettingsMembersList :members="filteredMembers" @password="openPasswordModal" />
+      <SettingsMembersList
+        :members="filteredMembers"
+        :can-manage-password="canUpdateMembers"
+        @password="openPasswordModal"
+      />
     </UPageCard>
 
     <SettingsMembersPasswordModal
+      v-if="canUpdateMembers"
       v-model:open="passwordModalOpen"
       :member="selectedMember"
       @updated="refresh()"

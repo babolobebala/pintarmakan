@@ -1,4 +1,4 @@
-import { db } from '~~/lib/db'
+import { db } from '#server/utils/db'
 import { requireAuthSession } from '~~/server/utils/auth'
 import { getUserAccess } from '~~/server/utils/rbac'
 

@@ -89,3 +89,16 @@ model AuditLog {
   @@index([entityType, entityId])
   @@map("audit_logs")
 }
+
+model Role {
+  id          String   @id @default(cuid()) @db.VarChar(191)
+  slug        String   @unique @db.VarChar(191)
+  name        String   @db.VarChar(191)
+  description String?  @db.Text
+  permissions Json
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("roles")
+}

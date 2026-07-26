@@ -14,6 +14,12 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  colorMode: {
+    preference: 'light',
+    fallback: 'light',
+    storageKey: 'smartfood-color-mode'
+  },
+
   routeRules: {
     '/api/**': {
       cors: true
@@ -37,9 +43,9 @@ export default defineNuxtConfig({
     includeAssets: ['favicon.ico'],
     manifest: {
       id: '/',
-      name: 'Nuxt Dashboard Template',
-      short_name: 'Dashboard',
-      description: 'A professional dashboard template built with Nuxt UI for admin and analytics workflows.',
+      name: 'Smart Food KSB',
+      short_name: 'Smart Food KSB',
+      description: 'Dashboard Dinas Ketahanan Pangan',
       theme_color: '#18181b',
       background_color: '#ffffff',
       display: 'standalone',
@@ -48,20 +54,54 @@ export default defineNuxtConfig({
       lang: 'en',
       icons: [
         {
-          src: 'icons/icon-192-v2.png',
+          src: 'icons/icon-48x48.png',
+          sizes: '48x48',
+          type: 'image/png'
+        },
+        {
+          src: 'icons/icon-72x72.png',
+          sizes: '72x72',
+          type: 'image/png'
+        },
+        {
+          src: 'icons/icon-96x96.png',
+          sizes: '96x96',
+          type: 'image/png'
+        },
+        {
+          src: 'icons/icon-128x128.png',
+          sizes: '128x128',
+          type: 'image/png'
+        },
+        {
+          src: 'icons/icon-144x144.png',
+          sizes: '144x144',
+          type: 'image/png'
+        },
+        {
+          src: 'icons/icon-152x152.png',
+          sizes: '152x152',
+          type: 'image/png'
+        },
+        {
+          src: 'icons/icon-192x192.png',
           sizes: '192x192',
           type: 'image/png'
         },
         {
-          src: 'icons/icon-512-v2.png',
-          sizes: '512x512',
+          src: 'icons/icon-256x256.png',
+          sizes: '256x256',
           type: 'image/png'
         },
         {
-          src: 'icons/icon-512-maskable-v2.png',
+          src: 'icons/icon-384x384.png',
+          sizes: '384x384',
+          type: 'image/png'
+        },
+        {
+          src: 'icons/icon-512x512.png',
           sizes: '512x512',
-          type: 'image/png',
-          purpose: 'maskable'
+          type: 'image/png'
         }
       ]
     },

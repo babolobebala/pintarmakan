@@ -1,10 +1,10 @@
 allowBuilds:
   '@parcel/watcher': false
-  '@prisma/engines': set this to true or false
+  '@prisma/engines': true
   '@tailwindcss/oxide': false
   esbuild: false
   maplibre-gl: false
-  prisma: set this to true or false
+  prisma: true
   sharp: false
   unrs-resolver: false
   vue-demi: false

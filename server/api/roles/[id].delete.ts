@@ -1,11 +1,10 @@
 import { createError, getRouterParam } from 'h3'
 
-import { parseStoredRoles } from '#shared/rbac'
 import { db } from '#server/utils/db'
 import { requirePermission } from '~~/server/utils/rbac'
 
 export default defineEventHandler(async (event) => {
-  const session = await requirePermission(event, 'roles.manage')
+  const session = await requirePermission(event, 'roles.delete')
   const roleId = getRouterParam(event, 'id')
 
   if (!roleId) {
@@ -42,12 +41,20 @@ export default defineEventHandler(async (event) => {
 
   const users = await db.user.findMany({
     select: {
-      role: true
+      userRoles: {
+        select: {
+          role: {
+            select: {
+              slug: true
+            }
+          }
+        }
+      }
     }
   })
 
   const assignedUserCount = users.filter((user) => {
-    return parseStoredRoles(user.role).includes(role.slug)
+    return new Set(user.userRoles.map(({ role }) => role.slug)).has(role.slug)
   }).length
 
   if (assignedUserCount > 0) {

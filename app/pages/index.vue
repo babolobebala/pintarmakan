@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
-  permission: 'dashboard.view'
+  permission: 'dashboard.read'
 })
 
 const { data: currentUser } = await useCurrentUser()

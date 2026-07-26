@@ -45,7 +45,7 @@ const state = reactive<Schema>({
   name: '',
   email: '',
   password: '',
-  roles: ['staff']
+  roles: ['user']
 })
 
 const loading = ref(false)
@@ -59,7 +59,7 @@ watch(roleSlugs, (value) => {
   state.roles = state.roles.filter(role => value.includes(role))
 
   if (state.roles.length === 0) {
-    const fallbackRole = value.includes('staff') ? 'staff' : value[0]
+    const fallbackRole = value.includes('user') ? 'user' : value[0]
     state.roles = fallbackRole ? [fallbackRole] : []
   }
 }, { immediate: true })
@@ -82,7 +82,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     state.name = ''
     state.email = ''
     state.password = ''
-    state.roles = roleSlugs.value.includes('staff') ? ['staff'] : roleSlugs.value.slice(0, 1)
+    state.roles = roleSlugs.value.includes('user') ? ['user'] : roleSlugs.value.slice(0, 1)
     open.value = false
     emit('created')
   } catch (error) {

@@ -1,8 +1,8 @@
 import { createError, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
 
-import { auth } from '#server/utils/auth-instance'
 import { db } from '#server/utils/db'
+import { setCredentialPassword } from '#server/utils/passwords'
 import { requirePermission } from '~~/server/utils/rbac'
 
 const setPasswordSchema = z.object({
@@ -22,13 +22,7 @@ export default defineEventHandler(async (event) => {
 
   const body = setPasswordSchema.parse(await readBody(event))
 
-  await auth.api.setUserPassword({
-    headers: event.headers,
-    body: {
-      userId,
-      newPassword: body.password
-    }
-  })
+  await setCredentialPassword(userId, body.password)
 
   await db.auditLog.create({
     data: {

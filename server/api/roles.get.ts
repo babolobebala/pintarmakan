@@ -1,15 +1,22 @@
-import { parseStoredRoles } from '#shared/rbac'
 import { db } from '#server/utils/db'
 import { getRoleDefinitions, requirePermission } from '~~/server/utils/rbac'
 
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'roles.view')
+  await requirePermission(event, 'roles.read')
 
   const [roles, users] = await Promise.all([
     getRoleDefinitions(),
     db.user.findMany({
       select: {
-        role: true
+        userRoles: {
+          select: {
+            role: {
+              select: {
+                slug: true
+              }
+            }
+          }
+        }
       }
     })
   ])
@@ -17,7 +24,9 @@ export default defineEventHandler(async (event) => {
   const assignments = new Map<string, number>()
 
   for (const user of users) {
-    for (const role of parseStoredRoles(user.role)) {
+    const assignedRoles = new Set(user.userRoles.map(({ role }) => role.slug))
+
+    for (const role of assignedRoles) {
       assignments.set(role, (assignments.get(role) ?? 0) + 1)
     }
   }
@@ -30,7 +39,7 @@ export default defineEventHandler(async (event) => {
       description: role.description,
       permissions: role.permissions,
       isSystem: role.isSystem,
-      canEdit: !role.isSystem,
+      canEdit: true,
       canDelete: !role.isSystem,
       assignedUserCount: assignments.get(role.slug) ?? 0
     }

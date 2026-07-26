@@ -36,6 +36,14 @@ export interface RoleOption {
   isSystem: boolean
 }
 
+export interface PermissionRecord {
+  key: string
+  label: string
+  description: string
+  group: string
+  isSystem: boolean
+}
+
 export interface RoleRecord extends RoleOption {
   id: string
   permissions: AppPermission[]

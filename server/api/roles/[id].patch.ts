@@ -1,31 +1,17 @@
 import { createError, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
 
-import type { AppPermission } from '#shared/rbac'
-import { permissionList } from '#shared/rbac'
 import { db } from '#server/utils/db'
-import { requirePermission } from '~~/server/utils/rbac'
-
-const permissionSet = new Set(permissionList)
+import { ensurePermissionsExist, requirePermission, syncRolePermissions } from '~~/server/utils/rbac'
 
 const updateRoleSchema = z.object({
   name: z.string().trim().min(2).max(191),
   description: z.string().trim().max(2000).optional().or(z.literal('')),
-  permissions: z.array(z.string()).min(1, 'Select at least one permission').superRefine((value, ctx) => {
-    for (const permission of value) {
-      if (!permissionSet.has(permission as AppPermission)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Select only valid permissions.'
-        })
-        return
-      }
-    }
-  })
+  permissions: z.array(z.string().trim().min(1)).min(1, 'Select at least one permission')
 })
 
 export default defineEventHandler(async (event) => {
-  const session = await requirePermission(event, 'roles.manage')
+  const session = await requirePermission(event, 'roles.update')
   const roleId = getRouterParam(event, 'id')
 
   if (!roleId) {
@@ -36,7 +22,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = updateRoleSchema.parse(await readBody(event))
-
+  const permissions = await ensurePermissionsExist(body.permissions)
   const role = await db.role.findUnique({
     where: {
       id: roleId
@@ -55,35 +41,32 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (role.isSystem) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'System roles cannot be edited here.'
-    })
-  }
-
-  await db.role.update({
-    where: {
-      id: roleId
-    },
-    data: {
-      name: body.name,
-      description: body.description?.trim() || null,
-      permissions: body.permissions as AppPermission[]
-    }
-  })
-
-  await db.auditLog.create({
-    data: {
-      actorId: session.user.id,
-      action: 'roles.update',
-      entityType: 'role',
-      entityId: roleId,
-      metadata: {
-        slug: role.slug,
-        permissions: body.permissions as AppPermission[]
+  await db.$transaction(async (tx) => {
+    await tx.role.update({
+      where: {
+        id: roleId
+      },
+      data: {
+        name: body.name,
+        description: body.description?.trim() || null,
+        isSystem: role.isSystem
       }
-    }
+    })
+
+    await syncRolePermissions(tx, roleId, permissions)
+
+    await tx.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        action: 'roles.update',
+        entityType: 'role',
+        entityId: roleId,
+        metadata: {
+          slug: role.slug,
+          permissions
+        }
+      }
+    })
   })
 
   return {

@@ -3,7 +3,8 @@ import type { RoleRecord } from '~/types'
 
 defineProps<{
   roles: RoleRecord[]
-  canManage?: boolean
+  canEdit?: boolean
+  canDelete?: boolean
 }>()
 
 defineEmits<{
@@ -50,9 +51,9 @@ defineEmits<{
           </p>
         </div>
 
-        <div v-if="canManage" class="flex flex-wrap gap-2">
+        <div v-if="canEdit || canDelete" class="flex flex-wrap gap-2">
           <UButton
-            v-if="role.canEdit"
+            v-if="role.canEdit && canEdit"
             label="Edit"
             size="xs"
             color="neutral"
@@ -60,7 +61,7 @@ defineEmits<{
             @click="$emit('edit', role)"
           />
           <UButton
-            v-if="role.canDelete"
+            v-if="role.canDelete && canDelete"
             label="Delete"
             size="xs"
             color="error"

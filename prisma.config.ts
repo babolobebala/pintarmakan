@@ -7,11 +7,7 @@ if (fs.existsSync(path.resolve('.env'))) {
   process.loadEnvFile?.()
 }
 
-function getDatabaseURL() {
-  if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL
-  }
-
+function getDatabaseUrl() {
   const connection = process.env.DB_CONNECTION || 'mysql'
   const host = process.env.DB_HOST
   const port = process.env.DB_PORT || '3306'
@@ -27,12 +23,12 @@ function getDatabaseURL() {
 }
 
 export default defineConfig({
+  engine: 'classic',
   schema: path.join('prisma', 'schema.prisma'),
   migrations: {
-    path: path.join('prisma', 'migrations'),
-    seed: 'node prisma/seed.mjs'
+    path: path.join('prisma', 'migrations')
   },
   datasource: {
-    url: getDatabaseURL()
+    url: getDatabaseUrl()
   }
 })

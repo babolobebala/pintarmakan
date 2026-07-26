@@ -1,95 +1,119 @@
-import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access'
-import { createAccessControl } from 'better-auth/plugins/access'
-
-export const ac = createAccessControl({
-  ...defaultStatements,
-  dashboard: ['view'],
-  settings: ['view'],
-  settingsMembers: ['view', 'manage'],
-  users: ['view', 'create', 'update', 'assign-role', 'deactivate'],
-  roles: ['view', 'manage'],
-  permissions: ['view', 'manage'],
-  auditLogs: ['view']
-} as const)
-
 export const permissionRequests = {
-  'dashboard.view': { dashboard: ['view'] },
-  'settings.view': { settings: ['view'] },
-  'settings.members.view': { settingsMembers: ['view'] },
-  'settings.members.manage': { settingsMembers: ['manage'] },
-  'users.view': { users: ['view'] },
+  'dashboard.read': { dashboard: ['read'] },
+  'settings.read': { settings: ['read'] },
+  'users.read': { users: ['read'] },
   'users.create': { users: ['create'] },
   'users.update': { users: ['update'] },
-  'users.assign-role': { users: ['assign-role'] },
-  'users.deactivate': { users: ['deactivate'] },
-  'roles.view': { roles: ['view'] },
-  'roles.manage': { roles: ['manage'] },
-  'permissions.view': { permissions: ['view'] },
-  'permissions.manage': { permissions: ['manage'] },
-  'audit-logs.view': { auditLogs: ['view'] }
+  'users.delete': { users: ['delete'] },
+  'roles.read': { roles: ['read'] },
+  'roles.create': { roles: ['create'] },
+  'roles.update': { roles: ['update'] },
+  'roles.delete': { roles: ['delete'] },
+  'permissions.read': { permissions: ['read'] },
+  'permissions.create': { permissions: ['create'] },
+  'permissions.update': { permissions: ['update'] },
+  'permissions.delete': { permissions: ['delete'] },
+  'audit-logs.read': { auditLogs: ['read'] }
 } as const
 
-export type AppPermission = keyof typeof permissionRequests
-export const permissionList = Object.keys(permissionRequests) as AppPermission[]
+export type BuiltInPermission = keyof typeof permissionRequests
+export type AppPermission = string
 
-export const permissionMetadata: Record<AppPermission, { label: string, description: string }> = {
-  'dashboard.view': {
-    label: 'Dashboard',
-    description: 'Open the main dashboard.'
+export const permissionMetadata: Record<BuiltInPermission, { label: string, description: string, group: string }> = {
+  'dashboard.read': {
+    label: 'Read Dashboard',
+    description: 'Open the main dashboard.',
+    group: 'Dashboard'
   },
-  'settings.view': {
-    label: 'Settings',
-    description: 'Access the settings area.'
+  'settings.read': {
+    label: 'Read Settings',
+    description: 'Access the settings area.',
+    group: 'Settings'
   },
-  'settings.members.view': {
-    label: 'View Members',
-    description: 'See the members page and directory.'
-  },
-  'settings.members.manage': {
-    label: 'Manage Members Settings',
-    description: 'Change member-related settings and flows.'
-  },
-  'users.view': {
-    label: 'View Users',
-    description: 'Read approved user records.'
+  'users.read': {
+    label: 'Read Users',
+    description: 'Read approved user records.',
+    group: 'Users'
   },
   'users.create': {
     label: 'Create Users',
-    description: 'Approve and create internal users.'
+    description: 'Approve and create internal users.',
+    group: 'Users'
   },
   'users.update': {
     label: 'Update Users',
-    description: 'Change existing user records and passwords.'
+    description: 'Change existing user records, role assignments, and passwords.',
+    group: 'Users'
   },
-  'users.assign-role': {
-    label: 'Assign Roles',
-    description: 'Attach roles to users.'
+  'users.delete': {
+    label: 'Delete Users',
+    description: 'Remove or deactivate internal accounts.',
+    group: 'Users'
   },
-  'users.deactivate': {
-    label: 'Deactivate Users',
-    description: 'Disable internal accounts.'
+  'roles.read': {
+    label: 'Read Roles',
+    description: 'Browse available roles.',
+    group: 'Roles'
   },
-  'roles.view': {
-    label: 'View Roles',
-    description: 'Browse available roles.'
+  'roles.create': {
+    label: 'Create Roles',
+    description: 'Create custom roles.',
+    group: 'Roles'
   },
-  'roles.manage': {
-    label: 'Manage Roles',
-    description: 'Create, edit, and delete custom roles.'
+  'roles.update': {
+    label: 'Update Roles',
+    description: 'Edit custom roles and their permission sets.',
+    group: 'Roles'
   },
-  'permissions.view': {
-    label: 'View Permissions',
-    description: 'Inspect permission definitions.'
+  'roles.delete': {
+    label: 'Delete Roles',
+    description: 'Delete custom roles.',
+    group: 'Roles'
   },
-  'permissions.manage': {
-    label: 'Manage Permissions',
-    description: 'Control permission definitions.'
+  'permissions.read': {
+    label: 'Read Permissions',
+    description: 'Inspect permission definitions.',
+    group: 'Permissions'
   },
-  'audit-logs.view': {
-    label: 'View Audit Logs',
-    description: 'Review audit log history.'
+  'permissions.create': {
+    label: 'Create Permissions',
+    description: 'Create permission definitions.',
+    group: 'Permissions'
+  },
+  'permissions.update': {
+    label: 'Update Permissions',
+    description: 'Edit permission definitions.',
+    group: 'Permissions'
+  },
+  'permissions.delete': {
+    label: 'Delete Permissions',
+    description: 'Delete permission definitions.',
+    group: 'Permissions'
+  },
+  'audit-logs.read': {
+    label: 'Read Audit Logs',
+    description: 'Review audit log history.',
+    group: 'Audit Logs'
   }
 }
+
+export interface PermissionDefinition {
+  key: string
+  label: string
+  description: string
+  group: string
+  isSystem: boolean
+}
+
+export const initialPermissionDefinitions = Object.entries(permissionMetadata).map(([key, metadata]) => {
+  return {
+    key,
+    label: metadata.label,
+    description: metadata.description,
+    group: metadata.group,
+    isSystem: true
+  }
+}) satisfies PermissionDefinition[]
 
 export interface RoleDefinition {
   slug: string
@@ -98,76 +122,6 @@ export interface RoleDefinition {
   permissions: AppPermission[]
   isSystem: boolean
 }
-
-export const systemRoleDefinitions = [{
-  slug: 'super-admin',
-  name: 'Super Admin',
-  description: 'Full access to the dashboard, member administration, role management, and audit data.',
-  permissions: [...permissionList],
-  isSystem: true
-}, {
-  slug: 'admin',
-  name: 'Admin',
-  description: 'Manage members and operational settings without full role administration.',
-  permissions: [
-    'dashboard.view',
-    'settings.view',
-    'settings.members.view',
-    'settings.members.manage',
-    'users.view',
-    'users.create',
-    'users.update',
-    'users.assign-role',
-    'users.deactivate',
-    'roles.view',
-    'audit-logs.view'
-  ],
-  isSystem: true
-}, {
-  slug: 'manager',
-  name: 'Manager',
-  description: 'View workspace settings and member lists.',
-  permissions: [
-    'dashboard.view',
-    'settings.view',
-    'settings.members.view'
-  ],
-  isSystem: true
-}, {
-  slug: 'staff',
-  name: 'Staff',
-  description: 'Basic dashboard access for day-to-day work.',
-  permissions: [
-    'dashboard.view'
-  ],
-  isSystem: true
-}] satisfies RoleDefinition[]
-
-export const systemRoleSlugs = systemRoleDefinitions.map(role => role.slug)
-export const defaultUserRole = 'staff'
-
-function createStatementsForPermissions(permissions: readonly AppPermission[]) {
-  return permissions.reduce<Record<string, string[]>>((statements, permission) => {
-    for (const [resource, actions] of Object.entries(permissionRequests[permission])) {
-      statements[resource] = Array.from(new Set([...(statements[resource] ?? []), ...actions]))
-    }
-
-    return statements
-  }, {})
-}
-
-export const authRoles = Object.fromEntries(
-  systemRoleDefinitions.map((role) => {
-    const baseStatements = role.slug === 'super-admin' || role.slug === 'admin'
-      ? adminAc.statements
-      : {}
-
-    return [role.slug, ac.newRole({
-      ...baseStatements,
-      ...createStatementsForPermissions(role.permissions)
-    })]
-  })
-)
 
 export function slugifyRoleName(value: string) {
   return value
@@ -199,4 +153,8 @@ export function formatRoleLabel(role: string) {
     .split('-')
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+export function getInitialPermissionDefinition(key: string) {
+  return initialPermissionDefinitions.find(permission => permission.key === key)
 }

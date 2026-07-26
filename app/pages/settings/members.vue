@@ -2,7 +2,7 @@
 import type { Member } from '~/types'
 
 definePageMeta({
-  permission: 'settings.members.view'
+  permission: 'users.read'
 })
 
 const { data: currentUser } = await useCurrentUser()

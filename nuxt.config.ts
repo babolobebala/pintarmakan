@@ -45,7 +45,7 @@ export default defineNuxtConfig({
       id: '/',
       name: 'Smart Food KSB',
       short_name: 'Smart Food KSB',
-      description: 'Dashboard Dinas Ketahanan Pangan',
+      description: 'Dashboard Dinas Ketahanan Pangan Kabupaten Sumbawa Barat',
       theme_color: '#18181b',
       background_color: '#ffffff',
       display: 'standalone',

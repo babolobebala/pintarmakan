@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { RoleRecord } from '~/types'
-import type { AppPermission } from '#shared/rbac'
-import { permissionList, permissionMetadata } from '#shared/rbac'
+import type { PermissionRecord, RoleRecord } from '~/types'
 
 const props = defineProps<{
   role: RoleRecord | null
@@ -16,12 +14,30 @@ const emit = defineEmits<{
 const open = defineModel<boolean>('open', { default: false })
 const toast = useToast()
 
-const permissionSet = new Set(permissionList)
-const permissionOptions = permissionList.map((permission) => {
-  return {
-    value: permission,
-    ...permissionMetadata[permission]
+const permissions = ref<PermissionRecord[]>([])
+const permissionsLoading = ref(false)
+const permissionsLoaded = ref(false)
+const loading = ref(false)
+const isEditing = computed(() => !!props.role)
+const permissionSet = computed(() => new Set(permissions.value.map(permission => permission.key)))
+const permissionOptions = computed(() => {
+  return permissions.value.map((permission) => {
+    return {
+      value: permission.key,
+      label: permission.label,
+      description: permission.description,
+      group: permission.group
+    }
+  })
+})
+const defaultPermissions = computed(() => {
+  const dashboardPermission = permissionOptions.value.find(permission => permission.value === 'dashboard.read')
+
+  if (dashboardPermission) {
+    return [dashboardPermission.value]
   }
+
+  return permissionOptions.value.slice(0, 1).map(permission => permission.value)
 })
 
 const schema = z.object({
@@ -29,7 +45,7 @@ const schema = z.object({
   description: z.string().trim().max(2000).optional().or(z.literal('')),
   permissions: z.array(z.string()).min(1, 'Select at least one permission').superRefine((value, ctx) => {
     for (const permission of value) {
-      if (!permissionSet.has(permission as AppPermission)) {
+      if (!permissionSet.value.has(permission)) {
         ctx.addIssue({
           code: 'custom',
           message: 'Select only valid permissions.'
@@ -50,17 +66,41 @@ const state = reactive<Schema>({
   permissions: []
 })
 
-const loading = ref(false)
-const isEditing = computed(() => !!props.role)
+async function ensurePermissionsLoaded() {
+  if (permissionsLoaded.value || permissionsLoading.value) {
+    return
+  }
 
-watch([open, () => props.role], ([isOpen, role]) => {
+  permissionsLoading.value = true
+
+  try {
+    permissions.value = await $fetch('/api/permissions')
+    permissionsLoaded.value = true
+  } catch (error) {
+    toast.add({
+      title: 'Unable to load permissions',
+      description: error instanceof Error ? error.message : 'Please try again.',
+      color: 'error'
+    })
+  } finally {
+    permissionsLoading.value = false
+  }
+}
+
+watch([open, () => props.role], async ([isOpen, role]) => {
   if (!isOpen) {
     return
   }
 
+  await ensurePermissionsLoaded()
+
   state.name = role?.name || ''
   state.description = role?.description || ''
-  state.permissions = role?.permissions ? [...role.permissions] : ['dashboard.view']
+
+  const nextPermissions = role?.permissions.filter(permission => permissionSet.value.has(permission)) ?? []
+  state.permissions = nextPermissions.length > 0
+    ? Array.from(new Set(nextPermissions))
+    : defaultPermissions.value
 }, { immediate: true })
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
@@ -140,7 +180,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UFormField
           label="Permissions"
           name="permissions"
-          description="Choose the actions members with this role can perform."
+          :description="permissionsLoading
+            ? 'Loading available permissions.'
+            : 'Choose the actions members with this role can perform.'"
         >
           <div class="grid gap-2 sm:grid-cols-2">
             <label
@@ -151,6 +193,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               <div class="flex items-start gap-3">
                 <UCheckbox
                   :model-value="state.permissions.includes(permission.value)"
+                  :disabled="permissionsLoading"
                   @update:model-value="(checked: boolean | 'indeterminate') => {
                     if (checked) {
                       state.permissions = Array.from(new Set([...state.permissions, permission.value]))
@@ -185,6 +228,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             :label="isEditing ? 'Save changes' : 'Create role'"
             type="submit"
             :loading="loading"
+            :disabled="permissionsLoading || permissionOptions.length === 0"
           />
         </div>
       </UForm>

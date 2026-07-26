@@ -1,45 +1,26 @@
 import { createError, readBody } from 'h3'
 import { z } from 'zod'
 
-import type { AppPermission } from '#shared/rbac'
-import { permissionList, slugifyRoleName, systemRoleSlugs } from '#shared/rbac'
+import { slugifyRoleName } from '#shared/rbac'
 import { db } from '#server/utils/db'
-import { requirePermission } from '~~/server/utils/rbac'
-
-const permissionSet = new Set(permissionList)
+import { ensurePermissionsExist, requirePermission, syncRolePermissions } from '~~/server/utils/rbac'
 
 const createRoleSchema = z.object({
   name: z.string().trim().min(2).max(191),
   description: z.string().trim().max(2000).optional().or(z.literal('')),
-  permissions: z.array(z.string()).min(1, 'Select at least one permission').superRefine((value, ctx) => {
-    for (const permission of value) {
-      if (!permissionSet.has(permission as AppPermission)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Select only valid permissions.'
-        })
-        return
-      }
-    }
-  })
+  permissions: z.array(z.string().trim().min(1)).min(1, 'Select at least one permission')
 })
 
 export default defineEventHandler(async (event) => {
-  const session = await requirePermission(event, 'roles.manage')
+  const session = await requirePermission(event, 'roles.create')
   const body = createRoleSchema.parse(await readBody(event))
   const slug = slugifyRoleName(body.name)
+  const permissions = await ensurePermissionsExist(body.permissions)
 
   if (!slug) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Role name must include letters or numbers.'
-    })
-  }
-
-  if (systemRoleSlugs.includes(slug)) {
-    throw createError({
-      statusCode: 409,
-      statusMessage: 'That role name conflicts with a protected system role.'
     })
   }
 
@@ -59,31 +40,36 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const role = await db.role.create({
-    data: {
-      slug,
-      name: body.name,
-      description: body.description?.trim() || null,
-      permissions: body.permissions as AppPermission[],
-      isSystem: false
-    },
-    select: {
-      id: true,
-      slug: true
-    }
-  })
-
-  await db.auditLog.create({
-    data: {
-      actorId: session.user.id,
-      action: 'roles.create',
-      entityType: 'role',
-      entityId: role.id,
-      metadata: {
-        slug: role.slug,
-        permissions: body.permissions as AppPermission[]
+  const role = await db.$transaction(async (tx) => {
+    const savedRole = await tx.role.create({
+      data: {
+        slug,
+        name: body.name,
+        description: body.description?.trim() || null,
+        isSystem: false
+      },
+      select: {
+        id: true,
+        slug: true
       }
-    }
+    })
+
+    await syncRolePermissions(tx, savedRole.id, permissions)
+
+    await tx.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        action: 'roles.create',
+        entityType: 'role',
+        entityId: savedRole.id,
+        metadata: {
+          slug: savedRole.slug,
+          permissions
+        }
+      }
+    })
+
+    return savedRole
   })
 
   return role

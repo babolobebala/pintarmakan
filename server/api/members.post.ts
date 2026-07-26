@@ -2,8 +2,8 @@ import { readBody } from 'h3'
 import { z } from 'zod'
 
 import { db } from '#server/utils/db'
-import { auth } from '#server/utils/auth-instance'
-import { ensureRolesExist, requirePermission } from '~~/server/utils/rbac'
+import { setCredentialPassword } from '#server/utils/passwords'
+import { requirePermission, syncUserRoles } from '~~/server/utils/rbac'
 
 const createMemberSchema = z.object({
   name: z.string().trim().min(2).max(191),
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const session = await requirePermission(event, 'users.create')
   const body = createMemberSchema.parse(await readBody(event))
   const password = body.password?.trim() || undefined
-  const roles = await ensureRolesExist(body.roles)
+  const roles = body.roles
 
   const user = await db.$transaction(async (tx) => {
     const savedUser = await tx.user.upsert({
@@ -25,7 +25,6 @@ export default defineEventHandler(async (event) => {
       },
       update: {
         name: body.name,
-        role: roles.join(','),
         isActive: true,
         emailVerified: true
       },
@@ -33,11 +32,12 @@ export default defineEventHandler(async (event) => {
         id: crypto.randomUUID(),
         name: body.name,
         email: body.email,
-        role: roles.join(','),
         emailVerified: true,
         isActive: true
       }
     })
+
+    const normalizedRoles = await syncUserRoles(tx, savedUser.id, roles)
 
     await tx.auditLog.create({
       data: {
@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
         entityId: savedUser.id,
         metadata: {
           email: savedUser.email,
-          roles,
+          roles: normalizedRoles,
           passwordProvisioned: !!password
         }
       }
@@ -57,13 +57,7 @@ export default defineEventHandler(async (event) => {
   })
 
   if (password) {
-    await auth.api.setUserPassword({
-      headers: event.headers,
-      body: {
-        userId: user.id,
-        newPassword: password
-      }
-    })
+    await setCredentialPassword(user.id, password)
   }
 
   return {

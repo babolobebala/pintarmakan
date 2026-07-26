@@ -10,10 +10,10 @@ const pwaToastId = 'pwa-install'
 
 const links = computed(() => {
   const permissionByPath: Record<string, string | undefined> = {
-    '/': 'dashboard.view',
-    '/settings': 'settings.view',
-    '/settings/members': 'settings.members.view',
-    '/settings/roles': 'roles.view'
+    '/': 'dashboard.read',
+    '/settings': 'settings.read',
+    '/settings/members': 'users.read',
+    '/settings/roles': 'roles.read'
   }
 
   const items = [[{

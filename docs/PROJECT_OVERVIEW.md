@@ -23,8 +23,8 @@ The project is no longer just a starter template. It now behaves like an interna
 - Nuxt UI `4.10.0`
 - Tailwind CSS `4`
 - Better Auth
-- Prisma `7`
-- MariaDB adapter for Prisma
+- Prisma `6.19.x`
+- Prisma MySQL connector
 - Zod for request and form validation
 - `@vite-pwa/nuxt` for installable PWA behavior
 
@@ -41,7 +41,7 @@ The app is split across standard Nuxt boundaries:
 
 Important internal conventions:
 
-- Shared RBAC logic lives in `shared/rbac.ts`
+- Shared permission registry lives in `shared/rbac.ts`
 - Server-only auth instance lives in `server/utils/auth-instance.ts`
 - Server-only Prisma client lives in `server/utils/db.ts`
 - Route protection is enforced both in client middleware and server API handlers
@@ -75,21 +75,21 @@ Main layout pieces:
   - public route
 - `/`
   - dashboard home
-  - requires `dashboard.view`
+  - requires `dashboard.read`
 - `/settings`
   - settings container page
-  - requires `settings.view`
+  - requires `settings.read`
 - `/settings` child index
   - workspace overview
 - `/settings/members`
   - member directory
   - member creation modal
   - password management modal
-  - requires `settings.members.view`
+  - requires `users.read`
 - `/settings/roles`
   - role listing
   - role create/edit modal
-  - requires `roles.view`
+  - requires `roles.read`
 
 ### Current composables
 
@@ -147,48 +147,54 @@ Current auth rules:
 
 ## Authorization and RBAC
 
-RBAC is implemented in `shared/rbac.ts` and resolved server-side in `server/utils/rbac.ts`.
+RBAC is implemented with a code-defined permission registry in `shared/rbac.ts` and resolved server-side in `server/utils/rbac.ts`.
 
 ### Permission model
 
 Current permission families:
 
-- `dashboard.*`
-- `settings.*`
-- `settings.members.*`
-- `users.*`
-- `roles.*`
-- `permissions.*`
-- `auditLogs.*`
+- `dashboard.read`
+- `settings.read`
+- `users.read|create|update|delete`
+- `roles.read|create|update|delete`
+- `permissions.read|create|update|delete`
+- `audit-logs.read`
 
 Important permission keys already used by the app:
 
-- `dashboard.view`
-- `settings.view`
-- `settings.members.view`
+- `dashboard.read`
+- `settings.read`
+- `users.read`
 - `users.create`
 - `users.update`
-- `roles.view`
-- `roles.manage`
+- `roles.read`
+- `roles.create`
+- `roles.update`
+- `roles.delete`
 
-### System roles
+### Authorization storage
 
-Current built-in roles:
+Authorization is now hybrid:
 
-- `super-admin`
-- `admin`
-- `manager`
-- `staff`
+- Better Auth handles authentication and sessions
+- application authorization is resolved from database-backed RBAC tables
+- built-in permission definitions still live in `shared/rbac.ts`
+- role definitions live in the database
+- runtime permission and role resolution happens in `server/utils/rbac.ts`
 
-Default role:
+Current DB-backed authorization tables:
 
-- `staff`
+- `roles`
+- `permissions`
+- `user_roles`
+- `role_permissions`
 
-Custom roles:
+Compatibility behavior:
 
-- Stored in the `roles` table
-- Can be created, edited, and deleted from the UI
-- Cannot reuse a protected system role slug
+- application authorization no longer depends on a `Role.permissions` JSON cache
+- runtime permission resolution uses normalized RBAC tables
+- user-role assignment is fully normalized through `user_roles`
+- roles are no longer hardcoded in shared runtime code
 
 ### Access enforcement
 
@@ -221,6 +227,8 @@ Current server routes under `server/api/`:
   - deletes a custom role if unassigned
 - `GET /api/roles/options`
   - returns simplified role options for forms
+- `GET /api/permissions`
+  - returns permission definitions for RBAC management UIs
 - `/api/auth/*`
   - Better Auth handler routes
 
@@ -243,20 +251,24 @@ Current tables:
 - `verification`
 - `audit_logs`
 - `roles`
+- `permissions`
+- `user_roles`
+- `role_permissions`
 
 ### Notes on current schema design
 
-- User roles are currently stored as a comma-separated string in `User.role`
-- Custom role definitions are stored in the `Role` table
-- Role permissions are stored as JSON
+- Seeded system roles and custom role definitions are stored in the `roles` table
+- Permission definitions are stored in the `permissions` table
+- User-role assignment is normalized through `user_roles`
+- Role-permission assignment is normalized through `role_permissions`
 - Audit logs store flexible JSON metadata
 
 This means the app currently uses:
 
 - normalized role definitions
-- denormalized user-role assignment storage
-
-That design works, but if the project grows, a dedicated user-role join table would be the next likely refactor.
+- normalized user-role assignment storage
+- normalized role-permission assignment storage
+- app-owned password administration for internal member management
 
 ## Member Management
 
@@ -282,6 +294,7 @@ Current role workflow:
 
 - admin opens `/settings/roles`
 - searches roles by name, slug, or description
+- loads permission options from `/api/permissions`
 - creates custom roles
 - edits custom roles
 - deletes custom roles if no user still has them assigned
@@ -330,7 +343,6 @@ Data layer:
 
 - `prisma/schema.prisma`
 - `prisma/migrations/`
-- `prisma/seed.mjs`
 
 ## Scripts
 
@@ -345,7 +357,6 @@ Useful package scripts:
 - `pnpm db:generate`
 - `pnpm db:migrate`
 - `pnpm db:deploy`
-- `pnpm db:seed`
 - `pnpm db:studio`
 - `pnpm db:validate`
 
@@ -368,14 +379,13 @@ Things that are not yet implemented or are still starter-level:
 - no dedicated permissions management UI
 - no user profile/self-service settings page
 - no organization or tenant model
-- no normalized many-to-many user-role relation table
 - no tests are present in the current repo snapshot
 
 ## Suggested Next Refactors
 
 If this project keeps growing, the most likely next improvements are:
 
-1. Move from comma-separated `User.role` storage to a join table.
+1. Add dedicated tests for internal user provisioning and password management.
 2. Add feature-specific domains under `app/components/` and `server/api/`.
 3. Add tests for auth, RBAC, and critical API handlers.
 4. Add audit-log browsing UI.

@@ -2,7 +2,7 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 definePageMeta({
-  permission: 'settings.view'
+  permission: 'settings.read'
 })
 
 const { data: currentUser } = await useCurrentUser()
@@ -23,9 +23,9 @@ const links = computed(() => [[{
 }]].map((group) => {
   return group.filter((item) => {
     const permissionByPath: Record<string, string | undefined> = {
-      '/settings': 'settings.view',
-      '/settings/members': 'settings.members.view',
-      '/settings/roles': 'roles.view'
+      '/settings': 'settings.read',
+      '/settings/members': 'users.read',
+      '/settings/roles': 'roles.read'
     }
 
     const permission = item.to && typeof item.to === 'string'

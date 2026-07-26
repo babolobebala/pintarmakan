@@ -2,7 +2,7 @@
 import type { RoleRecord } from '~/types'
 
 definePageMeta({
-  permission: 'roles.view'
+  permission: 'roles.read'
 })
 
 const toast = useToast()
@@ -14,7 +14,9 @@ const { data: roles, refresh } = await useFetch<RoleRecord[]>('/api/roles', {
 const q = ref('')
 const editorOpen = ref(false)
 const selectedRole = ref<RoleRecord | null>(null)
-const canManage = computed(() => currentUser.value?.user.permissions.includes('roles.manage') ?? false)
+const canCreate = computed(() => currentUser.value?.user.permissions.includes('roles.create') ?? false)
+const canUpdate = computed(() => currentUser.value?.user.permissions.includes('roles.update') ?? false)
+const canDelete = computed(() => currentUser.value?.user.permissions.includes('roles.delete') ?? false)
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -29,16 +31,28 @@ const filteredRoles = computed(() => {
 })
 
 function openCreateModal() {
+  if (!canCreate.value) {
+    return
+  }
+
   selectedRole.value = null
   editorOpen.value = true
 }
 
 function openEditModal(role: RoleRecord) {
+  if (!canUpdate.value) {
+    return
+  }
+
   selectedRole.value = role
   editorOpen.value = true
 }
 
 async function deleteRole(role: RoleRecord) {
+  if (!canDelete.value) {
+    return
+  }
+
   if (!import.meta.client || !window.confirm(`Delete the role "${role.name}"?`)) {
     return
   }
@@ -75,7 +89,7 @@ async function deleteRole(role: RoleRecord) {
       class="mb-4"
     >
       <UButton
-        v-if="canManage"
+        v-if="canCreate"
         label="Create role"
         icon="i-lucide-shield-plus"
         class="w-fit lg:ms-auto"
@@ -95,14 +109,15 @@ async function deleteRole(role: RoleRecord) {
 
       <SettingsRolesList
         :roles="filteredRoles"
-        :can-manage="canManage"
+        :can-edit="canUpdate"
+        :can-delete="canDelete"
         @edit="openEditModal"
         @delete="deleteRole"
       />
     </UPageCard>
 
     <SettingsRoleEditorModal
-      v-if="canManage"
+      v-if="canCreate || canUpdate"
       v-model:open="editorOpen"
       :role="selectedRole"
       @saved="refresh()"

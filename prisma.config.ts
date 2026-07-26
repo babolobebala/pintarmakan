@@ -16,7 +16,7 @@ function getDatabaseUrl() {
   const password = process.env.DB_PASSWORD || ''
 
   if (!host || !database || !username) {
-    return ''
+    return `${connection}://placeholder:placeholder@localhost:${port}/placeholder`
   }
 
   return `${connection}://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${host}:${port}/${database}`

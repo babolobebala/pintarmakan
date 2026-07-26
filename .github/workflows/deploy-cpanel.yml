@@ -45,9 +45,11 @@ jobs:
           mkdir -p .deploy/release
           printf '%s\n' "${GITHUB_SHA}" > DEPLOY_COMMIT
           cp -R .output .deploy/release/.output
+          cp -R prisma .deploy/release/prisma
           find .deploy/release/.output -type f -name "*.map" -delete
           cp app.cjs .deploy/release/app.cjs
           cp package.json .deploy/release/package.json
+          cp prisma.config.ts .deploy/release/prisma.config.ts
           cp DEPLOY_COMMIT .deploy/release/DEPLOY_COMMIT
           tar -czf .deploy/cpanel-release.tar.gz -C .deploy/release .
 
@@ -122,7 +124,7 @@ jobs:
           scp -i .deploy/id_ed25519 -P "${SSH_PORT}" .deploy/cpanel-release.tar.gz \
             "${SSH_USERNAME}@${SSH_HOST}:${APP_PATH}/release.tar.gz"
 
-      - name: Extract archive and restart app
+      - name: Extract archive, run migrations, and restart app
         env:
           SSH_HOST: ${{ env.SSH_HOST }}
           SSH_USERNAME: ${{ env.SSH_USERNAME }}
@@ -142,10 +144,16 @@ jobs:
           tar -xzf "\$APP_PATH/release.tar.gz" -C "\$RELEASE_DIR"
 
           rm -rf "\$APP_PATH/.output"
+          rm -rf "\$APP_PATH/prisma"
           mv -f "\$RELEASE_DIR/.output" "\$APP_PATH/.output"
+          mv -f "\$RELEASE_DIR/prisma" "\$APP_PATH/prisma"
           mv -f "\$RELEASE_DIR/app.cjs" "\$APP_PATH/app.cjs"
           mv -f "\$RELEASE_DIR/package.json" "\$APP_PATH/package.json"
+          mv -f "\$RELEASE_DIR/prisma.config.ts" "\$APP_PATH/prisma.config.ts"
           mv -f "\$RELEASE_DIR/DEPLOY_COMMIT" "\$APP_PATH/DEPLOY_COMMIT"
+
+          cd "\$APP_PATH"
+          node .output/server/node_modules/prisma/build/index.js migrate deploy --config ./prisma.config.ts --schema ./prisma/schema.prisma
 
           rm -rf "\$RELEASE_DIR"
           rm -f "\$APP_PATH/release.tar.gz"

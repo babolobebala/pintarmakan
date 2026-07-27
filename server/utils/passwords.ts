@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import type { Prisma } from '#server/generated/prisma/client'
 import { createError } from 'h3'
 import { hashPassword } from 'better-auth/crypto'
 

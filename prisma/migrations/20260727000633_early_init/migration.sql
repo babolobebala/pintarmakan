@@ -22,7 +22,6 @@ CREATE TABLE `session` (
     `userId` VARCHAR(191) NOT NULL,
     `token` VARCHAR(191) NOT NULL,
     `expiresAt` DATETIME(3) NOT NULL,
-    `impersonatedBy` VARCHAR(191) NULL,
     `ipAddress` VARCHAR(191) NULL,
     `userAgent` TEXT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

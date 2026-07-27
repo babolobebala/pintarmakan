@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import type { Prisma } from '#server/generated/prisma/client'
 import { createError, type H3Event } from 'h3'
 
 import type { AppPermission, PermissionDefinition } from '#shared/rbac'

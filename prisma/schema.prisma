@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../server/generated/prisma"
 }
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -32,7 +32,6 @@ model Session {
   userId         String   @db.VarChar(191)
   token          String   @unique @db.VarChar(191)
   expiresAt      DateTime
-  impersonatedBy String?  @db.VarChar(191)
   ipAddress      String?  @db.VarChar(191)
   userAgent      String?  @db.Text
   createdAt      DateTime @default(now())

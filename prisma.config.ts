@@ -22,19 +22,12 @@ function getDatabaseUrl() {
   return `${connection}://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
 }
 
-const databaseUrl = getDatabaseUrl()
-
-if (databaseUrl) {
-  process.env.DATABASE_URL = databaseUrl
-}
-
 export default defineConfig({
-  engine: 'classic',
   schema: path.join('prisma', 'schema.prisma'),
   migrations: {
     path: path.join('prisma', 'migrations')
   },
   datasource: {
-    url: databaseUrl
+    url: getDatabaseUrl()
   }
 })

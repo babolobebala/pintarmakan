@@ -13,7 +13,8 @@ const links = computed(() => {
     '/': 'dashboard.read',
     '/settings': 'settings.read',
     '/settings/members': 'users.read',
-    '/settings/roles': 'roles.read'
+    '/settings/roles': 'roles.read',
+    '/settings/permissions': 'permissions.read'
   }
 
   const items = [[{
@@ -45,6 +46,12 @@ const links = computed(() => {
     }, {
       label: 'Roles',
       to: '/settings/roles',
+      onSelect: () => {
+        open.value = false
+      }
+    }, {
+      label: 'Permissions',
+      to: '/settings/permissions',
       onSelect: () => {
         open.value = false
       }

@@ -42,7 +42,7 @@ The app is split across standard Nuxt boundaries:
 
 Important internal conventions:
 
-- Shared permission registry lives in `shared/rbac.ts`
+- Shared RBAC helpers and validation live in `shared/rbac.ts`
 - Server-only auth instance lives in `server/utils/auth-instance.ts`
 - Server-only Prisma client lives in `server/utils/db.ts`
 - Prisma CLI connection config lives in `prisma.config.ts`
@@ -93,6 +93,10 @@ Main layout pieces:
   - role listing
   - role create/edit modal
   - requires `roles.read`
+- `/settings/permissions`
+  - permission registry and assignment visibility
+  - custom permission create/edit modal
+  - requires `permissions.read`
 
 ### Current composables
 
@@ -156,7 +160,7 @@ Current auth rules:
 
 ## Authorization and RBAC
 
-RBAC is implemented with a code-defined permission registry in `shared/rbac.ts` and resolved server-side in `server/utils/rbac.ts`.
+RBAC is implemented from database-backed tables and resolved server-side in `server/utils/rbac.ts`.
 
 ### Permission model
 
@@ -183,11 +187,11 @@ Important permission keys already used by the app:
 
 ### Authorization storage
 
-Authorization is now hybrid:
+Authorization is database-backed:
 
 - Better Auth handles authentication and sessions
 - application authorization is resolved from database-backed RBAC tables
-- built-in permission definitions still live in `shared/rbac.ts`
+- permission definitions live in the database
 - role definitions live in the database
 - runtime permission and role resolution happens in `server/utils/rbac.ts`
 
@@ -204,6 +208,7 @@ Compatibility behavior:
 - runtime permission resolution uses normalized RBAC tables
 - user-role assignment is fully normalized through `user_roles`
 - roles are no longer hardcoded in shared runtime code
+- system/custom protection is enforced through the `isSystem` column on RBAC tables
 
 ### Access enforcement
 
@@ -237,7 +242,13 @@ Current server routes under `server/api/`:
 - `GET /api/roles/options`
   - returns simplified role options for forms
 - `GET /api/permissions`
-  - returns permission definitions for RBAC management UIs
+  - returns permission definitions plus role assignment metadata
+- `POST /api/permissions`
+  - creates a custom permission definition
+- `PATCH /api/permissions/:id`
+  - updates a custom permission definition
+- `DELETE /api/permissions/:id`
+  - deletes a custom permission definition if unassigned
 - `/api/auth/*`
   - Better Auth handler routes
 
@@ -378,6 +389,7 @@ Important note:
 
 - this repo no longer uses Prisma seed scripts
 - initial RBAC/user bootstrap is done through manual SQL files under `prisma/`
+- core permissions and system roles must exist in the database before the app is used
 
 ## Current Status
 
@@ -387,14 +399,13 @@ As of this document:
 - the app uses Nuxt UI in an idiomatic dashboard layout
 - Prisma 7 package install and client generation pass
 - auth and RBAC are active
-- members and roles modules are implemented
+- members, roles, and permissions modules are implemented
 
 ## Current Limitations
 
 Things that are not yet implemented or are still starter-level:
 
 - no dedicated audit log UI page
-- no dedicated permissions management UI
 - no user profile/self-service settings page
 - no organization or tenant model
 - no tests are present in the current repo snapshot

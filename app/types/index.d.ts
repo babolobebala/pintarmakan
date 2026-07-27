@@ -37,11 +37,16 @@ export interface RoleOption {
 }
 
 export interface PermissionRecord {
+  id: string
   key: string
   label: string
   description: string
   group: string
   isSystem: boolean
+  assignedRoleCount: number
+  assignedRoles: RoleOption[]
+  canEdit: boolean
+  canDelete: boolean
 }
 
 export interface RoleRecord extends RoleOption {

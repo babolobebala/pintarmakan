@@ -20,12 +20,17 @@ const links = computed(() => [[{
   label: 'Roles',
   icon: 'i-lucide-shield-check',
   to: '/settings/roles'
+}, {
+  label: 'Permissions',
+  icon: 'i-lucide-key',
+  to: '/settings/permissions'
 }]].map((group) => {
   return group.filter((item) => {
     const permissionByPath: Record<string, string | undefined> = {
       '/settings': 'settings.read',
       '/settings/members': 'users.read',
-      '/settings/roles': 'roles.read'
+      '/settings/roles': 'roles.read',
+      '/settings/permissions': 'permissions.read'
     }
 
     const permission = item.to && typeof item.to === 'string'
@@ -52,7 +57,7 @@ const links = computed(() => [[{
     </template>
 
     <template #body>
-      <div class="flex w-full flex-col gap-4 sm:gap-6 lg:mx-auto lg:max-w-2xl lg:gap-12">
+      <div class="flex w-full flex-col gap-4 sm:gap-6 lg:mx-auto lg:max-w-5xl lg:gap-12">
         <NuxtPage />
       </div>
     </template>

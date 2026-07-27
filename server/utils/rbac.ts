@@ -2,16 +2,11 @@ import type { Prisma } from '#server/generated/prisma/client'
 import { createError, type H3Event } from 'h3'
 
 import type { AppPermission, PermissionDefinition } from '#shared/rbac'
-import {
-  initialPermissionDefinitions,
-  parseStoredRoles
-} from '#shared/rbac'
+import { parseStoredRoles } from '#shared/rbac'
 import { db } from '#server/utils/db'
 import { requireAuthSession } from '~~/server/utils/auth'
 
 type DatabaseClient = Prisma.TransactionClient | typeof db
-
-const initialPermissionKeySet = new Set(initialPermissionDefinitions.map(permission => permission.key))
 
 function dedupeStrings(values: readonly string[]) {
   return Array.from(new Set(
@@ -19,45 +14,6 @@ function dedupeStrings(values: readonly string[]) {
       .map(value => value.trim())
       .filter(Boolean)
   ))
-}
-
-function normalizePermissionDefinition(permission: {
-  key: string
-  label: string
-  description: string | null
-  group: string
-  isSystem: boolean
-}) {
-  return {
-    key: permission.key,
-    label: permission.label,
-    description: permission.description ?? '',
-    group: permission.group,
-    isSystem: permission.isSystem
-  } satisfies PermissionDefinition
-}
-
-export async function syncBuiltInPermissions(client: DatabaseClient = db) {
-  for (const permission of initialPermissionDefinitions) {
-    await client.permission.upsert({
-      where: {
-        key: permission.key
-      },
-      create: {
-        key: permission.key,
-        label: permission.label,
-        description: permission.description,
-        group: permission.group,
-        isSystem: permission.isSystem
-      },
-      update: {
-        label: permission.label,
-        description: permission.description,
-        group: permission.group,
-        isSystem: permission.isSystem
-      }
-    })
-  }
 }
 
 export async function getPermissionDefinitions() {
@@ -71,29 +27,52 @@ export async function getPermissionDefinitions() {
       }
     ],
     select: {
+      id: true,
       key: true,
       label: true,
       description: true,
       group: true,
-      isSystem: true
+      isSystem: true,
+      rolePermissions: {
+        select: {
+          role: {
+            select: {
+              slug: true,
+              name: true
+            }
+          }
+        }
+      }
     }
   })
 
-  if (storedPermissions.length === 0) {
-    return initialPermissionDefinitions
-  }
+  return storedPermissions.map((permission) => {
+    const assignedRoles = permission.rolePermissions
+      .map(({ role }) => role)
+      .sort((a, b) => a.name.localeCompare(b.name))
 
-  const storedMap = new Map(storedPermissions.map((permission) => {
-    return [permission.key, normalizePermissionDefinition(permission)]
-  }))
-  const builtInPermissions = initialPermissionDefinitions.map((permission) => {
-    return storedMap.get(permission.key) ?? permission
+    return {
+      id: permission.id,
+      key: permission.key,
+      label: permission.label,
+      description: permission.description ?? '',
+      group: permission.group,
+      isSystem: permission.isSystem,
+      assignedRoleCount: assignedRoles.length,
+      assignedRoles,
+      canEdit: !permission.isSystem,
+      canDelete: !permission.isSystem && assignedRoles.length === 0
+    } satisfies PermissionDefinition & {
+      id: string
+      assignedRoleCount: number
+      assignedRoles: Array<{
+        slug: string
+        name: string
+      }>
+      canEdit: boolean
+      canDelete: boolean
+    }
   })
-  const customPermissions = storedPermissions
-    .filter(permission => !initialPermissionKeySet.has(permission.key))
-    .map(permission => normalizePermissionDefinition(permission))
-
-  return [...builtInPermissions, ...customPermissions]
 }
 
 export async function getPermissionDefinitionMap() {
@@ -118,8 +97,6 @@ export async function ensurePermissionsExist(permissions: readonly string[]) {
 
 export async function syncRolePermissions(client: DatabaseClient, roleId: string, permissions: readonly string[]) {
   const normalizedPermissions = await ensurePermissionsExist(permissions)
-
-  await syncBuiltInPermissions(client)
 
   const storedPermissions = normalizedPermissions.length > 0
     ? await client.permission.findMany({

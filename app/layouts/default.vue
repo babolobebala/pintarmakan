@@ -11,6 +11,7 @@ const pwaToastId = 'pwa-install'
 const links = computed(() => {
   const permissionByPath: Record<string, string | undefined> = {
     '/': 'dashboard.read',
+    '/produksi-pangan': 'dashboard.read',
     '/settings': 'settings.read',
     '/settings/members': 'users.read',
     '/settings/roles': 'roles.read',
@@ -18,9 +19,16 @@ const links = computed(() => {
   }
 
   const items = [[{
-    label: 'Dashboard',
+    label: 'Executive Dashboard',
     icon: 'i-lucide-layout-dashboard',
     to: '/',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Produksi Pangan',
+    icon: 'i-lucide-map',
+    to: '/produksi-pangan',
     onSelect: () => {
       open.value = false
     }

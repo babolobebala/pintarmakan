@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 ## Summary
 
@@ -23,8 +23,9 @@ The project is no longer just a starter template. It now behaves like an interna
 - Nuxt UI `4.10.0`
 - Tailwind CSS `4`
 - Better Auth
-- Prisma `6.19.x`
-- Prisma MySQL connector
+- Prisma `7.8.x`
+- Prisma Client generated to `server/generated/prisma`
+- Prisma MySQL/MariaDB driver adapter via `@prisma/adapter-mariadb`
 - Zod for request and form validation
 - `@vite-pwa/nuxt` for installable PWA behavior
 
@@ -35,7 +36,7 @@ The app is split across standard Nuxt boundaries:
 - `app/`: client-facing app layer
 - `server/`: Nitro server routes and server-only utilities
 - `shared/`: shared contracts and RBAC definitions reused by app and server
-- `prisma/`: schema, migrations, and seed files
+- `prisma/`: schema and manual SQL files
 - `public/`: favicon and PWA icons
 - `docs/`: project documentation
 
@@ -44,6 +45,8 @@ Important internal conventions:
 - Shared permission registry lives in `shared/rbac.ts`
 - Server-only auth instance lives in `server/utils/auth-instance.ts`
 - Server-only Prisma client lives in `server/utils/db.ts`
+- Prisma CLI connection config lives in `prisma.config.ts`
+- Generated Prisma Client code lives in `server/generated/prisma/`
 - Route protection is enforced both in client middleware and server API handlers
 
 ## Current Frontend Structure
@@ -131,6 +134,12 @@ Server auth entry points:
 
 - `server/utils/auth-instance.ts`
 - `server/api/auth/[...all].ts`
+
+Current database integration details:
+
+- Better Auth uses Prisma through `@better-auth/prisma-adapter`
+- Prisma runtime access uses `PrismaMariaDb` in `server/utils/db.ts`
+- Prisma Client is imported from `server/generated/prisma/client`
 
 Supported login methods:
 
@@ -257,11 +266,12 @@ Current tables:
 
 ### Notes on current schema design
 
-- Seeded system roles and custom role definitions are stored in the `roles` table
+- System roles and custom role definitions are stored in the `roles` table
 - Permission definitions are stored in the `permissions` table
 - User-role assignment is normalized through `user_roles`
 - Role-permission assignment is normalized through `role_permissions`
 - Audit logs store flexible JSON metadata
+- The old `session.impersonatedBy` column has been removed
 
 This means the app currently uses:
 
@@ -342,7 +352,11 @@ Shared contracts:
 Data layer:
 
 - `prisma/schema.prisma`
-- `prisma/migrations/`
+- `prisma.config.ts`
+- `prisma/seed-rbac.sql`
+- `prisma/seed-super-admin-user.sql`
+- `prisma/drop-impersonated-by.sql`
+- `server/generated/prisma/`
 
 ## Scripts
 
@@ -360,14 +374,18 @@ Useful package scripts:
 - `pnpm db:studio`
 - `pnpm db:validate`
 
+Important note:
+
+- this repo no longer uses Prisma seed scripts
+- initial RBAC/user bootstrap is done through manual SQL files under `prisma/`
+
 ## Current Status
 
 As of this document:
 
 - the app follows standard Nuxt 4 directory boundaries
 - the app uses Nuxt UI in an idiomatic dashboard layout
-- lint passes
-- Nuxt typecheck passes
+- Prisma 7 package install and client generation pass
 - auth and RBAC are active
 - members and roles modules are implemented
 

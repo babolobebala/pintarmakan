@@ -1,20 +1,24 @@
 # Project Overview
 
-Last updated: 2026-07-27
+Last updated: 2026-07-30
 
 ## Summary
 
-This repository is a Nuxt 4 internal dashboard application built from the Nuxt UI dashboard template and then adapted into an authenticated admin-style system.
+This repository is a Nuxt 4 internal dashboard application built from the Nuxt UI dashboard template and extended into an authenticated admin system.
 
-Current implemented business scope:
+Current implemented scope:
 
 - Better Auth login flow
-- Role-based access control
+- Database-backed RBAC
 - Member management
 - Role management
+- Permission management
+- Food production dashboard mockup
+- Administrative boundary map rendering
+- Reusable analytics chart components
 - PWA support
 
-The project is no longer just a starter template. It now behaves like an internal operations dashboard with server-side session checks and permission-gated navigation.
+The project now behaves as a real internal dashboard with authenticated sessions, permission-gated navigation, protected API routes, reusable visual components, and manual SQL bootstrap files for RBAC.
 
 ## Stack
 
@@ -22,149 +26,195 @@ The project is no longer just a starter template. It now behaves like an interna
 - Vue `3.5.x`
 - Nuxt UI `4.10.0`
 - Tailwind CSS `4`
-- Better Auth
-- Prisma `7.8.x`
-- Prisma Client generated to `server/generated/prisma`
-- Prisma MySQL/MariaDB driver adapter via `@prisma/adapter-mariadb`
-- Zod for request and form validation
-- `@vite-pwa/nuxt` for installable PWA behavior
+- Better Auth `1.6.x`
+- Prisma `7.8.0`
+- `@prisma/adapter-mariadb`
+- `mariadb`
+- Zod
+- `@vite-pwa/nuxt`
+- Unovis via `@unovis/vue` and `@unovis/ts`
 
-## High-Level Architecture
+## Architecture
 
-The app is split across standard Nuxt boundaries:
+Project structure follows standard Nuxt boundaries:
 
-- `app/`: client-facing app layer
-- `server/`: Nitro server routes and server-only utilities
-- `shared/`: shared contracts and RBAC definitions reused by app and server
-- `prisma/`: schema and manual SQL files
-- `public/`: favicon and PWA icons
-- `docs/`: project documentation
+- `app/`
+  - app shell, pages, layouts, components, middleware, composables
+- `server/`
+  - Nitro API routes and server-only utilities
+- `shared/`
+  - shared runtime types and RBAC helpers
+- `prisma/`
+  - Prisma schema, migrations, and manual SQL bootstrap files
+- `public/`
+  - static assets, icons, and GeoJSON files
+- `docs/`
+  - project documentation
 
 Important internal conventions:
 
-- Shared RBAC helpers and validation live in `shared/rbac.ts`
-- Server-only auth instance lives in `server/utils/auth-instance.ts`
-- Server-only Prisma client lives in `server/utils/db.ts`
-- Prisma CLI connection config lives in `prisma.config.ts`
-- Generated Prisma Client code lives in `server/generated/prisma/`
-- Route protection is enforced both in client middleware and server API handlers
+- auth instance: `server/utils/auth-instance.ts`
+- Prisma runtime client: `server/utils/db.ts`
+- RBAC resolution: `server/utils/rbac.ts`
+- Prisma CLI configuration: `prisma.config.ts`
+- route protection: client middleware plus server-side permission checks
 
-## Current Frontend Structure
+## Frontend Structure
 
 ### App shell
 
-Main layout pieces:
+Main app shell files:
 
 - `app/app.vue`
-  - global SEO/meta
-  - `UApp`
-  - `NuxtLayout`
-  - `NuxtPage`
-  - `NuxtPwaManifest`
 - `app/layouts/default.vue`
-  - dashboard sidebar
-  - permission-filtered navigation
-  - user menu
-  - PWA install toast
 - `app/middleware/access.global.ts`
-  - redirects unauthenticated users to `/login`
-  - checks page-level permissions from `definePageMeta`
+
+Current shell responsibilities:
+
+- wraps app with `UApp`, `NuxtLayout`, and `NuxtPage`
+- renders dashboard sidebar and navbar
+- filters navigation by permission
+- redirects guests to `/login`
+- enforces `definePageMeta({ permission: ... })`
+- exposes PWA manifest support
 
 ### Current pages
 
 - `/login`
-  - email/password sign-in
-  - Google sign-in
-  - public route
+  - public sign-in page
+  - email/password and Google sign-in
 - `/`
   - dashboard home
+  - requires `dashboard.read`
+- `/produksi-pangan`
+  - production dashboard mockup
+  - uses reusable Leaflet map component
+  - requires `dashboard.read`
+- `/demo-chart`
+  - reusable chart showcase page
+  - demonstrates line, area, bar, grouped bar, stacked bar, and donut charts
   - requires `dashboard.read`
 - `/settings`
   - settings container page
   - requires `settings.read`
-- `/settings` child index
+- `/settings` index
   - workspace overview
 - `/settings/members`
-  - member directory
-  - member creation modal
-  - password management modal
+  - member directory and password management
   - requires `users.read`
 - `/settings/roles`
-  - role listing
-  - role create/edit modal
+  - role CRUD UI
   - requires `roles.read`
 - `/settings/permissions`
-  - permission registry and assignment visibility
-  - custom permission create/edit modal
+  - permission CRUD UI
   - requires `permissions.read`
 
-### Current composables
+### Rendering strategy
 
-- `app/composables/useAuth.ts`
-  - creates Better Auth client
-  - forwards cookies on SSR
-- `app/composables/useCurrentUser.ts`
-  - fetches `/api/me`
-  - central source for authenticated user state
+Current rendering rule in this repo:
 
-### Current UI direction
+- pages stay SSR by default
+- browser-only widgets are isolated into client components
+- full-page `ssr: false` should be reserved for true browser-only screens
 
-The UI is based on Nuxt UI dashboard components:
+Current page status:
 
-- `UDashboardGroup`
-- `UDashboardSidebar`
-- `UDashboardPanel`
-- `UDashboardNavbar`
-- `UDashboardToolbar`
-- `UPageCard`
-- `UForm`, `UInput`, `UModal`, `UButton`, `UBadge`
+- SSR page shell:
+  - `/`
+  - `/login`
+  - `/produksi-pangan`
+  - `/demo-chart`
+  - `/settings`
+  - `/settings/members`
+  - `/settings/roles`
+  - `/settings/permissions`
+- client-only widgets inside SSR pages:
+  - Leaflet map components
+  - Unovis chart rendering components
 
-Theme configuration:
+### Reusable map components
 
-- `app/app.config.ts`
-  - app name: `Internal Dashboard`
-  - primary color: `green`
-  - neutral color: `zinc`
-- `app/assets/css/main.css`
-  - imports Tailwind and Nuxt UI
-  - defines `Public Sans`
-  - defines green palette tokens
+Current map layer:
+
+- `app/components/map/AdministrativeBoundaryMap.client.vue`
+  - generic Leaflet administrative boundary renderer
+- `app/components/dashboard/LeafletProductionMap.client.vue`
+  - production dashboard wrapper
+
+Current GeoJSON assets:
+
+- `public/json/kab.geojson`
+- `public/json/kec.geojson`
+- `public/json/desa.geojson`
+
+Current map behavior:
+
+- administrative layers are rendered in hierarchy
+- `desa` is the active clickable layer
+- the production page can filter by kecamatan
+
+### Reusable chart components
+
+Current chart shell components:
+
+- `app/components/charts/BaseChartPanel.vue`
+- `app/components/charts/Legend.vue`
+- `app/components/charts/LineChart.vue`
+- `app/components/charts/AreaChart.vue`
+- `app/components/charts/BarChart.vue`
+- `app/components/charts/GroupedBarChart.vue`
+- `app/components/charts/StackedBarChart.vue`
+- `app/components/charts/DonutChart.vue`
+
+Current client renderers:
+
+- `app/components/charts/LineChartView.client.vue`
+- `app/components/charts/AreaChartView.client.vue`
+- `app/components/charts/BarChartView.client.vue`
+- `app/components/charts/GroupedBarChartView.client.vue`
+- `app/components/charts/StackedBarChartView.client.vue`
+- `app/components/charts/DonutChartView.client.vue`
+
+The intended pattern is:
+
+- page stays SSR
+- chart wrapper stays normal `.vue`
+- actual Unovis renderer stays `.client.vue`
 
 ## Authentication
 
 Authentication is implemented with Better Auth.
 
-Server auth entry points:
+Main auth files:
 
 - `server/utils/auth-instance.ts`
 - `server/api/auth/[...all].ts`
-
-Current database integration details:
-
-- Better Auth uses Prisma through `@better-auth/prisma-adapter`
-- Prisma runtime access uses `PrismaMariaDb` in `server/utils/db.ts`
-- Prisma Client is imported from `server/generated/prisma/client`
+- `app/composables/useAuth.ts`
+- `app/composables/useCurrentUser.ts`
 
 Supported login methods:
 
-- Email/password
+- email/password
 - Google OAuth
 
-Current auth rules:
+Current auth behavior:
 
-- Public signup is disabled
-- Google signup is also disabled
-- Account linking is enabled for trusted Google accounts
-- Inactive users cannot create sessions
-- Redirect target is stored in `auth_redirect` cookie when a guest is pushed to `/login`
+- public signup is disabled
+- Google signup is disabled
+- trusted account linking is enabled
+- inactive users cannot create sessions
+- redirect target is stored in `auth_redirect`
 
 ## Authorization and RBAC
 
-RBAC is implemented from database-backed tables and resolved server-side in `server/utils/rbac.ts`.
+Authorization is database-driven and resolved server-side.
 
-### Permission model
+Core RBAC files:
 
-Current permission families:
+- `server/utils/rbac.ts`
+- `shared/rbac.ts`
+
+Current permission families already used by the app:
 
 - `dashboard.read`
 - `settings.read`
@@ -173,97 +223,50 @@ Current permission families:
 - `permissions.read|create|update|delete`
 - `audit-logs.read`
 
-Important permission keys already used by the app:
-
-- `dashboard.read`
-- `settings.read`
-- `users.read`
-- `users.create`
-- `users.update`
-- `roles.read`
-- `roles.create`
-- `roles.update`
-- `roles.delete`
-
-### Authorization storage
-
-Authorization is database-backed:
-
-- Better Auth handles authentication and sessions
-- application authorization is resolved from database-backed RBAC tables
-- permission definitions live in the database
-- role definitions live in the database
-- runtime permission and role resolution happens in `server/utils/rbac.ts`
-
-Current DB-backed authorization tables:
+Current RBAC storage model:
 
 - `roles`
 - `permissions`
 - `user_roles`
 - `role_permissions`
 
-Compatibility behavior:
+Current enforcement model:
 
-- application authorization no longer depends on a `Role.permissions` JSON cache
-- runtime permission resolution uses normalized RBAC tables
-- user-role assignment is fully normalized through `user_roles`
-- roles are no longer hardcoded in shared runtime code
-- system/custom protection is enforced through the `isSystem` column on RBAC tables
-
-### Access enforcement
-
-Access is enforced in two places:
-
-- Client route middleware checks page metadata permissions
-- Server API handlers call `requirePermission()` or `requireAnyPermission()`
-
-This means hidden navigation alone is not the security layer. The API also enforces permission boundaries.
+- client middleware reads page permission metadata
+- server API handlers call permission guards
+- navigation visibility is not the primary security layer
 
 ## Backend API Surface
 
 Current server routes under `server/api/`:
 
 - `GET /api/me`
-  - returns current user plus resolved roles and permissions
 - `GET /api/members`
-  - returns member list
 - `POST /api/members`
-  - creates or updates an approved internal user
 - `POST /api/members/:id/password`
-  - sets or resets a user password
 - `GET /api/roles`
-  - returns roles with metadata and assignment counts
 - `POST /api/roles`
-  - creates a custom role
 - `PATCH /api/roles/:id`
-  - updates a custom role
 - `DELETE /api/roles/:id`
-  - deletes a custom role if unassigned
 - `GET /api/roles/options`
-  - returns simplified role options for forms
 - `GET /api/permissions`
-  - returns permission definitions plus role assignment metadata
 - `POST /api/permissions`
-  - creates a custom permission definition
 - `PATCH /api/permissions/:id`
-  - updates a custom permission definition
 - `DELETE /api/permissions/:id`
-  - deletes a custom permission definition if unassigned
 - `/api/auth/*`
-  - Better Auth handler routes
 
 Current API characteristics:
 
-- API routes have CORS enabled via `routeRules`
-- Request body validation uses Zod
-- Permission checks happen inside handlers
-- Audit log records are created for member and role mutations
+- request validation uses Zod
+- permission checks happen in handlers
+- API CORS is enabled through Nuxt route rules for `/api/**`
+- audit logs are written for important mutations
 
 ## Database Model
 
-Prisma schema is in `prisma/schema.prisma`.
+Prisma schema lives in `prisma/schema.prisma`.
 
-Current tables:
+Current core tables:
 
 - `user`
 - `session`
@@ -275,55 +278,41 @@ Current tables:
 - `user_roles`
 - `role_permissions`
 
-### Notes on current schema design
+Current schema notes:
 
-- System roles and custom role definitions are stored in the `roles` table
-- Permission definitions are stored in the `permissions` table
-- User-role assignment is normalized through `user_roles`
-- Role-permission assignment is normalized through `role_permissions`
-- Audit logs store flexible JSON metadata
-- The old `session.impersonatedBy` column has been removed
+- role definitions are normalized
+- permission definitions are normalized
+- user-role assignment is normalized through `user_roles`
+- role-permission assignment is normalized through `role_permissions`
+- audit logs use flexible JSON metadata
+- `session.impersonatedBy` has been removed
 
-This means the app currently uses:
+Runtime database access:
 
-- normalized role definitions
-- normalized user-role assignment storage
-- normalized role-permission assignment storage
-- app-owned password administration for internal member management
+- app runtime Prisma client is created in `server/utils/db.ts`
+- Prisma uses `PrismaMariaDb` with DB env vars
+- Prisma CLI connection URL is composed in `prisma.config.ts`
 
-## Member Management
+Current required DB env vars:
 
-Current member workflow:
+- `DB_CONNECTION`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_DATABASE`
+- `DB_USERNAME`
+- `DB_PASSWORD`
 
-- admin opens `/settings/members`
-- loads role options from `/api/roles/options`
-- creates or updates a member by email
-- assigns one or more role slugs
-- optionally provisions password access
+## SQL Bootstrap Files
 
-Current behavior details:
+This repo no longer uses Prisma seed scripts.
 
-- creating a member uses upsert by email
-- users can have multiple roles
-- password is optional on creation
-- users without password can still be Google-only
-- password reset is exposed separately from the member list
+Current manual SQL files under `prisma/`:
 
-## Role Management
+- `prisma/seed-rbac.sql`
+- `prisma/seed-super-admin-user.sql`
+- `prisma/drop-impersonated-by.sql`
 
-Current role workflow:
-
-- admin opens `/settings/roles`
-- searches roles by name, slug, or description
-- loads permission options from `/api/permissions`
-- creates custom roles
-- edits custom roles
-- deletes custom roles if no user still has them assigned
-
-Role deletion protection:
-
-- system roles cannot be deleted
-- custom roles cannot be deleted while assigned to members
+These files are intended for manual database bootstrap when needed.
 
 ## PWA
 
@@ -331,11 +320,10 @@ PWA is enabled through `@vite-pwa/nuxt`.
 
 Current behavior:
 
+- manifest registration is enabled
 - install prompt support is enabled
-- manifest is registered
-- favicon and app icons are included
+- static icons are included
 - API routes are excluded from offline navigation fallback
-- layout shows an install toast when the prompt is available
 
 ## Important Files
 
@@ -355,19 +343,17 @@ Auth and server:
 - `server/utils/db.ts`
 - `server/utils/rbac.ts`
 
-Shared contracts:
+Visual layers:
 
-- `shared/rbac.ts`
-- `shared/types/runtime.d.ts`
+- `app/components/map/AdministrativeBoundaryMap.client.vue`
+- `app/components/dashboard/LeafletProductionMap.client.vue`
+- `app/components/charts/`
 
 Data layer:
 
 - `prisma/schema.prisma`
 - `prisma.config.ts`
-- `prisma/seed-rbac.sql`
-- `prisma/seed-super-admin-user.sql`
-- `prisma/drop-impersonated-by.sql`
-- `server/generated/prisma/`
+- `prisma/*.sql`
 
 ## Scripts
 
@@ -385,37 +371,32 @@ Useful package scripts:
 - `pnpm db:studio`
 - `pnpm db:validate`
 
-Important note:
-
-- this repo no longer uses Prisma seed scripts
-- initial RBAC/user bootstrap is done through manual SQL files under `prisma/`
-- core permissions and system roles must exist in the database before the app is used
-
 ## Current Status
 
-As of this document:
+As of 2026-07-30:
 
-- the app follows standard Nuxt 4 directory boundaries
-- the app uses Nuxt UI in an idiomatic dashboard layout
-- Prisma 7 package install and client generation pass
-- auth and RBAC are active
-- members, roles, and permissions modules are implemented
+- the app follows standard Nuxt 4 structure
+- Better Auth is active
+- DB-driven RBAC is active
+- member, role, and permission management pages are implemented
+- production map components are in place
+- reusable chart components are in place
+- dashboard pages follow SSR-first rendering with client-only visual widgets
 
 ## Current Limitations
 
-Things that are not yet implemented or are still starter-level:
+Still missing or still mockup-level:
 
-- no dedicated audit log UI page
-- no user profile/self-service settings page
-- no organization or tenant model
-- no tests are present in the current repo snapshot
+- no dedicated audit-log UI page
+- no profile/self-service settings page
+- no tenant or organization model
+- no automated test suite in the current snapshot
+- production and chart pages are still mockup/demo data driven
 
 ## Suggested Next Refactors
 
-If this project keeps growing, the most likely next improvements are:
-
-1. Add dedicated tests for internal user provisioning and password management.
-2. Add feature-specific domains under `app/components/` and `server/api/`.
-3. Add tests for auth, RBAC, and critical API handlers.
-4. Add audit-log browsing UI.
-5. Add stricter environment documentation for deployment.
+1. Add tests for auth, RBAC, and critical API handlers.
+2. Move dashboard mock data behind real API endpoints.
+3. Add dedicated audit-log browsing UI.
+4. Add more environment and deployment documentation.
+5. Split feature domains more aggressively as dashboard modules grow.

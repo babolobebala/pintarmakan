@@ -32,6 +32,8 @@ type CommodityDefinition = {
   districts: DistrictProduction[]
 }
 
+const ALL_KECAMATAN = 'Semua kecamatan'
+
 const commodityOptions: Array<{ key: CommodityKey, label: string }> = [{
   key: 'padi',
   label: 'Padi'
@@ -247,21 +249,35 @@ const commodityData: Record<CommodityKey, CommodityDefinition> = {
 }
 
 const selectedCommodity = ref<CommodityKey>('padi')
+const selectedKecamatan = ref(ALL_KECAMATAN)
 
 const selectedDefinition = computed(() => commodityData[selectedCommodity.value])
+const districtOptions = computed(() => {
+  return [ALL_KECAMATAN, ...selectedDefinition.value.districts.map(item => item.name)]
+})
+const activeDistricts = computed(() => {
+  if (selectedKecamatan.value === ALL_KECAMATAN) {
+    return selectedDefinition.value.districts
+  }
+
+  return selectedDefinition.value.districts.filter(item => item.name === selectedKecamatan.value)
+})
 const sortedDistricts = computed(() => {
-  return [...selectedDefinition.value.districts].sort((a, b) => b.production - a.production)
+  return [...activeDistricts.value].sort((a, b) => b.production - a.production)
 })
 const totalHarvestArea = computed(() => {
-  return selectedDefinition.value.districts.reduce((sum, item) => sum + item.harvestArea, 0)
+  return activeDistricts.value.reduce((sum, item) => sum + item.harvestArea, 0)
 })
 const totalProduction = computed(() => {
-  return selectedDefinition.value.districts.reduce((sum, item) => sum + item.production, 0)
+  return activeDistricts.value.reduce((sum, item) => sum + item.production, 0)
 })
 const averageProductivity = computed(() => {
   return totalProduction.value / Math.max(totalHarvestArea.value, 1)
 })
 const leadingDistrict = computed(() => sortedDistricts.value[0])
+const coverageLabel = computed(() => {
+  return selectedKecamatan.value === ALL_KECAMATAN ? 'Kecamatan se-KSB' : selectedKecamatan.value
+})
 
 const highlightNotes = computed(() => [{
   title: 'Komoditas terpilih',
@@ -273,8 +289,10 @@ const highlightNotes = computed(() => [{
   note: 'Bisa dikembangkan menjadi filter multi-kategori pada iterasi berikutnya.'
 }, {
   title: 'Cakupan data',
-  value: 'Kecamatan se-KSB',
-  note: 'Peta memakai OSM dan marker Leaflet sebagai mockup awal modul GIS.'
+  value: coverageLabel.value,
+  note: selectedKecamatan.value === ALL_KECAMATAN
+    ? 'Peta memakai OSM dan batas desa interaktif dari berkas GeoJSON publik.'
+    : `Peta dan ringkasan dibatasi pada kecamatan ${selectedKecamatan.value}.`
 }])
 </script>
 
@@ -294,7 +312,7 @@ const highlightNotes = computed(() => [{
           <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl space-y-4">
               <div class="flex flex-wrap items-center gap-2">
-                <UBadge color="primary" variant="subtle" label="Mockup GIS + Statistik" />
+                <UBadge color="primary" variant="subtle" label="GIS + Statistik" />
                 <UBadge color="neutral" variant="outline" label="Leaflet + OpenStreetMap" />
               </div>
 
@@ -342,11 +360,18 @@ const highlightNotes = computed(() => [{
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p class="text-sm font-medium text-highlighted">
-                Pilih komoditas
+                Pilih komoditas dan kecamatan
               </p>
               <p class="text-sm text-muted">
-                Semua tombol di bawah ini hanya mengganti data mockup pada peta, kartu, ranking, dan tabel.
+                Filter di bawah ini mengubah ringkasan mockup dan fokus wilayah pada peta.
               </p>
+            </div>
+
+            <div class="w-full max-w-xs">
+              <USelectMenu
+                v-model="selectedKecamatan"
+                :items="districtOptions"
+              />
             </div>
           </div>
 
@@ -369,7 +394,7 @@ const highlightNotes = computed(() => [{
               {{ selectedDefinition.label }}
             </p>
             <p class="mt-2 text-sm text-muted">
-              {{ selectedDefinition.category }}
+              {{ selectedDefinition.category }} • {{ coverageLabel }}
             </p>
           </UPageCard>
 
@@ -378,7 +403,7 @@ const highlightNotes = computed(() => [{
               {{ totalHarvestArea.toLocaleString('id-ID') }} ha
             </p>
             <p class="mt-2 text-sm text-muted">
-              Akumulasi seluruh kecamatan pada mockup tahunan.
+              {{ selectedKecamatan === ALL_KECAMATAN ? 'Akumulasi seluruh kecamatan pada mockup tahunan.' : `Akumulasi untuk kecamatan ${selectedKecamatan}.` }}
             </p>
           </UPageCard>
 
@@ -387,7 +412,7 @@ const highlightNotes = computed(() => [{
               {{ totalProduction.toLocaleString('id-ID') }} {{ selectedDefinition.unit }}
             </p>
             <p class="mt-2 text-sm text-muted">
-              Nilai produksi agregat untuk simulasi dashboard.
+              {{ selectedKecamatan === ALL_KECAMATAN ? 'Nilai produksi agregat untuk simulasi dashboard.' : `Nilai produksi agregat untuk kecamatan ${selectedKecamatan}.` }}
             </p>
           </UPageCard>
 
@@ -404,13 +429,12 @@ const highlightNotes = computed(() => [{
         <section class="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.8fr)]">
           <UPageCard
             title="Peta sebaran produksi"
-            description="Mockup GIS menggunakan Leaflet dan tile OpenStreetMap."
+            description="Peta batas desa dan kecamatan dengan filter fokus wilayah."
             variant="subtle"
           >
             <DashboardLeafletProductionMap
               :commodity-label="selectedDefinition.label"
-              :unit-label="selectedDefinition.unit"
-              :locations="selectedDefinition.districts"
+              :selected-kecamatan="selectedKecamatan === ALL_KECAMATAN ? null : selectedKecamatan"
             />
           </UPageCard>
 

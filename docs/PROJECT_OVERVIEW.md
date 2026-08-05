@@ -67,7 +67,7 @@ Main app shell files:
 
 - `app/app.vue`
 - `app/layouts/default.vue`
-- `app/middleware/access.global.ts`
+- `app/middleware/auth.global.ts`
 
 Current shell responsibilities:
 
@@ -188,8 +188,9 @@ Authentication is implemented with Better Auth.
 Main auth files:
 
 - `server/utils/auth-instance.ts`
+- `server/utils/auth-admin.ts`
 - `server/api/auth/[...all].ts`
-- `app/composables/useAuth.ts`
+- `lib/auth-client.ts`
 - `app/composables/useCurrentUser.ts`
 
 Supported login methods:
@@ -332,7 +333,7 @@ Core app:
 - `nuxt.config.ts`
 - `app/app.vue`
 - `app/layouts/default.vue`
-- `app/middleware/access.global.ts`
+- `app/middleware/auth.global.ts`
 - `app/app.config.ts`
 - `app/assets/css/main.css`
 

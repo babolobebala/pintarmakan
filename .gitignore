@@ -9,6 +9,7 @@ dist
 # Node dependencies
 node_modules
 lib/generated/prisma
+/server/generated/prisma/
 
 # Logs
 logs

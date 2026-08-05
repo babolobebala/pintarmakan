@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { authClient } from '~~/lib/auth-client'
 
 defineProps<{
   collapsed?: boolean
@@ -8,7 +9,6 @@ defineProps<{
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
 const router = useRouter()
-const auth = useAuth()
 const { data: currentUser } = await useCurrentUser()
 
 const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
@@ -25,7 +25,7 @@ const user = computed(() => ({
 }))
 
 async function signOut() {
-  await auth.signOut()
+  await authClient.signOut()
   clearNuxtData('auth:me')
   await router.push('/login')
 }

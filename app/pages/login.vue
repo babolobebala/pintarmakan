@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { authClient } from '~~/lib/auth-client'
 
 definePageMeta({
   layout: false,
@@ -9,7 +10,6 @@ definePageMeta({
 
 const router = useRouter()
 const toast = useToast()
-const auth = useAuth()
 const appConfig = useAppConfig()
 const redirectCookie = useCookie<string | null>('auth_redirect', {
   sameSite: 'lax',
@@ -39,7 +39,7 @@ const redirectTo = computed(() => {
     : '/'
 })
 
-const { data: session } = await auth.useSession(useFetch)
+const { data: session } = await authClient.useSession(useFetch)
 
 if (session.value?.user) {
   const target = redirectTo.value
@@ -50,7 +50,7 @@ if (session.value?.user) {
 async function signInWithGoogle() {
   googleLoading.value = true
 
-  const { error } = await auth.signIn.social({
+  const { error } = await authClient.signIn.social({
     provider: 'google',
     callbackURL: redirectTo.value
   })
@@ -69,7 +69,7 @@ async function signInWithGoogle() {
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
 
-  const { error } = await auth.signIn.email({
+  const { error } = await authClient.signIn.email({
     email: event.data.email,
     password: event.data.password,
     callbackURL: redirectTo.value

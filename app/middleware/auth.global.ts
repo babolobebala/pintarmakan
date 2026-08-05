@@ -1,11 +1,13 @@
+import { authClient } from '~~/lib/auth-client'
+
 export default defineNuxtRouteMiddleware(async (to) => {
   if (to.meta.public) {
     return
   }
 
-  const { data, error } = await useCurrentUser()
+  const { data: session } = await authClient.useSession(useFetch)
 
-  if (error.value || !data.value?.user) {
+  if (!session.value?.user) {
     const redirectCookie = useCookie<string | null>('auth_redirect', {
       sameSite: 'lax',
       path: '/'
@@ -19,6 +21,15 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const requiredPermissions = to.meta.permission
   if (!requiredPermissions) {
     return
+  }
+
+  const { data, error } = await useCurrentUser()
+
+  if (error.value || !data.value?.user) {
+    return abortNavigation(createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized'
+    }))
   }
 
   const userPermissions = new Set(data.value.user.permissions)

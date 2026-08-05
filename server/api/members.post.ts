@@ -1,8 +1,8 @@
 import { readBody } from 'h3'
 import { z } from 'zod'
 
+import { createOrUpdateManagedUser } from '#server/utils/auth-admin'
 import { db } from '#server/utils/db'
-import { setCredentialPassword } from '#server/utils/passwords'
 import { requirePermission, syncUserRoles } from '~~/server/utils/rbac'
 
 const createMemberSchema = z.object({
@@ -18,47 +18,29 @@ export default defineEventHandler(async (event) => {
   const password = body.password?.trim() || undefined
   const roles = body.roles
 
-  const user = await db.$transaction(async (tx) => {
-    const savedUser = await tx.user.upsert({
-      where: {
-        email: body.email
-      },
-      update: {
-        name: body.name,
-        isActive: true,
-        emailVerified: true
-      },
-      create: {
-        id: crypto.randomUUID(),
-        name: body.name,
-        email: body.email,
-        emailVerified: true,
-        isActive: true
-      }
-    })
+  const user = await createOrUpdateManagedUser(event, session.user.id, {
+    email: body.email,
+    name: body.name,
+    password
+  })
 
-    const normalizedRoles = await syncUserRoles(tx, savedUser.id, roles)
+  await db.$transaction(async (tx) => {
+    const normalizedRoles = await syncUserRoles(tx, user.id, roles)
 
     await tx.auditLog.create({
       data: {
         actorId: session.user.id,
         action: 'users.create',
         entityType: 'user',
-        entityId: savedUser.id,
+        entityId: user.id,
         metadata: {
-          email: savedUser.email,
+          email: user.email,
           roles: normalizedRoles,
           passwordProvisioned: !!password
         }
       }
     })
-
-    return savedUser
   })
-
-  if (password) {
-    await setCredentialPassword(user.id, password)
-  }
 
   return {
     id: user.id

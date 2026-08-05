@@ -5,6 +5,7 @@ import DonutChart from '../components/charts/DonutChart.vue'
 import GroupedBarChart from '../components/charts/GroupedBarChart.vue'
 import LineChart from '../components/charts/LineChart.vue'
 import StackedBarChart from '../components/charts/StackedBarChart.vue'
+import type { CartesianChartSeries, ChartAccessor } from '../components/charts/shared'
 
 definePageMeta({
   permission: 'dashboard.read'
@@ -49,9 +50,12 @@ type DonutDatum = {
   value: number
 }
 
+type ChartDatum = Record<string, unknown>
+
 const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 const districtLabels = ['Taliwang', 'Seteluk', 'Brang Rea', 'Jereweh', 'Maluk', 'Sekongkang']
 const quarterLabels = ['TW I', 'TW II', 'TW III', 'TW IV']
+const districtValues = [22740, 17430, 21080, 7690, 6480, 5590] as const
 
 const monthlyProductionData: MonthlyProductionDatum[] = [{
   month: 1,
@@ -168,7 +172,7 @@ const areaSupplyData: AreaSupplyDatum[] = [{
 const districtBarData: SingleBarDatum[] = districtLabels.map((label, index) => ({
   index: index + 1,
   label,
-  value: [22740, 17430, 21080, 7690, 6480, 5590][index]
+  value: districtValues[index] ?? 0
 }))
 
 const groupedQuarterData: GroupedQuarterDatum[] = [{
@@ -235,6 +239,78 @@ const donutCompositionData: DonutDatum[] = [{
   id: 'perikanan',
   label: 'Perikanan',
   value: 6
+}]
+
+const getMonthlyMonth: ChartAccessor<ChartDatum, number> = datum => datum.month as number
+const getAreaSupplyMonth: ChartAccessor<ChartDatum, number> = datum => datum.month as number
+const getDistrictIndex: ChartAccessor<ChartDatum, number> = datum => datum.index as number
+const getDistrictValue: ChartAccessor<ChartDatum, number> = datum => datum.value as number
+const getGroupedQuarter: ChartAccessor<ChartDatum, number> = datum => datum.quarter as number
+const getStackedQuarter: ChartAccessor<ChartDatum, number> = datum => datum.quarter as number
+const getDonutValue: ChartAccessor<ChartDatum, number> = datum => datum.value as number
+const getDonutLabel: ChartAccessor<ChartDatum, string> = datum => datum.label as string
+
+const monthlyProductionSeries: CartesianChartSeries<ChartDatum>[] = [{
+  key: 'padi',
+  label: 'Padi',
+  y: datum => datum.padi as number,
+  color: '#2563eb'
+}, {
+  key: 'jagung',
+  label: 'Jagung',
+  y: datum => datum.jagung as number,
+  color: '#16a34a'
+}, {
+  key: 'cabai',
+  label: 'Cabai',
+  y: datum => datum.cabai as number,
+  color: '#dc2626'
+}]
+
+const areaSupplySeries: CartesianChartSeries<ChartDatum>[] = [{
+  key: 'stok',
+  label: 'Stok',
+  y: datum => datum.stok as number,
+  color: '#0891b2'
+}, {
+  key: 'distribusi',
+  label: 'Distribusi',
+  y: datum => datum.distribusi as number,
+  color: '#f59e0b'
+}]
+
+const groupedQuarterSeries: CartesianChartSeries<ChartDatum>[] = [{
+  key: 'tanam',
+  label: 'Tanam',
+  y: datum => datum.tanam as number,
+  color: '#2563eb'
+}, {
+  key: 'panen',
+  label: 'Panen',
+  y: datum => datum.panen as number,
+  color: '#16a34a'
+}, {
+  key: 'distribusi',
+  label: 'Distribusi',
+  y: datum => datum.distribusi as number,
+  color: '#d97706'
+}]
+
+const stackedQuarterSeries: CartesianChartSeries<ChartDatum>[] = [{
+  key: 'beras',
+  label: 'Beras',
+  y: datum => datum.beras as number,
+  color: '#2563eb'
+}, {
+  key: 'jagung',
+  label: 'Jagung',
+  y: datum => datum.jagung as number,
+  color: '#16a34a'
+}, {
+  key: 'hortikultura',
+  label: 'Hortikultura',
+  y: datum => datum.hortikultura as number,
+  color: '#f59e0b'
 }]
 
 function formatMonthTick(tick: number | Date) {
@@ -338,12 +414,8 @@ function formatCompactTick(tick: number | Date) {
             title="Line Chart"
             description="Tren produksi bulanan tiga komoditas untuk memantau pola naik-turun."
             :data="monthlyProductionData"
-            :x="d => d.month"
-            :series="[
-              { key: 'padi', label: 'Padi', y: d => d.padi, color: '#2563eb' },
-              { key: 'jagung', label: 'Jagung', y: d => d.jagung, color: '#16a34a' },
-              { key: 'cabai', label: 'Cabai', y: d => d.cabai, color: '#dc2626' }
-            ]"
+            :x="getMonthlyMonth"
+            :series="monthlyProductionSeries"
             x-label="Bulan"
             y-label="Produksi"
             :x-tick-values="[1, 3, 5, 7, 9, 11]"
@@ -356,11 +428,8 @@ function formatCompactTick(tick: number | Date) {
             title="Area Chart"
             description="Visual stok dan distribusi untuk melihat area supply yang dominan sepanjang tahun."
             :data="areaSupplyData"
-            :x="d => d.month"
-            :series="[
-              { key: 'stok', label: 'Stok', y: d => d.stok, color: '#0891b2' },
-              { key: 'distribusi', label: 'Distribusi', y: d => d.distribusi, color: '#f59e0b' }
-            ]"
+            :x="getAreaSupplyMonth"
+            :series="areaSupplySeries"
             x-label="Bulan"
             y-label="Ton"
             :x-tick-values="[1, 3, 5, 7, 9, 11]"
@@ -375,8 +444,8 @@ function formatCompactTick(tick: number | Date) {
             title="Bar Chart"
             description="Contoh bar tunggal untuk peringkat produksi antar kecamatan."
             :data="districtBarData"
-            :x="d => d.index"
-            :y="d => d.value"
+            :x="getDistrictIndex"
+            :y="getDistrictValue"
             x-label="Kecamatan"
             y-label="Produksi"
             :x-tick-values="[1, 2, 3, 4, 5, 6]"
@@ -390,12 +459,8 @@ function formatCompactTick(tick: number | Date) {
             title="Grouped Bar Chart"
             description="Perbandingan aktivitas tanam, panen, dan distribusi per triwulan."
             :data="groupedQuarterData"
-            :x="d => d.quarter"
-            :series="[
-              { key: 'tanam', label: 'Tanam', y: d => d.tanam, color: '#2563eb' },
-              { key: 'panen', label: 'Panen', y: d => d.panen, color: '#16a34a' },
-              { key: 'distribusi', label: 'Distribusi', y: d => d.distribusi, color: '#d97706' }
-            ]"
+            :x="getGroupedQuarter"
+            :series="groupedQuarterSeries"
             x-label="Triwulan"
             y-label="Volume"
             :x-tick-values="[1, 2, 3, 4]"
@@ -410,12 +475,8 @@ function formatCompactTick(tick: number | Date) {
             title="Stacked Bar Chart"
             description="Komposisi kategori produksi per triwulan pada satu batang yang ditumpuk."
             :data="stackedQuarterData"
-            :x="d => d.quarter"
-            :series="[
-              { key: 'beras', label: 'Beras', y: d => d.beras, color: '#2563eb' },
-              { key: 'jagung', label: 'Jagung', y: d => d.jagung, color: '#16a34a' },
-              { key: 'hortikultura', label: 'Hortikultura', y: d => d.hortikultura, color: '#f59e0b' }
-            ]"
+            :x="getStackedQuarter"
+            :series="stackedQuarterSeries"
             x-label="Triwulan"
             y-label="Ton"
             :x-tick-values="[1, 2, 3, 4]"
@@ -428,8 +489,8 @@ function formatCompactTick(tick: number | Date) {
             title="Donut Chart"
             description="Komposisi kontribusi kategori pangan terhadap total portofolio dashboard."
             :data="donutCompositionData"
-            :value="d => d.value"
-            :label="d => d.label"
+            :value="getDonutValue"
+            :label="getDonutLabel"
             :colors="['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed']"
             central-sub-label="Komposisi"
             aria-label="Grafik donat komposisi kategori"

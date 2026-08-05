@@ -1,10 +1,8 @@
-import type { AppPermission } from '../rbac'
-
 declare module 'bun:sqlite' {
-  export const Database: {
-    new (...args: unknown[]): {
-      readonly __brand: 'BunSqliteDatabase'
-    }
+  export class Database {
+    constructor(...args: unknown[])
+
+    readonly __brand: 'BunSqliteDatabase'
   }
 }
 
@@ -17,19 +15,15 @@ declare module '@cloudflare/workers-types' {
 declare module '#app' {
   interface PageMeta {
     public?: boolean
-    permission?: AppPermission | AppPermission[]
+    permission?: import('../rbac').AppPermission | import('../rbac').AppPermission[]
   }
 }
 
 declare module 'vue-router' {
   interface RouteMeta {
     public?: boolean
-    permission?: AppPermission | AppPermission[]
+    permission?: import('../rbac').AppPermission | import('../rbac').AppPermission[]
   }
 }
 
-declare global {
-  type Timer = ReturnType<typeof setTimeout>
-}
-
-export {}
+type Timer = ReturnType<typeof setTimeout>

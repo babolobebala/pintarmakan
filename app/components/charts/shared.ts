@@ -18,7 +18,7 @@ export type ChartLegendItem = {
   color: string
 }
 
-export const chartPalette = [
+export const chartPalette: string[] = [
   '#2563eb',
   '#16a34a',
   '#d97706',
@@ -33,11 +33,11 @@ export function useUnovisStyles() {
   return true
 }
 
-export function resolveChartColor(color: string | undefined, index: number) {
-  return color ?? chartPalette[index % chartPalette.length]
+export function resolveChartColor(color: string | undefined, index: number): string {
+  return color ?? chartPalette[index % chartPalette.length] ?? chartPalette[0]!
 }
 
-export function buildLegendItems<Datum>(series: CartesianChartSeries<Datum>[]) {
+export function buildLegendItems<Datum>(series: CartesianChartSeries<Datum>[]): ChartLegendItem[] {
   return series.map((item, index) => ({
     label: item.label,
     color: resolveChartColor(item.color, index)

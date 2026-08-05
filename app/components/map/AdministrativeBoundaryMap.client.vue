@@ -132,7 +132,7 @@ useHead({
 })
 
 function getLeaflet() {
-  return (window as Window & { L?: LeafletNamespace }).L
+  return (window as unknown as { L?: LeafletNamespace }).L
 }
 
 function normalizeName(value: string | null | undefined) {

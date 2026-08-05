@@ -41,7 +41,7 @@ const props = withDefaults(defineProps<{
 })
 
 const seriesAccessors = computed(() => props.series.map(item => item.y))
-const seriesColors = computed(() => props.series.map((item, index) => resolveChartColor(item.color, index)) as any)
+const seriesColors = computed<string[]>(() => props.series.map((item, index) => resolveChartColor(item.color, index)))
 const legendItems = computed(() => buildLegendItems(props.series))
 </script>
 

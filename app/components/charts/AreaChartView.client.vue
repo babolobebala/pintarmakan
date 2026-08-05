@@ -73,14 +73,15 @@ const legendItems = computed(() => buildLegendItems(props.series))
         :y="item.y"
         :color="item.colorAccessor"
       />
-      <VisLine
-        v-for="item in normalizedSeries"
-        v-if="showLineOverlay"
-        :key="`${item.key}-line`"
-        :x="x"
-        :y="item.y"
-        :color="item.colorAccessor"
-      />
+      <template v-if="showLineOverlay">
+        <VisLine
+          v-for="item in normalizedSeries"
+          :key="`${item.key}-line`"
+          :x="x"
+          :y="item.y"
+          :color="item.colorAccessor"
+        />
+      </template>
 
       <VisAxis
         type="x"

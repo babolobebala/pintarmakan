@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 
+import { appPermissions, formatRoleLabel, hasAccessForRole } from '~~/auth/permissions'
+
 const toast = useToast()
 const appConfig = useAppConfig()
 const { data: currentUser } = await useCurrentUser()
@@ -9,13 +11,11 @@ const open = ref(false)
 const pwaToastId = 'pwa-install'
 
 const links = computed(() => {
-  const permissionByPath: Record<string, string | undefined> = {
-    '/': 'dashboard.read',
-    '/produksi-pangan': 'dashboard.read',
-    '/settings': 'settings.read',
-    '/settings/members': 'users.read',
-    '/settings/roles': 'roles.read',
-    '/settings/permissions': 'permissions.read'
+  const permissionByPath = {
+    '/': appPermissions.dashboardRead,
+    '/produksi-pangan': appPermissions.dashboardRead,
+    '/settings': appPermissions.settingsRead,
+    '/settings/members': appPermissions.membersRead
   }
 
   const items = [[{
@@ -51,18 +51,6 @@ const links = computed(() => {
       onSelect: () => {
         open.value = false
       }
-    }, {
-      label: 'Roles',
-      to: '/settings/roles',
-      onSelect: () => {
-        open.value = false
-      }
-    }, {
-      label: 'Permissions',
-      to: '/settings/permissions',
-      onSelect: () => {
-        open.value = false
-      }
     }]
   }]] satisfies NavigationMenuItem[][]
 
@@ -70,10 +58,10 @@ const links = computed(() => {
     .map((group) => {
       return group.filter((item) => {
         const permission = item.to && typeof item.to === 'string'
-          ? permissionByPath[item.to]
+          ? permissionByPath[item.to as keyof typeof permissionByPath]
           : undefined
 
-        return !permission || currentUser.value?.user.permissions.includes(permission)
+        return !permission || hasAccessForRole(currentUser.value?.user.role, permission)
       })
     })
     .filter(group => group.length > 0)
@@ -81,7 +69,7 @@ const links = computed(() => {
 
 const brand = computed(() => ({
   title: appConfig.appName || 'Internal Dashboard',
-  subtitle: currentUser.value?.user.roles.join(', ') || 'Workspace'
+  subtitle: currentUser.value?.user.roles.map(formatRoleLabel).join(', ') || 'Workspace'
 }))
 
 onMounted(() => {

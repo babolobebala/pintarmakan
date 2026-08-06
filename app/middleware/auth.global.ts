@@ -1,4 +1,6 @@
 import { authClient } from '~~/lib/auth-client'
+import type { AppAccessRequest } from '~~/auth/permissions'
+import { hasAccessForRole } from '~~/auth/permissions'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   if (to.meta.public) {
@@ -32,16 +34,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }))
   }
 
-  const userPermissions = new Set(data.value.user.permissions)
-  const permissions = Array.isArray(requiredPermissions)
-    ? requiredPermissions
-    : [requiredPermissions]
-
-  const isAuthorized = permissions.every((permission) => {
-    return typeof permission === 'string' && userPermissions.has(permission)
-  })
-
-  if (!isAuthorized) {
+  if (!hasAccessForRole(data.value.user.role, requiredPermissions as AppAccessRequest)) {
     return abortNavigation(createError({
       statusCode: 403,
       statusMessage: 'Forbidden'

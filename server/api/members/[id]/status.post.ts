@@ -2,16 +2,16 @@ import { createError, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
 
 import { appPermissions } from '~~/auth/permissions'
-import { setManagedUserPassword } from '#server/utils/auth-admin'
+import { setManagedUserStatus } from '#server/utils/auth-admin'
 import { db } from '#server/utils/db'
 import { requirePermission } from '~~/server/utils/access'
 
-const setPasswordSchema = z.object({
-  password: z.string().trim().min(8).max(128)
+const setStatusSchema = z.object({
+  active: z.boolean()
 })
 
 export default defineEventHandler(async (event) => {
-  const session = await requirePermission(event, appPermissions.membersSetPassword)
+  const session = await requirePermission(event, appPermissions.membersBan)
   const userId = getRouterParam(event, 'id')
 
   if (!userId) {
@@ -21,18 +21,18 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const body = setPasswordSchema.parse(await readBody(event))
+  const body = setStatusSchema.parse(await readBody(event))
 
-  await setManagedUserPassword(event, userId, body.password)
+  await setManagedUserStatus(event, userId, body.active)
 
   await db.auditLog.create({
     data: {
       actorId: session.user.id,
-      action: 'members.set-password',
+      action: body.active ? 'members.activate' : 'members.deactivate',
       entityType: 'user',
       entityId: userId,
       metadata: {
-        passwordProvisioned: true
+        active: body.active
       }
     }
   })

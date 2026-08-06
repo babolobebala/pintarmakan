@@ -26,7 +26,6 @@ const user = computed(() => ({
 
 async function signOut() {
   await authClient.signOut()
-  clearNuxtData('auth:me')
   await router.push('/login')
 }
 

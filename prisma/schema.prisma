@@ -10,20 +10,18 @@ datasource db {
 model User {
   id            String     @id @db.VarChar(191)
   name          String     @db.VarChar(191)
-  role          String?    @db.VarChar(191)
+  role          String?    @default("user") @db.VarChar(191)
   email         String     @unique @db.VarChar(191)
   emailVerified Boolean    @default(false)
   image         String?    @db.Text
   banned        Boolean    @default(false)
   banReason     String?    @db.Text
   banExpires    DateTime?
-  isActive      Boolean    @default(true)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   accounts      Account[]
   sessions      Session[]
   auditLogs     AuditLog[] @relation("ActorAuditLogs")
-  userRoles     UserRole[]
 
   @@map("user")
 }
@@ -90,56 +88,4 @@ model AuditLog {
   @@index([actorId])
   @@index([entityType, entityId])
   @@map("audit_logs")
-}
-
-model Role {
-  id              String           @id @default(cuid()) @db.VarChar(191)
-  slug            String           @unique @db.VarChar(191)
-  name            String           @db.VarChar(191)
-  description     String?          @db.Text
-  isSystem        Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  userRoles       UserRole[]
-  rolePermissions RolePermission[]
-
-  @@map("roles")
-}
-
-model Permission {
-  id              String           @id @default(cuid()) @db.VarChar(191)
-  key             String           @unique @db.VarChar(191)
-  label           String           @db.VarChar(191)
-  description     String?          @db.Text
-  group           String           @db.VarChar(191)
-  isSystem        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  rolePermissions RolePermission[]
-
-  @@map("permissions")
-}
-
-model UserRole {
-  userId     String   @db.VarChar(191)
-  roleId     String   @db.VarChar(191)
-  assignedAt DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@id([userId, roleId])
-  @@index([roleId])
-  @@map("user_roles")
-}
-
-model RolePermission {
-  roleId       String     @db.VarChar(191)
-  permissionId String     @db.VarChar(191)
-  assignedAt   DateTime   @default(now())
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-  @@index([permissionId])
-  @@map("role_permissions")
 }

@@ -1,8 +1,8 @@
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { betterAuth, type BetterAuthOptions } from 'better-auth'
-import { APIError } from 'better-auth/api'
 import { admin } from 'better-auth/plugins'
 
+import { ac, adminRoleSlugs, defaultRole, roles } from '~~/auth/permissions'
 import { db } from '#server/utils/db'
 
 const baseURL = process.env.BETTER_AUTH_URL || process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
@@ -34,55 +34,19 @@ function getBaseAuthOptions(): BetterAuthOptions {
         trustedProviders: ['google'],
         allowDifferentEmails: false
       }
-    },
-    user: {
-      additionalFields: {
-        isActive: {
-          type: 'boolean',
-          required: false,
-          defaultValue: true,
-          input: false,
-          returned: false
-        }
-      }
-    },
-    databaseHooks: {
-      session: {
-        create: {
-          before: async (session) => {
-            const user = await db.user.findUnique({
-              where: {
-                id: session.userId
-              },
-              select: {
-                isActive: true
-              }
-            })
-
-            if (!user?.isActive) {
-              throw new APIError('FORBIDDEN', {
-                message: 'This account is inactive. Please contact an administrator.'
-              })
-            }
-
-            return { data: session }
-          }
-        }
-      }
     }
   }
 }
 
-export function createMemberAdminAuth(adminUserId: string) {
-  return betterAuth({
-    ...getBaseAuthOptions(),
-    plugins: [
-      admin({
-        adminUserIds: [adminUserId],
-        defaultRole: 'user'
-      })
-    ]
-  })
-}
-
-export const auth = betterAuth(getBaseAuthOptions())
+export const auth = betterAuth({
+  ...getBaseAuthOptions(),
+  plugins: [
+    admin({
+      ac,
+      roles,
+      adminRoles: [...adminRoleSlugs],
+      defaultRole,
+      bannedUserMessage: 'This account is inactive. Please contact an administrator.'
+    })
+  ]
+})

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 
+import { appPermissions, hasAccessForRole } from '~~/auth/permissions'
+
 definePageMeta({
-  permission: 'settings.read'
+  permission: appPermissions.settingsRead
 })
 
 const { data: currentUser } = await useCurrentUser()
@@ -16,28 +18,18 @@ const links = computed(() => [[{
   label: 'Members',
   icon: 'i-lucide-users',
   to: '/settings/members'
-}, {
-  label: 'Roles',
-  icon: 'i-lucide-shield-check',
-  to: '/settings/roles'
-}, {
-  label: 'Permissions',
-  icon: 'i-lucide-key',
-  to: '/settings/permissions'
 }]].map((group) => {
   return group.filter((item) => {
-    const permissionByPath: Record<string, string | undefined> = {
-      '/settings': 'settings.read',
-      '/settings/members': 'users.read',
-      '/settings/roles': 'roles.read',
-      '/settings/permissions': 'permissions.read'
+    const permissionByPath = {
+      '/settings': appPermissions.settingsRead,
+      '/settings/members': appPermissions.membersRead
     }
 
     const permission = item.to && typeof item.to === 'string'
-      ? permissionByPath[item.to]
+      ? permissionByPath[item.to as keyof typeof permissionByPath]
       : undefined
 
-    return !permission || currentUser.value?.user.permissions.includes(permission)
+    return !permission || hasAccessForRole(currentUser.value?.user.role, permission)
   })
 }) satisfies NavigationMenuItem[][])
 </script>

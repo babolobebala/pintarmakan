@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { appPermissions } from '~~/auth/permissions'
+
 definePageMeta({
-  permission: 'dashboard.read'
+  permission: appPermissions.dashboardRead
 })
 
 type CommodityKey

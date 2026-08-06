@@ -1,8 +1,9 @@
 import { db } from '#server/utils/db'
-import { requirePermission } from '~~/server/utils/rbac'
+import { appPermissions, getEffectiveRoles } from '~~/auth/permissions'
+import { requirePermission } from '~~/server/utils/access'
 
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'users.read')
+  await requirePermission(event, appPermissions.membersRead)
 
   const users = await db.user.findMany({
     orderBy: {
@@ -13,16 +14,8 @@ export default defineEventHandler(async (event) => {
       name: true,
       email: true,
       image: true,
-      userRoles: {
-        select: {
-          role: {
-            select: {
-              slug: true
-            }
-          }
-        }
-      },
-      isActive: true,
+      role: true,
+      banned: true,
       accounts: {
         select: {
           providerId: true,
@@ -43,8 +36,8 @@ export default defineEventHandler(async (event) => {
             alt: user.name
           }
         : undefined,
-      roles: Array.from(new Set(user.userRoles.map(({ role }) => role.slug))),
-      isActive: user.isActive,
+      roles: getEffectiveRoles(user.role),
+      isBanned: user.banned,
       hasPassword: user.accounts.some((account) => {
         return account.providerId === 'credential' && !!account.password
       })

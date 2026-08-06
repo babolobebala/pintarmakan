@@ -2,30 +2,31 @@ import type { H3Event } from 'h3'
 
 import { createError } from 'h3'
 
+import { normalizeRoleSelection } from '~~/auth/permissions'
 import { db } from '#server/utils/db'
-import { createMemberAdminAuth } from '#server/utils/auth-instance'
+import { auth } from '#server/utils/auth-instance'
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
-function getMemberAdminAuth(adminUserId: string) {
-  return createMemberAdminAuth(adminUserId)
-}
-
-export async function createOrUpdateManagedUser(event: H3Event, adminUserId: string, input: {
+export async function createOrUpdateManagedUser(event: H3Event, input: {
   email: string
   name: string
   password?: string
+  roles: readonly string[]
 }) {
-  const auth = getMemberAdminAuth(adminUserId)
   const email = normalizeEmail(input.email)
+  const roles = normalizeRoleSelection(input.roles)
+  const roleInput = roles.length === 1 ? roles[0]! : roles
   const existingUser = await db.user.findUnique({
     where: {
       email
     },
     select: {
-      id: true
+      id: true,
+      role: true,
+      banned: true
     }
   })
 
@@ -36,14 +37,17 @@ export async function createOrUpdateManagedUser(event: H3Event, adminUserId: str
         email,
         name: input.name,
         password: input.password,
+        role: roleInput,
         data: {
-          emailVerified: true,
-          isActive: true
+          emailVerified: true
         }
       }
     })
 
-    return user
+    return {
+      user,
+      roles
+    }
   }
 
   const user = await auth.api.adminUpdateUser({
@@ -52,11 +56,27 @@ export async function createOrUpdateManagedUser(event: H3Event, adminUserId: str
       userId: existingUser.id,
       data: {
         name: input.name,
-        emailVerified: true,
-        isActive: true
+        emailVerified: true
       }
     }
   })
+
+  await auth.api.setRole({
+    headers: event.headers,
+    body: {
+      userId: existingUser.id,
+      role: roleInput
+    }
+  })
+
+  if (existingUser.banned) {
+    await auth.api.unbanUser({
+      headers: event.headers,
+      body: {
+        userId: existingUser.id
+      }
+    })
+  }
 
   if (input.password) {
     await auth.api.setUserPassword({
@@ -68,10 +88,13 @@ export async function createOrUpdateManagedUser(event: H3Event, adminUserId: str
     })
   }
 
-  return user
+  return {
+    user,
+    roles
+  }
 }
 
-export async function setManagedUserPassword(event: H3Event, adminUserId: string, userId: string, password: string) {
+export async function setManagedUserPassword(event: H3Event, userId: string, password: string) {
   const user = await db.user.findUnique({
     where: {
       id: userId
@@ -88,13 +111,60 @@ export async function setManagedUserPassword(event: H3Event, adminUserId: string
     })
   }
 
-  const auth = getMemberAdminAuth(adminUserId)
-
   await auth.api.setUserPassword({
     headers: event.headers,
     body: {
       userId,
       newPassword: password
+    }
+  })
+}
+
+export async function setManagedUserStatus(event: H3Event, userId: string, active: boolean) {
+  const user = await db.user.findUnique({
+    where: {
+      id: userId
+    },
+    select: {
+      id: true,
+      banned: true
+    }
+  })
+
+  if (!user) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'User not found.'
+    })
+  }
+
+  if (active) {
+    if (user.banned) {
+      await auth.api.unbanUser({
+        headers: event.headers,
+        body: {
+          userId
+        }
+      })
+    }
+
+    return
+  }
+
+  if (!user.banned) {
+    await auth.api.banUser({
+      headers: event.headers,
+      body: {
+        userId,
+        banReason: 'This account is inactive. Please contact an administrator.'
+      }
+    })
+  }
+
+  await auth.api.revokeUserSessions({
+    headers: event.headers,
+    body: {
+      userId
     }
   })
 }

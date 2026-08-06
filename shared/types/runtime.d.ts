@@ -15,14 +15,14 @@ declare module '@cloudflare/workers-types' {
 declare module '#app' {
   interface PageMeta {
     public?: boolean
-    permission?: import('../rbac').AppPermission | import('../rbac').AppPermission[]
+    permission?: import('../../auth/permissions').AppAccessRequest
   }
 }
 
 declare module 'vue-router' {
   interface RouteMeta {
     public?: boolean
-    permission?: import('../rbac').AppPermission | import('../rbac').AppPermission[]
+    permission?: import('../../auth/permissions').AppAccessRequest
   }
 }
 

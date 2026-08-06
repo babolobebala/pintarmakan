@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { appPermissions, formatRoleLabel } from '~~/auth/permissions'
+
 definePageMeta({
-  permission: 'settings.read'
+  permission: appPermissions.settingsRead
 })
 
 const { data: currentUser } = await useCurrentUser()
@@ -46,7 +48,7 @@ const { data: currentUser } = await useCurrentUser()
             color="neutral"
             variant="outline"
             class="capitalize"
-            :label="role"
+            :label="formatRoleLabel(role)"
           />
         </div>
       </div>

@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { Member } from '~/types'
 
+import { formatRoleLabel } from '~~/auth/permissions'
+
 defineProps<{
   members: Member[]
   canManagePassword?: boolean
+  canManageStatus?: boolean
 }>()
 
 defineEmits<{
   password: [member: Member]
+  status: [member: Member]
 }>()
 </script>
 
@@ -38,9 +42,9 @@ defineEmits<{
 
       <div class="flex flex-wrap items-center gap-2 lg:justify-end">
         <UBadge
-          :color="member.isActive ? 'success' : 'warning'"
+          :color="member.isBanned ? 'warning' : 'success'"
           variant="subtle"
-          :label="member.isActive ? 'Active' : 'Inactive'"
+          :label="member.isBanned ? 'Inactive' : 'Active'"
         />
         <UBadge
           :color="member.hasPassword ? 'primary' : 'neutral'"
@@ -53,7 +57,15 @@ defineEmits<{
           color="neutral"
           variant="outline"
           class="capitalize"
-          :label="role"
+          :label="formatRoleLabel(role)"
+        />
+        <UButton
+          v-if="canManageStatus"
+          size="xs"
+          color="neutral"
+          variant="subtle"
+          :label="member.isBanned ? 'Activate' : 'Deactivate'"
+          @click="$emit('status', member)"
         />
         <UButton
           v-if="canManagePassword"

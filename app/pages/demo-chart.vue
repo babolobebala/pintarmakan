@@ -7,8 +7,10 @@ import LineChart from '../components/charts/LineChart.vue'
 import StackedBarChart from '../components/charts/StackedBarChart.vue'
 import type { CartesianChartSeries, ChartAccessor } from '../components/charts/shared'
 
+import { appPermissions } from '~~/auth/permissions'
+
 definePageMeta({
-  permission: 'dashboard.read'
+  permission: appPermissions.dashboardRead
 })
 
 type MonthlyProductionDatum = {

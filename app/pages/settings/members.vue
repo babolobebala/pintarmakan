@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Member } from '~/types'
 
+import { appPermissions, hasAccessForRole } from '~~/auth/permissions'
+
 definePageMeta({
-  permission: 'users.read'
+  permission: appPermissions.membersRead
 })
 
 const { data: currentUser } = await useCurrentUser()
@@ -11,8 +13,10 @@ const { data: members, refresh } = await useFetch<Member[]>('/api/members', { de
 const q = ref('')
 const selectedMember = ref<Member | null>(null)
 const passwordModalOpen = ref(false)
-const canCreateMembers = computed(() => currentUser.value?.user.permissions.includes('users.create') ?? false)
-const canUpdateMembers = computed(() => currentUser.value?.user.permissions.includes('users.update') ?? false)
+const toast = useToast()
+const canCreateMembers = computed(() => hasAccessForRole(currentUser.value?.user.role, appPermissions.membersCreate))
+const canManageStatus = computed(() => hasAccessForRole(currentUser.value?.user.role, appPermissions.membersBan))
+const canManagePassword = computed(() => hasAccessForRole(currentUser.value?.user.role, appPermissions.membersSetPassword))
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -21,6 +25,40 @@ function escapeRegExp(value: string) {
 function openPasswordModal(member: Member) {
   selectedMember.value = member
   passwordModalOpen.value = true
+}
+
+async function toggleMemberStatus(member: Member) {
+  const activate = member.isBanned
+  const actionLabel = activate ? 'activate' : 'deactivate'
+
+  if (!import.meta.client || !window.confirm(`Are you sure you want to ${actionLabel} ${member.email}?`)) {
+    return
+  }
+
+  try {
+    await $fetch(`/api/members/${member.id}/status`, {
+      method: 'POST',
+      body: {
+        active: activate
+      }
+    })
+
+    toast.add({
+      title: activate ? 'Member activated' : 'Member deactivated',
+      description: activate
+        ? `${member.email} can access the application again.`
+        : `${member.email} can no longer access the application.`,
+      color: 'success'
+    })
+
+    await refresh()
+  } catch (error) {
+    toast.add({
+      title: `Unable to ${actionLabel} member`,
+      description: error instanceof Error ? error.message : 'Please try again.',
+      color: 'error'
+    })
+  }
 }
 
 const filteredMembers = computed(() => {
@@ -36,7 +74,7 @@ const filteredMembers = computed(() => {
   <div>
     <UPageCard
       title="Members"
-      description="Create approved internal users and assign their RBAC roles."
+      description="Create approved internal users and assign their access roles."
       variant="naked"
       orientation="horizontal"
       class="mb-4"
@@ -61,13 +99,15 @@ const filteredMembers = computed(() => {
 
       <SettingsMembersList
         :members="filteredMembers"
-        :can-manage-password="canUpdateMembers"
+        :can-manage-status="canManageStatus"
+        :can-manage-password="canManagePassword"
         @password="openPasswordModal"
+        @status="toggleMemberStatus"
       />
     </UPageCard>
 
     <SettingsMembersPasswordModal
-      v-if="canUpdateMembers"
+      v-if="canManagePassword"
       v-model:open="passwordModalOpen"
       :member="selectedMember"
       @updated="refresh()"

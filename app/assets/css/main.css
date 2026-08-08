@@ -1,18 +1,161 @@
-@import "tailwindcss" theme(static);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import "tailwindcss";
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: 'Public Sans', sans-serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
-  --color-green-50: #EFFDF5;
-  --color-green-100: #D9FBE8;
-  --color-green-200: #B3F5D1;
-  --color-green-300: #75EDAE;
-  --color-green-400: #00DC82;
-  --color-green-500: #00C16A;
-  --color-green-600: #00A155;
-  --color-green-700: #007F45;
+  --color-blue-50: #eef4ff;
+  --color-blue-100: #dde8ff;
+  --color-blue-200: #bed4ff;
+  --color-blue-300: #8cb5ff;
+  --color-blue-400: #5690ff;
+  --color-blue-500: #2f6dfd;
+  --color-blue-600: #1f57eb;
+  --color-blue-700: #1946c7;
+  --color-blue-800: #183ca2;
+  --color-blue-900: #1a377f;
+  --color-blue-950: #13234f;
+
+  --color-slate-50: #f5f8fc;
+  --color-slate-100: #eef2f8;
+  --color-slate-200: #dbe3ef;
+  --color-slate-300: #bbc8da;
+  --color-slate-400: #90a2ba;
+  --color-slate-500: #66758d;
+  --color-slate-600: #4d5b71;
+  --color-slate-700: #3d485b;
+  --color-slate-800: #293241;
+  --color-slate-900: #1b2230;
+  --color-slate-950: #101520;
+
+  --color-green-50: #effdf5;
+  --color-green-100: #d9fbe8;
+  --color-green-200: #b3f5d1;
+  --color-green-300: #75edae;
+  --color-green-400: #00dc82;
+  --color-green-500: #00c16a;
+  --color-green-600: #00a155;
+  --color-green-700: #007f45;
   --color-green-800: #016538;
-  --color-green-900: #0A5331;
-  --color-green-950: #052E16;
+  --color-green-900: #0a5331;
+  --color-green-950: #052e16;
+}
+
+:root {
+  color-scheme: light;
+  --app-background: oklch(96.8% 0.015 92);
+  --app-background-muted: oklch(95.1% 0.014 100);
+  --app-surface: oklch(98.1% 0.01 88);
+  --app-surface-muted: oklch(96.5% 0.012 95);
+  --app-foreground: oklch(28% 0.032 152);
+  --app-foreground-muted: oklch(38% 0.022 148);
+  --app-foreground-soft: oklch(56% 0.016 145);
+  --app-border: oklch(89% 0.018 102);
+  --app-border-strong: oklch(81% 0.022 108);
+  --app-accent: oklch(56% 0.12 145);
+  --app-accent-ink: oklch(98.8% 0.006 92);
+  --app-graphite: oklch(24% 0.022 150);
+  --app-graphite-muted: oklch(29% 0.02 148);
+  --app-graphite-border: oklch(36% 0.024 142);
+  --app-success: oklch(64% 0.11 152);
+  --app-warning: oklch(82% 0.11 104);
+  --app-error: oklch(63% 0.21 24);
+  --app-focus: color-mix(in oklch, var(--app-accent) 34%, transparent);
+  --app-blend-base: oklch(99.4% 0.004 92);
+  --app-blend-soft: oklch(97.6% 0.008 94);
+  --app-bloom: color-mix(in oklch, var(--app-accent) 16%, var(--app-blend-base));
+  --radius-control: 0.375rem;
+  --radius-panel: 0.625rem;
+  --radius-shell: 1.5rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-short: 180ms;
+  --dur-medium: 360ms;
+}
+
+.dark {
+  color-scheme: dark;
+  --app-background: oklch(21% 0.018 150);
+  --app-background-muted: oklch(24% 0.018 148);
+  --app-surface: oklch(25.8% 0.017 145);
+  --app-surface-muted: oklch(29.5% 0.018 142);
+  --app-foreground: oklch(95% 0.008 96);
+  --app-foreground-muted: oklch(84% 0.012 102);
+  --app-foreground-soft: oklch(71% 0.014 110);
+  --app-border: oklch(33% 0.02 145);
+  --app-border-strong: oklch(40% 0.024 142);
+  --app-accent: oklch(72% 0.12 145);
+  --app-accent-ink: oklch(23% 0.018 145);
+  --app-graphite: oklch(18.5% 0.016 148);
+  --app-graphite-muted: oklch(22% 0.017 145);
+  --app-graphite-border: oklch(31% 0.02 142);
+  --app-success: oklch(76% 0.11 152);
+  --app-warning: oklch(86% 0.1 104);
+  --app-error: oklch(72% 0.16 24);
+  --app-focus: color-mix(in oklch, var(--app-accent) 42%, transparent);
+  --app-blend-base: oklch(19% 0.015 145);
+  --app-blend-soft: oklch(23% 0.016 143);
+  --app-bloom: color-mix(in oklch, var(--app-accent) 20%, var(--app-blend-base));
+}
+
+html,
+body {
+  overflow-x: clip;
+  background: var(--app-background);
+}
+
+body {
+  min-height: 100vh;
+  color: var(--app-foreground-muted);
+  font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
+  transition:
+    background-color var(--dur-medium) var(--ease-out),
+    color var(--dur-short) var(--ease-out);
+}
+
+::selection {
+  background: color-mix(in oklch, var(--app-accent) 18%, transparent);
+  color: var(--app-foreground);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--app-foreground);
+}
+
+.cobalt-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cobalt-panel {
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-panel);
+  background: var(--app-surface);
+}
+
+.cobalt-panel--muted {
+  background: var(--app-surface-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    transition: none;
+  }
 }

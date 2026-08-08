@@ -29,6 +29,7 @@ logs
 !.env.example
 prisma/seed.config.local.json
 .pnpm-store
+.hallmark
 
 # VSC
 .history

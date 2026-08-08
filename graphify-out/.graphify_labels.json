@@ -74,5 +74,6 @@
   "72": "Web Push",
   "73": "subscribe.post.ts",
   "74": "subscribe.delete.ts",
-  "75": "test.post.ts"
+  "75": "test.post.ts",
+  "76": "preferences.vue"
 }

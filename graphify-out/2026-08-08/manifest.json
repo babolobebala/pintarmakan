@@ -175,9 +175,9 @@
     "semantic_hash": "d93b99a97ef8770e4d022e7f0c4c25c2"
   },
   "app/pages/settings/index.vue": {
-    "mtime": 1785999995.1431015,
-    "ast_hash": "6fe340bea233e7fa3932de68e656100a",
-    "semantic_hash": "6fe340bea233e7fa3932de68e656100a"
+    "mtime": 1786177265.4915376,
+    "ast_hash": "1cf54d5916cfe7e1d3460fa949fd36b4",
+    "semantic_hash": ""
   },
   "app/pages/settings/members.vue": {
     "mtime": 1785999996.9490933,
@@ -190,8 +190,8 @@
     "semantic_hash": "adaa480bdbc5f354f41a16a0f0f5f8a7"
   },
   "auth/permissions.ts": {
-    "mtime": 1786175283.177379,
-    "ast_hash": "6f62d50539e760b88b0f98e28830ef02",
+    "mtime": 1786176070.308214,
+    "ast_hash": "ff0a599c6e28697dde4db08c4f9f6735",
     "semantic_hash": ""
   },
   "eslint.config.mjs": {
@@ -205,13 +205,13 @@
     "semantic_hash": "c383a73d688b3cf16b3960e24399effd"
   },
   "nuxt.config.ts": {
-    "mtime": 1785873980.6731148,
-    "ast_hash": "a1ae54612736f0ecc7c57f7e8deb897f",
-    "semantic_hash": "a1ae54612736f0ecc7c57f7e8deb897f"
+    "mtime": 1786177627.885861,
+    "ast_hash": "9de4439acc9b40a577a3430d8978405f",
+    "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1786166321.7723007,
-    "ast_hash": "04b2c8fd0e536ecdc33ff1215fd10373",
+    "mtime": 1786178007.4199662,
+    "ast_hash": "42a2afa470752e0934cb0309d646270d",
     "semantic_hash": ""
   },
   "prisma.config.ts": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "prisma/seed.ts": {
-    "mtime": 1786175095.6473835,
-    "ast_hash": "1312a81cd851149b2cafe22ae3196123",
+    "mtime": 1786176571.3103178,
+    "ast_hash": "8dbf8f5fa822f52257101cf0de123e38",
     "semantic_hash": ""
   },
   ".codex/skills/graphify/SKILL.md": {
@@ -379,59 +379,99 @@
     "ast_hash": "769a5ef46245d0dc2f6f770eef0ce1e8",
     "semantic_hash": ""
   },
-  "public/icons/icon-128x128.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "9f7741351008007a933a49085cfc0b27",
-    "semantic_hash": ""
-  },
   "public/icons/icon-144x144.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "8e6720f001ee3d68bab5ceccfa07078e",
-    "semantic_hash": ""
-  },
-  "public/icons/icon-152x152.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "95843adb826ebabb6d0827462fe0bf11",
+    "mtime": 1786147504.0,
+    "ast_hash": "1369e207ae17b8260f8594cb8a4c0bb1",
     "semantic_hash": ""
   },
   "public/icons/icon-192x192.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "90ea9e77ac742c91e5e8d7f6fc6345d4",
-    "semantic_hash": ""
-  },
-  "public/icons/icon-256x256.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "f05480c6a7358fe666362306744edd1c",
-    "semantic_hash": ""
-  },
-  "public/icons/icon-384x384.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "92e6a06ee3c660fb4a57be2028efa9eb",
+    "mtime": 1786147504.0,
+    "ast_hash": "5522aadb750e7af93f5f32878044c13e",
     "semantic_hash": ""
   },
   "public/icons/icon-48x48.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "5b87d03992209a4aa98f6d4b5a43b71c",
+    "mtime": 1786147504.0,
+    "ast_hash": "6a9c7b3f5e16b8a9b124fdae6f018606",
     "semantic_hash": ""
   },
   "public/icons/icon-512x512.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "20edb846e3c45c338d5714e56b63900e",
+    "mtime": 1786147504.0,
+    "ast_hash": "f33c84a48e926cb4dcde3e2343457d14",
     "semantic_hash": ""
   },
   "public/icons/icon-72x72.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "57190d86f8ab1112555d77d039f05797",
+    "mtime": 1786147504.0,
+    "ast_hash": "09034fbe1e1639540b9d3bb6b8af25b0",
     "semantic_hash": ""
   },
   "public/icons/icon-96x96.png": {
-    "mtime": 1785873980.687025,
-    "ast_hash": "158050a43dd605eec9f530a387012aaa",
+    "mtime": 1786147504.0,
+    "ast_hash": "edbdf8c55cd35354e6dc7763f58f187a",
     "semantic_hash": ""
   },
   "prisma/migrations/20260808052542_init/migration.sql": {
     "mtime": 1786166742.485717,
     "ast_hash": "0722948263b420dde977ffb36143a21b",
+    "semantic_hash": ""
+  },
+  "app/components/settings/PushNotificationsCard.vue": {
+    "mtime": 1786177263.926212,
+    "ast_hash": "72feae3c3dbf04a4d3da4f52eb83209b",
+    "semantic_hash": ""
+  },
+  "app/composables/usePushNotifications.ts": {
+    "mtime": 1786177627.885861,
+    "ast_hash": "52400f8f74cd27b8a6c5fba946ecccf2",
+    "semantic_hash": ""
+  },
+  "app/service-worker/sw.ts": {
+    "mtime": 1786177942.8058622,
+    "ast_hash": "0ffbbe78ae8f8084d549df8897d96703",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260808102000_add_push_subscriptions/migration.sql": {
+    "mtime": 1786177147.8637528,
+    "ast_hash": "859b1937402f4034fd470e08c716f34d",
+    "semantic_hash": ""
+  },
+  "server/api/push/subscribe.delete.ts": {
+    "mtime": 1786177210.2326198,
+    "ast_hash": "e0269e08b5a6b07a6b9afcfdec39f7cd",
+    "semantic_hash": ""
+  },
+  "server/api/push/subscribe.post.ts": {
+    "mtime": 1786177208.4758003,
+    "ast_hash": "3c9b91afc16abbba28e3f4641cae38c3",
+    "semantic_hash": ""
+  },
+  "server/api/push/test.post.ts": {
+    "mtime": 1786177211.9586103,
+    "ast_hash": "7d3e7a26514d4da3a468d92d1f220dae",
+    "semantic_hash": ""
+  },
+  "server/utils/push.ts": {
+    "mtime": 1786177205.9422421,
+    "ast_hash": "c9b769f10a23b5ec996a4caaa43c9cfc",
+    "semantic_hash": ""
+  },
+  "docs/web-push.md": {
+    "mtime": 1786177150.0815234,
+    "ast_hash": "12aaabbb08030aa147a621d7304089e4",
+    "semantic_hash": ""
+  },
+  "public/icons/logo.png": {
+    "mtime": 1786175831.2139583,
+    "ast_hash": "1e52ffea8a03e29d0a55be48bf36c267",
+    "semantic_hash": ""
+  },
+  "public/icons/logo_name.png": {
+    "mtime": 1786175834.9277773,
+    "ast_hash": "8fb58ebab04332246d618dade9532c54",
+    "semantic_hash": ""
+  },
+  "public/icons/logo_nontransparent.png": {
+    "mtime": 1786176793.1152024,
+    "ast_hash": "058bebcf15268f9f49ad3998ae4bf092",
     "semantic_hash": ""
   }
 }

@@ -65,5 +65,14 @@
   "63": "graphify reference: GitHub clone and cross-repo merge",
   "64": "graphify reference: transcribe video and audio",
   "65": "AGENTS.md",
-  "66": "extraction-spec.md"
+  "66": "extraction-spec.md",
+  "67": "devDependencies",
+  "68": "push.ts",
+  "69": "PushNotificationsCard.vue",
+  "70": "usePushNotifications.ts",
+  "71": "sw.ts",
+  "72": "Web Push",
+  "73": "subscribe.post.ts",
+  "74": "subscribe.delete.ts",
+  "75": "test.post.ts"
 }

@@ -46,21 +46,27 @@ type SeedRoleMatch = {
 const seedUsers = [
   {
     name: 'User Demo',
-    email: 'user@example.com',
-    password: 'ChangeMe123!',
+    email: 'fatihmahawisesa1@gmail.com',
+    password: '12345',
     role: 'user'
   },
   {
     name: 'Admin Demo',
-    email: 'admin@example.com',
-    password: 'ChangeMe123!',
+    email: 'fatihmahawisesa2@gmail.com',
+    password: '12345',
     role: 'admin'
   },
   {
     name: 'Super Admin',
-    email: 'superadmin@example.com',
-    password: 'ChangeMe123!',
+    email: 'fatihmahawisesa@gmail.com',
+    password: '12345',
     role: 'super-admin'
+  },
+  {
+    name: 'Admin User Demo',
+    email: 'adminuser@gmail.com',
+    password: '12345',
+    role: ['user', 'admin']
   }
 ] as const satisfies readonly SeedUser[]
 

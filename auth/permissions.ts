@@ -27,6 +27,12 @@ const userStatements = {
   dashboard: ['read']
 } as const satisfies AppAccessRequest
 
+const operatorStatements = {
+  dashboard: ['read'],
+  settings: ['read'],
+  members: ['read']
+} as const satisfies AppAccessRequest
+
 const adminStatements = {
   dashboard: ['read'],
   settings: ['read'],
@@ -46,17 +52,22 @@ const superAdminStatements = {
 export const predefinedRoles = {
   'user': {
     name: 'User',
-    description: 'Read-only dashboard access for day-to-day use.',
+    description: 'Read-only Untuk Semua Dashboard',
     statements: userStatements
+  },
+  'operator': {
+    name: 'Operator',
+    description: '+ Input data, tergantung kepada bidang yang dituju',
+    statements: operatorStatements
   },
   'admin': {
     name: 'Admin',
-    description: 'Manage members and workspace settings without full system-level control.',
+    description: '+ Input semua bidang dan Kontrol Akses Akun',
     statements: adminStatements
   },
   'super-admin': {
     name: 'Super Admin',
-    description: 'Full application access plus unrestricted Better Auth account administration.',
+    description: 'Semua',
     statements: superAdminStatements
   }
 } as const
@@ -65,6 +76,7 @@ export type AppRoleSlug = keyof typeof predefinedRoles
 
 export const roles = {
   'user': ac.newRole(predefinedRoles.user.statements),
+  'operator': ac.newRole(predefinedRoles.operator.statements),
   'admin': ac.newRole(predefinedRoles.admin.statements),
   'super-admin': ac.newRole(predefinedRoles['super-admin'].statements)
 } as const

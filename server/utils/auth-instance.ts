@@ -24,7 +24,8 @@ function getBaseAuthOptions(): BetterAuthOptions {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID as string,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-        disableSignUp: true,
+        // Block first-time Google signups, but still allow linking/sign-in
+        // for pre-created users with the same email address.
         disableImplicitSignUp: true
       }
     },

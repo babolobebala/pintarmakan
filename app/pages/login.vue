@@ -9,6 +9,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 const appConfig = useAppConfig()
 const redirectCookie = useCookie<string | null>('auth_redirect', {
@@ -32,6 +33,26 @@ const loading = ref(false)
 const googleLoading = ref(false)
 const brandName = computed(() => appConfig.appName || 'Internal Dashboard')
 
+const googleErrorMessage = computed(() => {
+  if (route.query.provider !== 'google' || typeof route.query.error !== 'string') {
+    return null
+  }
+
+  if (route.query.error === 'signup_disabled') {
+    return {
+      title: 'Google sign-in blocked',
+      description: 'This Google email is not provisioned yet. Ask an administrator to create your account first.'
+    }
+  }
+
+  return {
+    title: 'Google sign-in failed',
+    description: typeof route.query.error_description === 'string'
+      ? route.query.error_description
+      : route.query.error.replaceAll('_', ' ')
+  }
+})
+
 const redirectTo = computed(() => {
   const redirect = redirectCookie.value
   return typeof redirect === 'string' && redirect.startsWith('/')
@@ -47,12 +68,27 @@ if (session.value?.user) {
   await navigateTo(target)
 }
 
+if (googleErrorMessage.value) {
+  toast.add({
+    title: googleErrorMessage.value.title,
+    description: googleErrorMessage.value.description,
+    color: 'error'
+  })
+
+  const { error: _error, error_description: _errorDescription, provider: _provider, ...query } = route.query
+
+  await router.replace({
+    query
+  })
+}
+
 async function signInWithGoogle() {
   googleLoading.value = true
 
   const { error } = await authClient.signIn.social({
     provider: 'google',
-    callbackURL: redirectTo.value
+    callbackURL: redirectTo.value,
+    errorCallbackURL: '/login?provider=google'
   })
 
   googleLoading.value = false

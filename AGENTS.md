@@ -15,9 +15,17 @@
 
 ## Graphify
 
-This project has a knowledge graph under `graphify-out/` containing code relationships, communities, god nodes, and cross-file dependencies.
-
-When the user explicitly types `/graphify`, use the installed Graphify skill or Graphify instructions before doing anything else.
+- `graphify-out/` is generated local analysis output and is intentionally
+  ignored by Git.
+- Use Graphify when dependency, architecture, call-path, or cross-file
+  context materially helps.
+- If `graphify-out/graph.json` exists, prefer scoped `query`, `path`, or
+  `explain` commands.
+- If the graph does not exist and Graphify context is useful, build it once
+  before querying.
+- Run `graphify update .` after significant structural changes.
+- Do not regenerate Graphify for trivial or isolated changes.
+- Never stage or commit `graphify-out/**`.
 
 ### Usage
 

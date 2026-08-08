@@ -63,6 +63,13 @@ export default defineNuxtConfig({
       scope: '/',
       start_url: '/',
       lang: 'en',
+      related_applications: [
+        {
+          platform: 'webapp',
+          url: '/manifest.webmanifest',
+          id: '/'
+        }
+      ],
       icons: [
         {
           src: 'icons/icon-48x48.png',

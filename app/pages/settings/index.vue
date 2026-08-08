@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatRoleLabel } from '~~/auth/permissions'
+import PushNotificationsCard from '~/components/settings/PushNotificationsCard.vue'
 
 const toast = useToast()
 const { data: currentUser } = await useCurrentUser()
@@ -35,15 +36,15 @@ const installStatus = computed(() => {
     return {
       badge: 'Available',
       color: 'primary' as const,
-      description: 'This application can be installed on this device.'
+      description: 'Install this application for quicker access.'
     }
   }
 
-  if (pwaInstallState.value === 'ios-manual') {
+  if (pwaInstallState.value === 'manual') {
     return {
       badge: 'Manual install',
       color: 'neutral' as const,
-      description: 'Install this app from Safari using the Share menu.'
+      description: 'Use Share -> Add to Home Screen.'
     }
   }
 

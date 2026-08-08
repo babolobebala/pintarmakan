@@ -1,11 +1,11 @@
 # Graph Report - pintarmakan  (2026-08-08)
 
 ## Corpus Check
-- 74 files · ~41,519 words
+- 74 files · ~41,525 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 546 nodes · 596 edges · 67 communities (51 shown, 16 thin omitted)
+- 544 nodes · 594 edges · 67 communities (51 shown, 16 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -128,7 +128,7 @@ Nodes (17): activeDistricts, averageProductivity, commodityData, CommodityDefini
 
 ### Community 6 - "scripts"
 Cohesion: 0.06
-Nodes (35): eslint, @nuxt/eslint, devDependencies, eslint, @nuxt/eslint, prisma, tsx, @types/node (+27 more)
+Nodes (33): eslint, @nuxt/eslint, devDependencies, eslint, @nuxt/eslint, prisma, @types/node, typescript (+25 more)
 
 ### Community 7 - "pages/index.vue"
 Cohesion: 0.13
@@ -247,7 +247,7 @@ Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
 ## Knowledge Gaps
-- **334 isolated node(s):** `colorMode`, `color`, `colorMode`, `appConfig`, `router` (+329 more)
+- **333 isolated node(s):** `colorMode`, `color`, `colorMode`, `appConfig`, `router` (+328 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -255,13 +255,13 @@ Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphif
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `dependencies` to `scripts`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
 - **Why does `@prisma/client` connect `dependencies` to `seed.ts`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
 - **Why does `main()` connect `seed.ts` to `dependencies`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
+  _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **What connects `colorMode`, `color`, `colorMode` to the rest of the system?**
-  _334 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _333 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `dependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.046511627906976744 - nodes in this community are weakly interconnected._
 - **Should `demo-chart.vue` be split into smaller, more focused modules?**

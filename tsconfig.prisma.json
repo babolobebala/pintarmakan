@@ -17,6 +17,8 @@
     "prisma/**/*.cts",
     "prisma/**/*.js",
     "prisma/**/*.mjs",
+    "auth/**/*.ts",
+    "server/generated/prisma/**/*.ts",
     "lib/**/*.ts",
     "shared/types/runtime.d.ts"
   ]

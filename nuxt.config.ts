@@ -21,10 +21,10 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
-    vapidSubject: process.env.VAPID_SUBJECT || '',
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || process.env.NUXT_VAPID_PRIVATE_KEY || '',
+    vapidSubject: process.env.VAPID_SUBJECT || process.env.NUXT_VAPID_SUBJECT || '',
     public: {
-      vapidPublicKey: process.env.VAPID_PUBLIC_KEY || ''
+      vapidPublicKey: process.env.VAPID_PUBLIC_KEY || process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || ''
     }
   },
 

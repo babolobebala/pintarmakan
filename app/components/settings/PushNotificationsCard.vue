@@ -5,6 +5,7 @@ const {
   busy,
   isReady,
   isSupported,
+  state: notificationState,
   permission,
   isSubscribed,
   subscribe,
@@ -21,14 +22,36 @@ const state = computed(() => {
     }
   }
 
-  if (!isSupported.value) {
+  if (notificationState.value === 'unsupported') {
     return {
       badge: 'Unsupported',
       color: 'neutral' as const,
-      detail: 'Web Push is not available in this browser or environment.',
-      helper: 'Notifications require browser support for service workers and push messaging.',
+      detail: 'This browser does not support the Notification and Push APIs required for Web Push.',
+      helper: 'Use a browser that supports Notifications, PushManager, and service workers for this app.',
       helperIcon: 'i-lucide-info',
       helperTitle: 'Push notifications unavailable'
+    }
+  }
+
+  if (notificationState.value === 'service-worker-unavailable') {
+    return {
+      badge: 'Service worker unavailable',
+      color: 'warning' as const,
+      detail: 'A ready service worker is not available for push notifications in this browser context.',
+      helper: 'Web Push requires HTTPS or localhost plus an active service worker registration for this app.',
+      helperIcon: 'i-lucide-wifi-off',
+      helperTitle: 'Service worker required'
+    }
+  }
+
+  if (notificationState.value === 'config-error') {
+    return {
+      badge: 'Configuration error',
+      color: 'error' as const,
+      detail: 'This application is missing its public Web Push key at runtime.',
+      helper: 'Set VAPID_PUBLIC_KEY for the running application so browsers can subscribe.',
+      helperIcon: 'i-lucide-key-round',
+      helperTitle: 'Web Push not configured'
     }
   }
 
@@ -61,7 +84,7 @@ const state = computed(() => {
 })
 
 const canToggle = computed(() => {
-  return isReady.value && isSupported.value && permission.value !== 'denied'
+  return notificationState.value === 'enabled' || notificationState.value === 'disabled'
 })
 
 const helperState = computed(() => {
@@ -78,7 +101,15 @@ const switchDescription = computed(() => {
   }
 
   if (!isSupported.value) {
-    return 'This browser cannot create a Web Push subscription.'
+    return 'This browser cannot use the required Notification or Push APIs.'
+  }
+
+  if (notificationState.value === 'service-worker-unavailable') {
+    return 'Push notifications need a ready service worker in a secure browser context.'
+  }
+
+  if (notificationState.value === 'config-error') {
+    return 'This application is missing its public Web Push configuration.'
   }
 
   if (permission.value === 'denied') {
@@ -111,6 +142,24 @@ async function enableNotifications() {
           title: 'Permission not granted',
           description: 'Notification permission was dismissed before subscribing.',
           color: 'neutral'
+        })
+        return
+      }
+
+      if (result.reason === 'service-worker') {
+        toast.add({
+          title: 'Service worker unavailable',
+          description: 'Push notifications require a ready service worker in this browser context.',
+          color: 'warning'
+        })
+        return
+      }
+
+      if (result.reason === 'config') {
+        toast.add({
+          title: 'Push misconfigured',
+          description: 'The application is missing its public Web Push key.',
+          color: 'error'
         })
         return
       }

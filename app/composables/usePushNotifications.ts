@@ -11,17 +11,46 @@ export type PushNotificationState
     | 'config-error'
     | 'unsupported'
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4)
-  const base64 = (base64String + padding).replaceAll('-', '+').replaceAll('_', '/')
-  const rawData = atob(base64)
+function normalizeVapidPublicKey(value: string) {
+  return value
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\s+/g, '')
+}
 
-  return Uint8Array.from(rawData, character => character.charCodeAt(0))
+function isValidVapidPublicKey(value: string) {
+  return !!value && /^[A-Za-z0-9\-_]+$/.test(value)
+}
+
+function urlBase64ToArrayBuffer(base64String: string) {
+  const normalized = normalizeVapidPublicKey(base64String)
+
+  if (!isValidVapidPublicKey(normalized)) {
+    throw new Error('Invalid VAPID public key format.')
+  }
+
+  const padding = '='.repeat((4 - normalized.length % 4) % 4)
+  const base64 = (normalized + padding).replaceAll('-', '+').replaceAll('_', '/')
+  let rawData: string
+
+  try {
+    rawData = atob(base64)
+  } catch {
+    throw new Error('Invalid VAPID public key format.')
+  }
+
+  const bytes = new Uint8Array(rawData.length)
+
+  for (let index = 0; index < rawData.length; index += 1) {
+    bytes[index] = rawData.charCodeAt(index)
+  }
+
+  return bytes.buffer.slice(0)
 }
 
 export function usePushNotifications() {
   const runtimeConfig = useRuntimeConfig()
-  const publicKey = computed(() => runtimeConfig.public.vapidPublicKey?.trim() || '')
+  const publicKey = computed(() => normalizeVapidPublicKey(runtimeConfig.public.vapidPublicKey || ''))
   const ready = ref(false)
   const isSubscribed = ref(false)
   const permission = ref<NotificationPermission>('default')
@@ -36,7 +65,7 @@ export function usePushNotifications() {
         notification: false,
         serviceWorker: false,
         pushManager: false,
-        publicKey: !!publicKey.value
+        publicKey: isValidVapidPublicKey(publicKey.value)
       }
     }
 
@@ -45,7 +74,7 @@ export function usePushNotifications() {
       notification: 'Notification' in window,
       serviceWorker: 'serviceWorker' in navigator,
       pushManager: 'PushManager' in window,
-      publicKey: !!publicKey.value
+      publicKey: isValidVapidPublicKey(publicKey.value)
     }
   })
 
@@ -200,10 +229,21 @@ export function usePushNotifications() {
       }
 
       serviceWorkerReady.value = true
+      let applicationServerKey: ArrayBuffer
+
+      try {
+        applicationServerKey = urlBase64ToArrayBuffer(publicKey.value)
+      } catch {
+        return {
+          ok: false,
+          reason: 'config'
+        }
+      }
+
       const currentSubscription = await registration.pushManager.getSubscription()
       const activeSubscription = currentSubscription ?? await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey.value)
+        applicationServerKey
       })
 
       await $fetch('/api/push/subscribe', {

@@ -13,6 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Checkout
@@ -44,6 +45,9 @@ jobs:
       - name: Build
         env:
           NITRO_PRESET: node-server
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY || vars.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY || vars.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || vars.VAPID_SUBJECT }}
         run: pnpm run build
 
       - name: Prepare release bundle

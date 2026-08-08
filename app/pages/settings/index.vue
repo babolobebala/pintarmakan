@@ -55,6 +55,10 @@ const { data: currentUser } = await useCurrentUser()
 
       <USeparator />
 
+      <PushNotificationsCard />
+
+      <USeparator />
+
       <p class="text-muted">
         Replace this overview with your real profile, workspace, or organization settings once the business modules are ready.
       </p>

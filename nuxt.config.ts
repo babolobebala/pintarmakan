@@ -20,6 +20,14 @@ export default defineNuxtConfig({
     storageKey: 'smartfood-color-mode'
   },
 
+  runtimeConfig: {
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
+    vapidSubject: process.env.VAPID_SUBJECT || '',
+    public: {
+      vapidPublicKey: process.env.VAPID_PUBLIC_KEY || ''
+    }
+  },
+
   routeRules: {
     '/api/**': {
       cors: true
@@ -38,6 +46,9 @@ export default defineNuxtConfig({
   },
 
   pwa: {
+    strategies: 'injectManifest',
+    srcDir: 'service-worker',
+    filename: 'sw.ts',
     registerType: 'autoUpdate',
     registerWebManifestInRouteRules: true,
     includeAssets: ['favicon.ico'],
@@ -85,10 +96,8 @@ export default defineNuxtConfig({
         }
       ]
     },
-    workbox: {
-      navigateFallback: undefined,
-      globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
-      navigateFallbackDenylist: [/^\/api\//]
+    injectManifest: {
+      globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}']
     },
     client: {
       installPrompt: true

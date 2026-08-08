@@ -1,16 +1,16 @@
 # Graph Report - pintarmakan  (2026-08-08)
 
 ## Corpus Check
-- 74 files · ~41,686 words
+- 83 files · ~37,264 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 548 nodes · 598 edges · 67 communities (51 shown, 16 thin omitted)
+- 590 nodes · 638 edges · 76 communities (55 shown, 21 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b99a3568`
+- Built from commit: `fede38b0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -72,6 +72,14 @@
 - graphify reference: transcribe video and audio
 - AGENTS.md
 - extraction-spec.md
+- devDependencies
+- push.ts
+- PushNotificationsCard.vue
+- usePushNotifications.ts
+- sw.ts
+- Web Push
+- subscribe.post.ts
+- subscribe.delete.ts
 
 ## God Nodes (most connected - your core abstractions)
 1. `Project Overview` - 16 edges
@@ -100,11 +108,11 @@
 ## Import Cycles
 - None detected.
 
-## Communities (67 total, 16 thin omitted)
+## Communities (76 total, 21 thin omitted)
 
 ### Community 0 - "dependencies"
-Cohesion: 0.05
-Nodes (43): better-auth, @better-auth/prisma-adapter, date-fns, @iconify-json/lucide, @iconify-json/simple-icons, @internationalized/date, mariadb, nuxt (+35 more)
+Cohesion: 0.04
+Nodes (45): better-auth, @better-auth/prisma-adapter, date-fns, @iconify-json/lucide, @iconify-json/simple-icons, @internationalized/date, mariadb, nuxt (+37 more)
 
 ### Community 1 - "demo-chart.vue"
 Cohesion: 0.05
@@ -127,8 +135,8 @@ Cohesion: 0.11
 Nodes (17): activeDistricts, averageProductivity, commodityData, CommodityDefinition, CommodityKey, commodityOptions, coverageLabel, districtOptions (+9 more)
 
 ### Community 6 - "scripts"
-Cohesion: 0.06
-Nodes (35): eslint, @nuxt/eslint, devDependencies, eslint, @nuxt/eslint, prisma, tsx, @types/node (+27 more)
+Cohesion: 0.11
+Nodes (18): name, packageManager, private, scripts, build, db:deploy, db:generate, db:migrate (+10 more)
 
 ### Community 7 - "pages/index.vue"
 Cohesion: 0.13
@@ -246,24 +254,44 @@ Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify refer
 Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
+### Community 67 - "devDependencies"
+Cohesion: 0.09
+Nodes (23): eslint, @nuxt/eslint, devDependencies, eslint, @nuxt/eslint, prisma, tsx, @types/node (+15 more)
+
+### Community 68 - "push.ts"
+Cohesion: 0.39
+Nodes (8): ensurePushConfig(), getConfiguredBaseUrl(), getPublicVapidKey(), getStatusCode(), normalizeInternalUrl(), normalizePayload(), PushNotificationPayload, sendPushToUser()
+
+### Community 69 - "PushNotificationsCard.vue"
+Cohesion: 0.25
+Nodes (4): {
+  busy,
+  isSupported,
+  permission,
+  isSubscribed,
+  subscribe,
+  unsubscribe,
+  refreshSubscriptionState
+}, loadingTest, state, toast
+
 ## Knowledge Gaps
-- **336 isolated node(s):** `colorMode`, `color`, `colorMode`, `appConfig`, `router` (+331 more)
+- **350 isolated node(s):** `colorMode`, `color`, `colorMode`, `appConfig`, `router` (+345 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `dependencies` to `scripts`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
 - **Why does `@prisma/client` connect `dependencies` to `seed.ts`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `main()` connect `seed.ts` to `dependencies`?**
   _High betweenness centrality (0.024) - this node is a cross-community bridge._
+- **Why does `main()` connect `seed.ts` to `dependencies`?**
+  _High betweenness centrality (0.023) - this node is a cross-community bridge._
 - **What connects `colorMode`, `color`, `colorMode` to the rest of the system?**
-  _336 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _350 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `dependencies` be split into smaller, more focused modules?**
-  _Cohesion score 0.046511627906976744 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
 - **Should `demo-chart.vue` be split into smaller, more focused modules?**
   _Cohesion score 0.05263157894736842 - nodes in this community are weakly interconnected._
 - **Should `seed.ts` be split into smaller, more focused modules?**

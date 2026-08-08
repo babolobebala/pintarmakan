@@ -22,6 +22,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   auditLogs     AuditLog[] @relation("ActorAuditLogs")
+  pushSubscriptions PushSubscription[]
 
   @@map("user")
 }
@@ -88,4 +89,20 @@ model AuditLog {
   @@index([actorId])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+model PushSubscription {
+  id             String    @id @default(cuid()) @db.VarChar(191)
+  userId         String    @db.VarChar(191)
+  endpoint       String    @unique @db.VarChar(512)
+  p256dh         String    @db.VarChar(191)
+  auth           String    @db.VarChar(191)
+  expirationTime DateTime?
+  userAgent      String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

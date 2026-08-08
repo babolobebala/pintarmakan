@@ -25,9 +25,9 @@
     "semantic_hash": "842f82a79765c4ddfb2aac6eaa7372c1"
   },
   "app/components/UserMenu.vue": {
-    "mtime": 1785999998.574122,
-    "ast_hash": "f353ab678a2b83f36a2ba43f9aa21f12",
-    "semantic_hash": "f353ab678a2b83f36a2ba43f9aa21f12"
+    "mtime": 1786178935.599783,
+    "ast_hash": "738ffb37c9ae6488d819796cae8b5da2",
+    "semantic_hash": ""
   },
   "app/components/charts/AreaChart.vue": {
     "mtime": 1785873980.6344886,
@@ -472,6 +472,11 @@
   "public/icons/logo_nontransparent.png": {
     "mtime": 1786176793.1152024,
     "ast_hash": "058bebcf15268f9f49ad3998ae4bf092",
+    "semantic_hash": ""
+  },
+  "app/pages/preferences.vue": {
+    "mtime": 1786178933.8600917,
+    "ast_hash": "dd56224912fca35c2f3f6cdf74b207b4",
     "semantic_hash": ""
   }
 }

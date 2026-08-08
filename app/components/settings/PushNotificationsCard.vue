@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const toast = useToast()
-const loadingTest = ref(false)
 
 const {
   busy,
@@ -15,33 +14,75 @@ const {
 const state = computed(() => {
   if (!isSupported.value) {
     return {
-      title: 'Push notifications unavailable',
-      description: 'This browser or environment does not support Web Push for this application.',
-      color: 'neutral' as const
+      badge: 'Unsupported',
+      color: 'neutral' as const,
+      description: 'Web Push is not available in this browser or environment.',
+      helper: 'Notifications require browser support for service workers and push messaging.',
+      helperIcon: 'i-lucide-info',
+      helperTitle: 'Push notifications unavailable'
     }
   }
 
   if (permission.value === 'denied') {
     return {
-      title: 'Notifications blocked by browser',
-      description: 'Enable notifications for this site in your browser settings to subscribe again.',
-      color: 'warning' as const
+      badge: 'Blocked',
+      color: 'warning' as const,
+      description: 'Notifications are blocked in your browser settings for this site.',
+      helper: 'Allow notifications in the browser, then reload this page to subscribe again.',
+      helperIcon: 'i-lucide-shield-alert',
+      helperTitle: 'Notifications blocked by browser'
     }
   }
 
   if (isSubscribed.value) {
     return {
-      title: 'Notifications enabled',
-      description: 'This browser will receive signed-in Web Push notifications for your account.',
-      color: 'success' as const
+      badge: 'Enabled',
+      color: 'success' as const,
+      description: 'This browser is subscribed to receive account-specific push notifications.'
+    }
+  }
+
+  if (permission.value === 'granted') {
+    return {
+      badge: 'Permission granted',
+      color: 'info' as const,
+      description: 'Notification permission is granted, but this browser is not currently subscribed.'
     }
   }
 
   return {
-    title: 'Notifications disabled',
-    description: 'Enable notifications on this browser to receive account-specific alerts.',
-    color: 'neutral' as const
+    badge: 'Not enabled',
+    color: 'neutral' as const,
+    description: 'Turn this on to request browser permission and subscribe this device.'
   }
+})
+
+const canToggle = computed(() => {
+  return isSupported.value && permission.value !== 'denied'
+})
+
+const helperState = computed(() => {
+  return 'helper' in state.value ? state.value : null
+})
+
+const switchDescription = computed(() => {
+  if (isSubscribed.value) {
+    return 'Receive important updates from this application on this device.'
+  }
+
+  if (!isSupported.value) {
+    return 'This browser cannot create a Web Push subscription.'
+  }
+
+  if (permission.value === 'denied') {
+    return 'Notification permission is blocked in browser settings.'
+  }
+
+  if (permission.value === 'granted') {
+    return 'Permission is already granted. Turn this on to subscribe this browser.'
+  }
+
+  return 'Receive important updates from this application.'
 })
 
 async function enableNotifications() {
@@ -115,84 +156,55 @@ async function disableNotifications() {
   }
 }
 
-async function sendTestNotification() {
-  loadingTest.value = true
-
-  try {
-    await $fetch('/api/push/test', {
-      method: 'POST'
-    })
-
-    toast.add({
-      title: 'Test sent',
-      description: 'If this browser is subscribed, a notification should appear shortly.',
-      color: 'success'
-    })
-  } catch (error) {
-    const description = error instanceof Error ? error.message : 'Unable to send a test notification.'
-
-    toast.add({
-      title: 'Test failed',
-      description,
-      color: 'error'
-    })
-  } finally {
-    loadingTest.value = false
+async function toggleNotifications(nextValue: boolean | string) {
+  if (busy.value || typeof nextValue !== 'boolean' || nextValue === isSubscribed.value) {
+    return
   }
+
+  if (nextValue) {
+    await enableNotifications()
+    return
+  }
+
+  await disableNotifications()
 }
 </script>
 
 <template>
-  <UPageCard
-    title="Push Notifications"
-    description="Manage Web Push for this browser and send a signed-in test notification."
-    variant="subtle"
-  >
-    <div class="space-y-5 text-sm">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div class="space-y-1">
-          <p class="font-medium text-highlighted">
-            {{ state.title }}
-          </p>
-          <p class="text-muted">
-            {{ state.description }}
-          </p>
-        </div>
-
-        <UBadge :color="state.color" variant="soft">
-          {{ permission }}
-        </UBadge>
+  <div class="space-y-4 text-sm">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="space-y-1">
+        <p class="font-medium text-highlighted">
+          Notifications
+        </p>
+        <p class="text-muted">
+          {{ state.description }}
+        </p>
       </div>
 
-      <div class="flex flex-wrap gap-3">
-        <UButton
-          v-if="isSupported && !isSubscribed && permission !== 'denied'"
-          :loading="busy"
-          label="Enable notifications"
-          icon="i-lucide-bell"
-          @click="enableNotifications"
-        />
-
-        <UButton
-          v-else-if="isSupported && isSubscribed"
-          :loading="busy"
-          color="neutral"
-          variant="soft"
-          label="Disable notifications"
-          icon="i-lucide-bell-off"
-          @click="disableNotifications"
-        />
-
-        <UButton
-          v-if="isSupported"
-          :loading="loadingTest"
-          color="neutral"
-          variant="outline"
-          label="Send test notification"
-          icon="i-lucide-send"
-          @click="sendTestNotification"
-        />
-      </div>
+      <UBadge :color="state.color" variant="soft">
+        {{ state.badge }}
+      </UBadge>
     </div>
-  </UPageCard>
+
+    <USwitch
+      :model-value="isSubscribed"
+      :loading="busy"
+      :disabled="!canToggle"
+      unchecked-icon="i-lucide-bell-off"
+      checked-icon="i-lucide-bell"
+      label="Enable notifications"
+      :description="switchDescription"
+      @update:model-value="toggleNotifications"
+    />
+
+    <UAlert
+      v-if="helperState"
+      :icon="helperState.helperIcon"
+      :title="helperState.helperTitle"
+      :description="helperState.helper"
+      :color="helperState.color"
+      variant="subtle"
+    />
+  </div>
 </template>

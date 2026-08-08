@@ -2391,6 +2391,17 @@
       "norm_label": "onsubmit()"
     },
     {
+      "label": "preferences.vue",
+      "file_type": "code",
+      "source_file": "app/pages/preferences.vue",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "app_pages_preferences",
+      "community": 76,
+      "community_name": "preferences.vue",
+      "norm_label": "preferences.vue"
+    },
+    {
       "label": "produksi-pangan.vue",
       "file_type": "code",
       "source_file": "app/pages/produksi-pangan.vue",
@@ -13689,5 +13700,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "fede38b0141300d09f69fb875688f3e07d39c008"
+  "built_at_commit": "42a980c26a16efcf8d4eb4b8d9e98caca4a320a7"
 }

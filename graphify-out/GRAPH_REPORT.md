@@ -1,16 +1,16 @@
 # Graph Report - pintarmakan  (2026-08-08)
 
 ## Corpus Check
-- 84 files · ~37,408 words
+- 84 files · ~37,908 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 591 nodes · 638 edges · 77 communities (56 shown, 21 thin omitted)
+- 602 nodes · 653 edges · 76 communities (55 shown, 21 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `42a980c2`
+- Built from commit: `a5b41876`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -21,7 +21,7 @@
 - include
 - AdministrativeBoundaryMap.client.vue
 - produksi-pangan.vue
-- scripts
+- usePwaInstall.ts
 - pages/index.vue
 - What You Must Do When Invoked
 - login.vue
@@ -54,6 +54,7 @@
 - password.post.ts
 - status.post.ts
 - members.post.ts
+- settings/index.vue
 - {
   signIn,
   signOut,
@@ -72,7 +73,7 @@
 - graphify reference: transcribe video and audio
 - AGENTS.md
 - extraction-spec.md
-- devDependencies
+- scripts
 - push.ts
 - PushNotificationsCard.vue
 - usePushNotifications.ts
@@ -108,7 +109,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (77 total, 21 thin omitted)
+## Communities (76 total, 21 thin omitted)
 
 ### Community 0 - "dependencies"
 Cohesion: 0.04
@@ -134,9 +135,9 @@ Nodes (17): ensureLeaflet(), filterGeoJsonByKecamatan(), getLeaflet(), LeafletBo
 Cohesion: 0.11
 Nodes (17): activeDistricts, averageProductivity, commodityData, CommodityDefinition, CommodityKey, commodityOptions, coverageLabel, districtOptions (+9 more)
 
-### Community 6 - "scripts"
-Cohesion: 0.11
-Nodes (18): name, packageManager, private, scripts, build, db:deploy, db:generate, db:migrate (+10 more)
+### Community 6 - "usePwaInstall.ts"
+Cohesion: 0.60
+Nodes (4): isIosDevice(), isStandaloneDisplayMode(), PwaInstallState, usePwaInstall()
 
 ### Community 7 - "pages/index.vue"
 Cohesion: 0.13
@@ -222,6 +223,16 @@ Nodes (4): createPrismaClient(), db, getMariaDbConfig(), globalForPrisma
 Cohesion: 0.50
 Nodes (3): Datum, props, TickFormatter
 
+### Community 48 - "settings/index.vue"
+Cohesion: 0.33
+Nodes (4): installing, installStatus, {
+  state: pwaInstallState,
+  isInstallable,
+  isInstalled,
+  showIosHint,
+  install
+}, toast
+
 ### Community 55 - "Project Overview"
 Cohesion: 0.09
 Nodes (21): App shell, Architecture, Authentication, Authorization and RBAC, Backend API Surface, Current Limitations, Current pages, Current Status (+13 more)
@@ -254,17 +265,17 @@ Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify refer
 Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
-### Community 67 - "devDependencies"
-Cohesion: 0.09
-Nodes (23): eslint, @nuxt/eslint, devDependencies, eslint, @nuxt/eslint, prisma, tsx, @types/node (+15 more)
+### Community 67 - "scripts"
+Cohesion: 0.05
+Nodes (41): eslint, @nuxt/eslint, devDependencies, eslint, @nuxt/eslint, prisma, tsx, @types/node (+33 more)
 
 ### Community 68 - "push.ts"
 Cohesion: 0.39
 Nodes (8): ensurePushConfig(), getConfiguredBaseUrl(), getPublicVapidKey(), getStatusCode(), normalizeInternalUrl(), normalizePayload(), PushNotificationPayload, sendPushToUser()
 
 ### Community 69 - "PushNotificationsCard.vue"
-Cohesion: 0.25
-Nodes (4): {
+Cohesion: 0.24
+Nodes (9): {
   busy,
   isSupported,
   permission,
@@ -272,10 +283,10 @@ Nodes (4): {
   subscribe,
   unsubscribe,
   refreshSubscriptionState
-}, loadingTest, state, toast
+}, canToggle, disableNotifications(), enableNotifications(), helperState, state, switchDescription, toast (+1 more)
 
 ## Knowledge Gaps
-- **350 isolated node(s):** `colorMode`, `color`, `colorMode`, `appConfig`, `router` (+345 more)
+- **357 isolated node(s):** `colorMode`, `color`, `colorMode`, `appConfig`, `router` (+352 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -283,13 +294,13 @@ Nodes (4): {
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `dependencies` to `scripts`?**
-  _High betweenness centrality (0.039) - this node is a cross-community bridge._
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
 - **Why does `@prisma/client` connect `dependencies` to `seed.ts`?**
-  _High betweenness centrality (0.024) - this node is a cross-community bridge._
-- **Why does `main()` connect `seed.ts` to `dependencies`?**
   _High betweenness centrality (0.023) - this node is a cross-community bridge._
+- **Why does `main()` connect `seed.ts` to `dependencies`?**
+  _High betweenness centrality (0.022) - this node is a cross-community bridge._
 - **What connects `colorMode`, `color`, `colorMode` to the rest of the system?**
-  _350 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _357 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `dependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
 - **Should `demo-chart.vue` be split into smaller, more focused modules?**

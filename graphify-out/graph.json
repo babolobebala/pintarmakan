@@ -1467,21 +1467,10 @@
       "norm_label": "toast"
     },
     {
-      "label": "loadingTest",
-      "file_type": "code",
-      "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "app_components_settings_pushnotificationscard_loadingtest",
-      "community": 69,
-      "community_name": "PushNotificationsCard.vue",
-      "norm_label": "loadingtest"
-    },
-    {
       "label": "{\n  busy,\n  isSupported,\n  permission,\n  isSubscribed,\n  subscribe,\n  unsubscribe,\n  refreshSubscriptionState\n}",
       "file_type": "code",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L5",
+      "source_location": "L4",
       "_origin": "ast",
       "id": "app_components_settings_pushnotificationscard_busy_issupported_permission_issubscribed_subscribe_unsubscribe_refreshsubscriptionstate",
       "community": 69,
@@ -1492,7 +1481,7 @@
       "label": "state",
       "file_type": "code",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L15",
+      "source_location": "L14",
       "_origin": "ast",
       "id": "app_components_settings_pushnotificationscard_state",
       "community": 69,
@@ -1500,10 +1489,43 @@
       "norm_label": "state"
     },
     {
+      "label": "canToggle",
+      "file_type": "code",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L60",
+      "_origin": "ast",
+      "id": "app_components_settings_pushnotificationscard_cantoggle",
+      "community": 69,
+      "community_name": "PushNotificationsCard.vue",
+      "norm_label": "cantoggle"
+    },
+    {
+      "label": "helperState",
+      "file_type": "code",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "app_components_settings_pushnotificationscard_helperstate",
+      "community": 69,
+      "community_name": "PushNotificationsCard.vue",
+      "norm_label": "helperstate"
+    },
+    {
+      "label": "switchDescription",
+      "file_type": "code",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L68",
+      "_origin": "ast",
+      "id": "app_components_settings_pushnotificationscard_switchdescription",
+      "community": 69,
+      "community_name": "PushNotificationsCard.vue",
+      "norm_label": "switchdescription"
+    },
+    {
       "label": "enableNotifications()",
       "file_type": "code",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L47",
+      "source_location": "L88",
       "_origin": "ast",
       "id": "app_components_settings_pushnotificationscard_enablenotifications",
       "community": 69,
@@ -1514,7 +1536,7 @@
       "label": "disableNotifications()",
       "file_type": "code",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L96",
+      "source_location": "L137",
       "_origin": "ast",
       "id": "app_components_settings_pushnotificationscard_disablenotifications",
       "community": 69,
@@ -1522,15 +1544,15 @@
       "norm_label": "disablenotifications()"
     },
     {
-      "label": "sendTestNotification()",
+      "label": "toggleNotifications()",
       "file_type": "code",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L118",
+      "source_location": "L159",
       "_origin": "ast",
-      "id": "app_components_settings_pushnotificationscard_sendtestnotification",
+      "id": "app_components_settings_pushnotificationscard_togglenotifications",
       "community": 69,
       "community_name": "PushNotificationsCard.vue",
-      "norm_label": "sendtestnotification()"
+      "norm_label": "togglenotifications()"
     },
     {
       "label": "useCurrentUser.ts",
@@ -1597,6 +1619,61 @@
       "community": 70,
       "community_name": "usePushNotifications.ts",
       "norm_label": "usepushnotifications()"
+    },
+    {
+      "label": "usePwaInstall.ts",
+      "file_type": "code",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "app_composables_usepwainstall",
+      "community": 6,
+      "community_name": "usePwaInstall.ts",
+      "norm_label": "usepwainstall.ts"
+    },
+    {
+      "label": "PwaInstallState",
+      "file_type": "code",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "app_composables_usepwainstall_pwainstallstate",
+      "community": 6,
+      "community_name": "usePwaInstall.ts",
+      "norm_label": "pwainstallstate"
+    },
+    {
+      "label": "isIosDevice()",
+      "file_type": "code",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L3",
+      "_origin": "ast",
+      "id": "app_composables_usepwainstall_isiosdevice",
+      "community": 6,
+      "community_name": "usePwaInstall.ts",
+      "norm_label": "isiosdevice()"
+    },
+    {
+      "label": "isStandaloneDisplayMode()",
+      "file_type": "code",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "app_composables_usepwainstall_isstandalonedisplaymode",
+      "community": 6,
+      "community_name": "usePwaInstall.ts",
+      "norm_label": "isstandalonedisplaymode()"
+    },
+    {
+      "label": "usePwaInstall()",
+      "file_type": "code",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "app_composables_usepwainstall_usepwainstall",
+      "community": 6,
+      "community_name": "usePwaInstall.ts",
+      "norm_label": "usepwainstall()"
     },
     {
       "label": "error.vue",
@@ -2391,17 +2468,6 @@
       "norm_label": "onsubmit()"
     },
     {
-      "label": "preferences.vue",
-      "file_type": "code",
-      "source_file": "app/pages/preferences.vue",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "app_pages_preferences",
-      "community": 76,
-      "community_name": "preferences.vue",
-      "norm_label": "preferences.vue"
-    },
-    {
       "label": "produksi-pangan.vue",
       "file_type": "code",
       "source_file": "app/pages/produksi-pangan.vue",
@@ -2631,6 +2697,61 @@
       "community": 48,
       "community_name": "settings/index.vue",
       "norm_label": "settings/index.vue"
+    },
+    {
+      "label": "toast",
+      "file_type": "code",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "app_pages_settings_index_toast",
+      "community": 48,
+      "community_name": "settings/index.vue",
+      "norm_label": "toast"
+    },
+    {
+      "label": "installing",
+      "file_type": "code",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L10",
+      "_origin": "ast",
+      "id": "app_pages_settings_index_installing",
+      "community": 48,
+      "community_name": "settings/index.vue",
+      "norm_label": "installing"
+    },
+    {
+      "label": "{\n  state: pwaInstallState,\n  isInstallable,\n  isInstalled,\n  showIosHint,\n  install\n}",
+      "file_type": "code",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "app_pages_settings_index_state_pwainstallstate_isinstallable_isinstalled_showioshint_install",
+      "community": 48,
+      "community_name": "settings/index.vue",
+      "norm_label": "{\n  state: pwainstallstate,\n  isinstallable,\n  isinstalled,\n  showioshint,\n  install\n}"
+    },
+    {
+      "label": "installStatus",
+      "file_type": "code",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "app_pages_settings_index_installstatus",
+      "community": 48,
+      "community_name": "settings/index.vue",
+      "norm_label": "installstatus"
+    },
+    {
+      "label": "installApplication()",
+      "file_type": "code",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L52",
+      "_origin": "ast",
+      "id": "app_pages_settings_index_installapplication",
+      "community": 48,
+      "community_name": "settings/index.vue",
+      "norm_label": "installapplication()"
     },
     {
       "label": "members.vue",
@@ -3178,7 +3299,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "package",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "package.json"
     },
@@ -3189,7 +3310,7 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "package_name",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "name"
     },
@@ -3200,7 +3321,7 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "package_private",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "private"
     },
@@ -3211,7 +3332,7 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "package_type",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "type"
     },
@@ -3222,7 +3343,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "package_scripts",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "scripts"
     },
@@ -3233,7 +3354,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "package_scripts_build",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "build"
     },
@@ -3244,7 +3365,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "package_scripts_db_deploy",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "db:deploy"
     },
@@ -3255,7 +3376,7 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "package_scripts_db_generate",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "db:generate"
     },
@@ -3266,7 +3387,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "package_scripts_db_migrate",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "db:migrate"
     },
@@ -3277,7 +3398,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "package_scripts_db_seed",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "db:seed"
     },
@@ -3288,7 +3409,7 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "package_scripts_db_studio",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "db:studio"
     },
@@ -3299,7 +3420,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "package_scripts_db_validate",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "db:validate"
     },
@@ -3310,7 +3431,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_scripts_dev",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "dev"
     },
@@ -3321,7 +3442,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_scripts_lint",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "lint"
     },
@@ -3332,7 +3453,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "package_scripts_postinstall",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "postinstall"
     },
@@ -3343,7 +3464,7 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "package_scripts_preview",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "preview"
     },
@@ -3354,7 +3475,7 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "package_scripts_start",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "start"
     },
@@ -3365,7 +3486,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "package_scripts_typecheck",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "typecheck"
     },
@@ -3872,7 +3993,7 @@
       "_origin": "ast",
       "id": "package_devdependencies",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "devdependencies"
     },
     {
@@ -3883,7 +4004,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_nuxt_eslint",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@nuxt/eslint"
     },
     {
@@ -3894,7 +4015,7 @@
       "_origin": "ast",
       "id": "nuxt_eslint",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@nuxt/eslint"
     },
     {
@@ -3905,7 +4026,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_types_node",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@types/node"
     },
     {
@@ -3916,7 +4037,7 @@
       "_origin": "ast",
       "id": "types_node",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@types/node"
     },
     {
@@ -3927,7 +4048,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_types_web_push",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@types/web-push"
     },
     {
@@ -3938,7 +4059,7 @@
       "_origin": "ast",
       "id": "types_web_push",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@types/web-push"
     },
     {
@@ -3949,7 +4070,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_vite_pwa_nuxt",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@vite-pwa/nuxt"
     },
     {
@@ -3960,7 +4081,7 @@
       "_origin": "ast",
       "id": "vite_pwa_nuxt",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "@vite-pwa/nuxt"
     },
     {
@@ -3971,7 +4092,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_eslint",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "eslint"
     },
     {
@@ -3982,7 +4103,7 @@
       "_origin": "ast",
       "id": "eslint",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "eslint"
     },
     {
@@ -3993,7 +4114,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_prisma",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "prisma"
     },
     {
@@ -4004,7 +4125,7 @@
       "_origin": "ast",
       "id": "prisma",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "prisma"
     },
     {
@@ -4015,7 +4136,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_tsx",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "tsx"
     },
     {
@@ -4026,7 +4147,7 @@
       "_origin": "ast",
       "id": "tsx",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "tsx"
     },
     {
@@ -4037,7 +4158,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_typescript",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "typescript"
     },
     {
@@ -4048,7 +4169,7 @@
       "_origin": "ast",
       "id": "typescript",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "typescript"
     },
     {
@@ -4059,7 +4180,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_workbox_core",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "workbox-core"
     },
     {
@@ -4070,7 +4191,7 @@
       "_origin": "ast",
       "id": "workbox_core",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "workbox-core"
     },
     {
@@ -4081,7 +4202,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_workbox_precaching",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "workbox-precaching"
     },
     {
@@ -4092,7 +4213,7 @@
       "_origin": "ast",
       "id": "workbox_precaching",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "workbox-precaching"
     },
     {
@@ -4103,7 +4224,7 @@
       "_origin": "ast",
       "id": "package_devdependencies_vue_tsc",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "vue-tsc"
     },
     {
@@ -4114,7 +4235,7 @@
       "_origin": "ast",
       "id": "vue_tsc",
       "community": 67,
-      "community_name": "devDependencies",
+      "community_name": "scripts",
       "norm_label": "vue-tsc"
     },
     {
@@ -4124,7 +4245,7 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "package_packagemanager",
-      "community": 6,
+      "community": 67,
       "community_name": "scripts",
       "norm_label": "packagemanager"
     },
@@ -8551,7 +8672,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L5",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_components_settings_pushnotificationscard",
@@ -8562,7 +8683,18 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L96",
+      "source_location": "L60",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_components_settings_pushnotificationscard",
+      "target": "app_components_settings_pushnotificationscard_cantoggle",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L137",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_components_settings_pushnotificationscard",
@@ -8573,7 +8705,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L47",
+      "source_location": "L88",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_components_settings_pushnotificationscard",
@@ -8584,33 +8716,33 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L3",
+      "source_location": "L64",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_components_settings_pushnotificationscard",
-      "target": "app_components_settings_pushnotificationscard_loadingtest",
+      "target": "app_components_settings_pushnotificationscard_helperstate",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L118",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "app_components_settings_pushnotificationscard",
-      "target": "app_components_settings_pushnotificationscard_sendtestnotification",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "app/components/settings/PushNotificationsCard.vue",
-      "source_location": "L15",
+      "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_components_settings_pushnotificationscard",
       "target": "app_components_settings_pushnotificationscard_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L68",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_components_settings_pushnotificationscard",
+      "target": "app_components_settings_pushnotificationscard_switchdescription",
       "confidence_score": 1.0
     },
     {
@@ -8622,6 +8754,41 @@
       "_origin": "ast",
       "source": "app_components_settings_pushnotificationscard",
       "target": "app_components_settings_pushnotificationscard_toast",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L159",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_components_settings_pushnotificationscard",
+      "target": "app_components_settings_pushnotificationscard_togglenotifications",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L165",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_components_settings_pushnotificationscard_togglenotifications",
+      "target": "app_components_settings_pushnotificationscard_enablenotifications",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/components/settings/PushNotificationsCard.vue",
+      "source_location": "L169",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_components_settings_pushnotificationscard_togglenotifications",
+      "target": "app_components_settings_pushnotificationscard_disablenotifications",
       "confidence_score": 1.0
     },
     {
@@ -8666,6 +8833,74 @@
       "_origin": "ast",
       "source": "app_composables_usepushnotifications",
       "target": "app_composables_usepushnotifications_usepushnotifications",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_composables_usepwainstall",
+      "target": "app_composables_usepwainstall_isiosdevice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_composables_usepwainstall",
+      "target": "app_composables_usepwainstall_isstandalonedisplaymode",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_composables_usepwainstall",
+      "target": "app_composables_usepwainstall_pwainstallstate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_composables_usepwainstall",
+      "target": "app_composables_usepwainstall_usepwainstall",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L36",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_composables_usepwainstall_usepwainstall",
+      "target": "app_composables_usepwainstall_isiosdevice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/composables/usePwaInstall.ts",
+      "source_location": "L35",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_composables_usepwainstall_usepwainstall",
+      "target": "app_composables_usepwainstall_isstandalonedisplaymode",
       "confidence_score": 1.0
     },
     {
@@ -9590,6 +9825,61 @@
       "_origin": "ast",
       "source": "app_pages_settings",
       "target": "app_pages_settings_links",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L52",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_pages_settings_index",
+      "target": "app_pages_settings_index_installapplication",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_pages_settings_index",
+      "target": "app_pages_settings_index_installing",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_pages_settings_index",
+      "target": "app_pages_settings_index_installstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L12",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_pages_settings_index",
+      "target": "app_pages_settings_index_state_pwainstallstate_isinstallable_isinstalled_showioshint_install",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/pages/settings/index.vue",
+      "source_location": "L8",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_pages_settings_index",
+      "target": "app_pages_settings_index_toast",
       "confidence_score": 1.0
     },
     {
@@ -13700,5 +13990,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "42a980c26a16efcf8d4eb4b8d9e98caca4a320a7"
+  "built_at_commit": "a5b418766927e3567295ea54388bf2f41b358669"
 }

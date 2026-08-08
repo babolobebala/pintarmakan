@@ -25,8 +25,8 @@
     "semantic_hash": "842f82a79765c4ddfb2aac6eaa7372c1"
   },
   "app/components/UserMenu.vue": {
-    "mtime": 1786178935.599783,
-    "ast_hash": "738ffb37c9ae6488d819796cae8b5da2",
+    "mtime": 1786181142.7030985,
+    "ast_hash": "07fd0f09072b6db56134e287c75b3ec8",
     "semantic_hash": ""
   },
   "app/components/charts/AreaChart.vue": {
@@ -175,8 +175,8 @@
     "semantic_hash": "d93b99a97ef8770e4d022e7f0c4c25c2"
   },
   "app/pages/settings/index.vue": {
-    "mtime": 1786177265.4915376,
-    "ast_hash": "1cf54d5916cfe7e1d3460fa949fd36b4",
+    "mtime": 1786181136.508764,
+    "ast_hash": "06f49050c01d9596f03da32b0444c579",
     "semantic_hash": ""
   },
   "app/pages/settings/members.vue": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "prisma/seed.ts": {
-    "mtime": 1786176571.3103178,
-    "ast_hash": "8dbf8f5fa822f52257101cf0de123e38",
+    "mtime": 1786179807.9293778,
+    "ast_hash": "89b0129d25d4f1574a5a384dd3231db9",
     "semantic_hash": ""
   },
   ".codex/skills/graphify/SKILL.md": {
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "app/components/settings/PushNotificationsCard.vue": {
-    "mtime": 1786177263.926212,
-    "ast_hash": "72feae3c3dbf04a4d3da4f52eb83209b",
+    "mtime": 1786181179.7514381,
+    "ast_hash": "7dd01a0e41a67b015e91221cb2bc5aa0",
     "semantic_hash": ""
   },
   "app/composables/usePushNotifications.ts": {
@@ -474,9 +474,9 @@
     "ast_hash": "058bebcf15268f9f49ad3998ae4bf092",
     "semantic_hash": ""
   },
-  "app/pages/preferences.vue": {
-    "mtime": 1786178933.8600917,
-    "ast_hash": "dd56224912fca35c2f3f6cdf74b207b4",
+  "app/composables/usePwaInstall.ts": {
+    "mtime": 1786181178.0791535,
+    "ast_hash": "0cda95a12c75f30e211b037de704e0b7",
     "semantic_hash": ""
   }
 }

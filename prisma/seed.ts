@@ -47,25 +47,25 @@ const seedUsers = [
   {
     name: 'User Demo',
     email: 'fatihmahawisesa1@gmail.com',
-    password: '12345',
+    password: '12345567890',
     role: 'user'
   },
   {
     name: 'Admin Demo',
     email: 'fatihmahawisesa2@gmail.com',
-    password: '12345',
+    password: '12345567890',
     role: 'admin'
   },
   {
     name: 'Super Admin',
     email: 'fatihmahawisesa@gmail.com',
-    password: '12345',
+    password: '12345567890',
     role: 'super-admin'
   },
   {
     name: 'Admin User Demo',
     email: 'adminuser@gmail.com',
-    password: '12345',
+    password: '12345567890',
     role: ['user', 'admin']
   }
 ] as const satisfies readonly SeedUser[]

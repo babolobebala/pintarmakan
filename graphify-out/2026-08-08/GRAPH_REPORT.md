@@ -1,16 +1,16 @@
 # Graph Report - pintarmakan  (2026-08-08)
 
 ## Corpus Check
-- 83 files · ~37,264 words
+- 84 files · ~37,408 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 590 nodes · 638 edges · 76 communities (55 shown, 21 thin omitted)
+- 591 nodes · 638 edges · 77 communities (56 shown, 21 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `fede38b0`
+- Built from commit: `42a980c2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -108,7 +108,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (76 total, 21 thin omitted)
+## Communities (77 total, 21 thin omitted)
 
 ### Community 0 - "dependencies"
 Cohesion: 0.04

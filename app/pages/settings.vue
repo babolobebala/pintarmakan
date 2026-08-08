@@ -3,10 +3,6 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 import { appPermissions, hasAccessForRole } from '~~/auth/permissions'
 
-definePageMeta({
-  permission: appPermissions.settingsRead
-})
-
 const { data: currentUser } = await useCurrentUser()
 
 const links = computed(() => [[{
@@ -21,7 +17,6 @@ const links = computed(() => [[{
 }]].map((group) => {
   return group.filter((item) => {
     const permissionByPath = {
-      '/settings': appPermissions.settingsRead,
       '/settings/members': appPermissions.membersRead
     }
 

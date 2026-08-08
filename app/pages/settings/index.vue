@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { appPermissions, formatRoleLabel } from '~~/auth/permissions'
-
-definePageMeta({
-  permission: appPermissions.settingsRead
-})
+import { formatRoleLabel } from '~~/auth/permissions'
 
 const toast = useToast()
 const { data: currentUser } = await useCurrentUser()
 const installing = ref(false)
 
 const {
+  isReady: isPwaStateReady,
   state: pwaInstallState,
   isInstallable,
   isInstalled,
@@ -18,19 +15,27 @@ const {
 } = usePwaInstall()
 
 const installStatus = computed(() => {
+  if (!isPwaStateReady.value) {
+    return {
+      badge: 'Checking',
+      color: 'neutral' as const,
+      description: 'Checking whether this application is installed on this device.'
+    }
+  }
+
   if (pwaInstallState.value === 'installed') {
     return {
       badge: 'Installed',
       color: 'success' as const,
-      description: 'This application is already installed on this device.'
+      description: 'This application is installed on this device.'
     }
   }
 
   if (pwaInstallState.value === 'installable') {
     return {
-      badge: 'Install available',
+      badge: 'Available',
       color: 'primary' as const,
-      description: 'Install this dashboard as an app on this device.'
+      description: 'This application can be installed on this device.'
     }
   }
 
@@ -178,10 +183,10 @@ async function installApplication() {
             <UButton
               v-else-if="isInstalled"
               disabled
-              color="neutral"
+              color="success"
               variant="soft"
               label="Installed"
-              icon="i-lucide-check"
+              icon="i-lucide-badge-check"
             />
           </div>
 
@@ -195,7 +200,7 @@ async function installApplication() {
           />
 
           <UAlert
-            v-else-if="pwaInstallState === 'unavailable'"
+            v-else-if="isPwaStateReady && pwaInstallState === 'unavailable'"
             icon="i-lucide-info"
             title="Install prompt unavailable"
             description="This browser has not exposed an install prompt for this application."

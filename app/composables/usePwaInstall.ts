@@ -1,5 +1,17 @@
 type PwaInstallState = 'installable' | 'installed' | 'ios-manual' | 'unavailable'
 
+const DISPLAY_MODE_QUERIES = [
+  '(display-mode: standalone)',
+  '(display-mode: minimal-ui)',
+  '(display-mode: fullscreen)',
+  '(display-mode: window-controls-overlay)'
+] as const
+
+type LegacyMediaQueryList = MediaQueryList & {
+  addListener?: (callback: (event: MediaQueryListEvent) => void) => void
+  removeListener?: (callback: (event: MediaQueryListEvent) => void) => void
+}
+
 function isIosDevice() {
   if (!import.meta.client) {
     return false
@@ -15,48 +27,95 @@ function isStandaloneDisplayMode() {
     return false
   }
 
-  const standalone = window.matchMedia('(display-mode: standalone)').matches
-  const minimalUi = window.matchMedia('(display-mode: minimal-ui)').matches
   const legacyStandalone = 'standalone' in window.navigator && Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone)
 
-  return standalone || minimalUi || legacyStandalone
+  return DISPLAY_MODE_QUERIES.some(query => window.matchMedia(query).matches) || legacyStandalone
+}
+
+function addMediaQueryListener(mediaQuery: MediaQueryList, callback: (event: MediaQueryListEvent) => void) {
+  if ('addEventListener' in mediaQuery) {
+    mediaQuery.addEventListener('change', callback)
+    return
+  }
+
+  ;(mediaQuery as LegacyMediaQueryList).addListener?.(callback)
+}
+
+function removeMediaQueryListener(mediaQuery: MediaQueryList, callback: (event: MediaQueryListEvent) => void) {
+  if ('removeEventListener' in mediaQuery) {
+    mediaQuery.removeEventListener('change', callback)
+    return
+  }
+
+  ;(mediaQuery as LegacyMediaQueryList).removeListener?.(callback)
 }
 
 export function usePwaInstall() {
   const pwa = import.meta.client ? usePWA() : undefined
+  const ready = ref(false)
   const standalone = ref(false)
   const ios = ref(false)
-  let standaloneMedia: MediaQueryList | undefined
-  let minimalUiMedia: MediaQueryList | undefined
+  const browserReportedInstalled = ref(false)
+  const mediaQueries: MediaQueryList[] = []
 
   const onChange = () => syncClientState()
+  const onAppInstalled = () => {
+    browserReportedInstalled.value = true
+    standalone.value = true
+    ready.value = true
+  }
 
   const syncClientState = () => {
     standalone.value = isStandaloneDisplayMode()
     ios.value = isIosDevice()
+    browserReportedInstalled.value = Boolean(pwa?.isPWAInstalled) || standalone.value
+    ready.value = true
   }
 
   onMounted(() => {
     syncClientState()
 
-    standaloneMedia = window.matchMedia('(display-mode: standalone)')
-    minimalUiMedia = window.matchMedia('(display-mode: minimal-ui)')
+    for (const query of DISPLAY_MODE_QUERIES) {
+      const mediaQuery = window.matchMedia(query)
+      addMediaQueryListener(mediaQuery, onChange)
+      mediaQueries.push(mediaQuery)
+    }
 
-    standaloneMedia.addEventListener('change', onChange)
-    minimalUiMedia.addEventListener('change', onChange)
+    window.addEventListener('appinstalled', onAppInstalled)
   })
 
   onBeforeUnmount(() => {
-    standaloneMedia?.removeEventListener('change', onChange)
-    minimalUiMedia?.removeEventListener('change', onChange)
+    for (const mediaQuery of mediaQueries) {
+      removeMediaQueryListener(mediaQuery, onChange)
+    }
+
+    mediaQueries.length = 0
+    window.removeEventListener('appinstalled', onAppInstalled)
+  })
+
+  watch(() => pwa?.isPWAInstalled, () => {
+    if (!import.meta.client) {
+      return
+    }
+
+    syncClientState()
+  })
+
+  watch(() => pwa?.showInstallPrompt, () => {
+    if (!import.meta.client || !ready.value) {
+      return
+    }
+
+    syncClientState()
   })
 
   const isInstalled = computed(() => {
-    return standalone.value || Boolean(pwa?.isPWAInstalled)
+    return browserReportedInstalled.value || standalone.value
   })
 
   const isInstallable = computed(() => {
     return import.meta.client
+      && ready.value
       && !isInstalled.value
       && Boolean(pwa?.showInstallPrompt)
   })
@@ -93,6 +152,7 @@ export function usePwaInstall() {
   }
 
   return {
+    isReady: computed(() => ready.value),
     state,
     isInstallable,
     isInstalled,

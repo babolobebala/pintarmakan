@@ -3,6 +3,7 @@ const toast = useToast()
 
 const {
   busy,
+  isReady,
   isSupported,
   permission,
   isSubscribed,
@@ -12,11 +13,19 @@ const {
 } = usePushNotifications()
 
 const state = computed(() => {
+  if (!isReady.value) {
+    return {
+      badge: 'Checking',
+      color: 'neutral' as const,
+      detail: 'Checking browser notification support and current subscription state.'
+    }
+  }
+
   if (!isSupported.value) {
     return {
       badge: 'Unsupported',
       color: 'neutral' as const,
-      description: 'Web Push is not available in this browser or environment.',
+      detail: 'Web Push is not available in this browser or environment.',
       helper: 'Notifications require browser support for service workers and push messaging.',
       helperIcon: 'i-lucide-info',
       helperTitle: 'Push notifications unavailable'
@@ -27,8 +36,8 @@ const state = computed(() => {
     return {
       badge: 'Blocked',
       color: 'warning' as const,
-      description: 'Notifications are blocked in your browser settings for this site.',
-      helper: 'Allow notifications in the browser, then reload this page to subscribe again.',
+      detail: 'Notifications are blocked in your browser settings for this site.',
+      helper: 'Allow notifications for this site in browser settings, then reload this page to subscribe again.',
       helperIcon: 'i-lucide-shield-alert',
       helperTitle: 'Notifications blocked by browser'
     }
@@ -38,27 +47,21 @@ const state = computed(() => {
     return {
       badge: 'Enabled',
       color: 'success' as const,
-      description: 'This browser is subscribed to receive account-specific push notifications.'
-    }
-  }
-
-  if (permission.value === 'granted') {
-    return {
-      badge: 'Permission granted',
-      color: 'info' as const,
-      description: 'Notification permission is granted, but this browser is not currently subscribed.'
+      detail: 'This device is subscribed to receive push notifications.'
     }
   }
 
   return {
-    badge: 'Not enabled',
+    badge: 'Disabled',
     color: 'neutral' as const,
-    description: 'Turn this on to request browser permission and subscribe this device.'
+    detail: permission.value === 'granted'
+      ? 'Permission is granted, but this device is not currently subscribed.'
+      : 'Turn this on to request browser permission and subscribe this device.'
   }
 })
 
 const canToggle = computed(() => {
-  return isSupported.value && permission.value !== 'denied'
+  return isReady.value && isSupported.value && permission.value !== 'denied'
 })
 
 const helperState = computed(() => {
@@ -66,8 +69,12 @@ const helperState = computed(() => {
 })
 
 const switchDescription = computed(() => {
+  if (!isReady.value) {
+    return 'Checking notification support and current subscription status.'
+  }
+
   if (isSubscribed.value) {
-    return 'Receive important updates from this application on this device.'
+    return 'Receive important notifications on this device.'
   }
 
   if (!isSupported.value) {
@@ -175,28 +182,32 @@ async function toggleNotifications(nextValue: boolean | string) {
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="space-y-1">
         <p class="font-medium text-highlighted">
-          Notifications
+          Push Notifications
         </p>
         <p class="text-muted">
-          {{ state.description }}
+          Receive important notifications on this device.
+        </p>
+        <p class="text-muted">
+          {{ state.detail }}
         </p>
       </div>
 
-      <UBadge :color="state.color" variant="soft">
-        {{ state.badge }}
-      </UBadge>
-    </div>
+      <div class="flex items-center gap-3">
+        <UBadge :color="state.color" variant="soft">
+          {{ state.badge }}
+        </UBadge>
 
-    <USwitch
-      :model-value="isSubscribed"
-      :loading="busy"
-      :disabled="!canToggle"
-      unchecked-icon="i-lucide-bell-off"
-      checked-icon="i-lucide-bell"
-      label="Enable notifications"
-      :description="switchDescription"
-      @update:model-value="toggleNotifications"
-    />
+        <USwitch
+          :model-value="isSubscribed"
+          :loading="busy"
+          :disabled="!canToggle"
+          unchecked-icon="i-lucide-bell-off"
+          checked-icon="i-lucide-bell"
+          :aria-label="switchDescription"
+          @update:model-value="toggleNotifications"
+        />
+      </div>
+    </div>
 
     <UAlert
       v-if="helperState"

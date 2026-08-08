@@ -13,6 +13,7 @@ function urlBase64ToUint8Array(base64String: string) {
 export function usePushNotifications() {
   const runtimeConfig = useRuntimeConfig()
   const publicKey = runtimeConfig.public.vapidPublicKey?.trim() || ''
+  const ready = ref(false)
   const isSubscribed = ref(false)
   const permission = ref<NotificationPermission>('default')
   const subscription = shallowRef<PushSubscription | null>(null)
@@ -31,21 +32,25 @@ export function usePushNotifications() {
       return false
     }
 
-    permission.value = 'Notification' in window ? Notification.permission : 'default'
+    try {
+      permission.value = 'Notification' in window ? Notification.permission : 'default'
 
-    if (!isSupported.value) {
-      subscription.value = null
-      isSubscribed.value = false
-      return false
+      if (!isSupported.value) {
+        subscription.value = null
+        isSubscribed.value = false
+        return false
+      }
+
+      const registration = await navigator.serviceWorker.ready
+      const currentSubscription = await registration.pushManager.getSubscription()
+
+      subscription.value = currentSubscription
+      isSubscribed.value = !!currentSubscription
+
+      return isSubscribed.value
+    } finally {
+      ready.value = true
     }
-
-    const registration = await navigator.serviceWorker.ready
-    const currentSubscription = await registration.pushManager.getSubscription()
-
-    subscription.value = currentSubscription
-    isSubscribed.value = !!currentSubscription
-
-    return isSubscribed.value
   }
 
   async function subscribe(): Promise<SubscribeResult> {
@@ -59,7 +64,12 @@ export function usePushNotifications() {
     busy.value = true
 
     try {
-      const nextPermission = await Notification.requestPermission()
+      const nextPermission = permission.value === 'denied'
+        ? 'denied'
+        : permission.value === 'granted'
+          ? 'granted'
+          : await Notification.requestPermission()
+
       permission.value = nextPermission
 
       if (nextPermission !== 'granted') {
@@ -142,6 +152,7 @@ export function usePushNotifications() {
 
   return {
     busy: readonly(busy),
+    isReady: readonly(ready),
     isSupported,
     permission: readonly(permission),
     isSubscribed: readonly(isSubscribed),

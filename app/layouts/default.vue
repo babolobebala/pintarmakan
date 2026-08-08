@@ -14,7 +14,6 @@ const links = computed(() => {
   const permissionByPath = {
     '/': appPermissions.dashboardRead,
     '/produksi-pangan': appPermissions.dashboardRead,
-    '/settings': appPermissions.settingsRead,
     '/settings/members': appPermissions.membersRead
   }
 
@@ -56,13 +55,36 @@ const links = computed(() => {
 
   return items
     .map((group) => {
-      return group.filter((item) => {
-        const permission = item.to && typeof item.to === 'string'
-          ? permissionByPath[item.to as keyof typeof permissionByPath]
-          : undefined
+      return group
+        .map((item) => {
+          if (!item.children) {
+            return item
+          }
 
-        return !permission || hasAccessForRole(currentUser.value?.user.role, permission)
-      })
+          const children = item.children.filter((child) => {
+            const permission = child.to && typeof child.to === 'string'
+              ? permissionByPath[child.to as keyof typeof permissionByPath]
+              : undefined
+
+            return !permission || hasAccessForRole(currentUser.value?.user.role, permission)
+          })
+
+          return {
+            ...item,
+            children
+          }
+        })
+        .filter((item) => {
+          if (item.children && item.children.length === 0) {
+            return false
+          }
+
+          const permission = item.to && typeof item.to === 'string'
+            ? permissionByPath[item.to as keyof typeof permissionByPath]
+            : undefined
+
+          return !permission || hasAccessForRole(currentUser.value?.user.role, permission)
+        })
     })
     .filter(group => group.length > 0)
 })

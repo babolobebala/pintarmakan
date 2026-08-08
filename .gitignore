@@ -20,6 +20,9 @@ logs
 .fleet
 .idea
 
+# Generated Graphify knowledge graph
+/graphify-out/
+
 # Local env files
 .env
 .env.*

@@ -1,0 +1,19 @@
+{
+  "prettier.configPath": "prettier.config.mjs",
+  "files.watcherExclude": {
+    "**/.output/**": true,
+    "**/dist/**": true,
+    "**/coverage/**": true,
+    "**/graphify-out/**": true,
+    "**/server/generated/**": true
+  },
+  "search.exclude": {
+    "**/.nuxt/**": true,
+    "**/.output/**": true,
+    "**/dist/**": true,
+    "**/coverage/**": true,
+    "**/graphify-out/**": true,
+    "**/server/generated/**": true
+  },
+  "typescript.disableAutomaticTypeAcquisition": true
+}

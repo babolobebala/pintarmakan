@@ -113,9 +113,16 @@ body {
   color: var(--app-foreground-muted);
   font-family: var(--font-body);
   text-rendering: optimizeLegibility;
+  background-image:
+    radial-gradient(circle at top left, color-mix(in oklch, var(--app-accent) 6%, transparent), transparent 28%),
+    radial-gradient(circle at bottom right, color-mix(in oklch, var(--app-graphite) 4%, transparent), transparent 26%);
   transition:
     background-color var(--dur-medium) var(--ease-out),
     color var(--dur-short) var(--ease-out);
+}
+
+#__nuxt {
+  min-height: 100vh;
 }
 
 ::selection {

@@ -186,7 +186,7 @@ onMounted(() => {
                   class="space-y-5 rounded-[1.5rem] border border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-[color-mix(in_oklch,var(--app-surface)_96%,white)] p-6 shadow-[0_18px_42px_-34px_color-mix(in_oklch,var(--app-accent)_12%,transparent)]"
                   @submit="onSubmit"
                 >
-                  <UFormField name="email" label="Email address" required>
+                  <UFormField name="email" label="Email" required>
                     <UInput
                       v-model="state.email"
                       class="w-full"

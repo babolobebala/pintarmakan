@@ -410,3 +410,11 @@ Prefer reporting:
 Do not produce long file-by-file inventories unless explicitly requested.
 
 Do not claim success for tests that were not actually executed.
+
+---
+
+## Formatting
+
+- Do not run Prettier unless explicitly requested.
+- Do not auto-format edited files.
+- Prefer preserving existing formatting when possible.

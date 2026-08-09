@@ -47,26 +47,26 @@
 
 :root {
   color-scheme: light;
-  --app-background: oklch(96.8% 0.015 92);
-  --app-background-muted: oklch(95.1% 0.014 100);
-  --app-surface: oklch(98.1% 0.01 88);
-  --app-surface-muted: oklch(96.5% 0.012 95);
-  --app-foreground: oklch(28% 0.032 152);
-  --app-foreground-muted: oklch(38% 0.022 148);
-  --app-foreground-soft: oklch(56% 0.016 145);
-  --app-border: oklch(89% 0.018 102);
-  --app-border-strong: oklch(81% 0.022 108);
-  --app-accent: oklch(56% 0.12 145);
-  --app-accent-ink: oklch(98.8% 0.006 92);
-  --app-graphite: oklch(24% 0.022 150);
-  --app-graphite-muted: oklch(29% 0.02 148);
-  --app-graphite-border: oklch(36% 0.024 142);
+  --app-background: oklch(100% 0 0);
+  --app-background-muted: oklch(98.4% 0.002 264);
+  --app-surface: oklch(100% 0 0);
+  --app-surface-muted: oklch(97% 0.003 264);
+  --app-foreground: oklch(23% 0.008 264);
+  --app-foreground-muted: oklch(38% 0.008 264);
+  --app-foreground-soft: oklch(56% 0.007 264);
+  --app-border: oklch(91% 0.004 264);
+  --app-border-strong: oklch(82% 0.006 264);
+  --app-accent: oklch(44% 0.01 264);
+  --app-accent-ink: oklch(100% 0 0);
+  --app-graphite: oklch(18% 0.006 264);
+  --app-graphite-muted: oklch(26% 0.007 264);
+  --app-graphite-border: oklch(34% 0.008 264);
   --app-success: oklch(64% 0.11 152);
   --app-warning: oklch(82% 0.11 104);
   --app-error: oklch(63% 0.21 24);
   --app-focus: color-mix(in oklch, var(--app-accent) 34%, transparent);
-  --app-blend-base: oklch(99.4% 0.004 92);
-  --app-blend-soft: oklch(97.6% 0.008 94);
+  --app-blend-base: oklch(100% 0 0);
+  --app-blend-soft: oklch(98.8% 0.002 264);
   --app-bloom: color-mix(in oklch, var(--app-accent) 16%, var(--app-blend-base));
   --radius-control: 0.375rem;
   --radius-panel: 0.625rem;
@@ -79,26 +79,26 @@
 
 .dark {
   color-scheme: dark;
-  --app-background: oklch(21% 0.018 150);
-  --app-background-muted: oklch(24% 0.018 148);
-  --app-surface: oklch(25.8% 0.017 145);
-  --app-surface-muted: oklch(29.5% 0.018 142);
-  --app-foreground: oklch(95% 0.008 96);
-  --app-foreground-muted: oklch(84% 0.012 102);
-  --app-foreground-soft: oklch(71% 0.014 110);
-  --app-border: oklch(33% 0.02 145);
-  --app-border-strong: oklch(40% 0.024 142);
-  --app-accent: oklch(72% 0.12 145);
-  --app-accent-ink: oklch(23% 0.018 145);
-  --app-graphite: oklch(18.5% 0.016 148);
-  --app-graphite-muted: oklch(22% 0.017 145);
-  --app-graphite-border: oklch(31% 0.02 142);
+  --app-background: oklch(20% 0.006 264);
+  --app-background-muted: oklch(23% 0.006 264);
+  --app-surface: oklch(25% 0.006 264);
+  --app-surface-muted: oklch(29% 0.007 264);
+  --app-foreground: oklch(96% 0.002 264);
+  --app-foreground-muted: oklch(82% 0.004 264);
+  --app-foreground-soft: oklch(68% 0.005 264);
+  --app-border: oklch(33% 0.006 264);
+  --app-border-strong: oklch(40% 0.007 264);
+  --app-accent: oklch(76% 0.006 264);
+  --app-accent-ink: oklch(22% 0.006 264);
+  --app-graphite: oklch(18% 0.005 264);
+  --app-graphite-muted: oklch(22% 0.006 264);
+  --app-graphite-border: oklch(30% 0.006 264);
   --app-success: oklch(76% 0.11 152);
   --app-warning: oklch(86% 0.1 104);
   --app-error: oklch(72% 0.16 24);
   --app-focus: color-mix(in oklch, var(--app-accent) 42%, transparent);
-  --app-blend-base: oklch(19% 0.015 145);
-  --app-blend-soft: oklch(23% 0.016 143);
+  --app-blend-base: oklch(19% 0.005 264);
+  --app-blend-soft: oklch(23% 0.006 264);
   --app-bloom: color-mix(in oklch, var(--app-accent) 20%, var(--app-blend-base));
 }
 

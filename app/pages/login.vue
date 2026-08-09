@@ -19,7 +19,7 @@ const redirectCookie = useCookie<string | null>('auth_redirect', {
 
 const schema = z.object({
   email: z.email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters')
+  password: z.string()
 })
 
 type Schema = z.output<typeof schema>
@@ -148,40 +148,42 @@ onMounted(() => {
 
 <template>
   <div
-    class="min-h-screen overflow-x-clip bg-[radial-gradient(circle_at_top_left,color-mix(in_oklch,var(--app-accent)_10%,transparent),transparent_30%),radial-gradient(circle_at_bottom_right,color-mix(in_oklch,var(--app-accent)_6%,transparent),transparent_36%),linear-gradient(180deg,var(--app-background)_0%,color-mix(in_oklch,var(--app-background-muted)_84%,var(--app-blend-base))_100%)] px-4 py-4 text-[var(--app-foreground)] sm:px-6 lg:px-8"
+    class="min-h-screen overflow-x-clip bg-[linear-gradient(180deg,white_0%,color-mix(in_oklch,var(--app-background-muted)_58%,white)_100%)] px-4 py-4 text-[var(--app-foreground)] sm:px-6 lg:px-8"
   >
     <div class="mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-center">
       <UCard
         variant="outline"
-        class="w-full shadow-[0_30px_80px_-52px_color-mix(in_oklch,var(--app-accent)_18%,transparent)]"
+        class="w-full shadow-[0_28px_72px_-46px_color-mix(in_oklch,var(--app-accent)_16%,transparent)]"
         :ui="{
-          root: 'overflow-hidden rounded-[calc(var(--radius-shell)+0.75rem)] bg-[var(--app-surface)] ring ring-inset ring-[var(--app-border)] shadow-none',
+          root: 'overflow-hidden rounded-[1.75rem] border border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-white shadow-none',
           body: 'p-0',
           header: 'p-0',
           footer: 'p-0'
         }"
       >
-        <div class="grid lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)]">
+        <div class="grid lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
           <section
             :class="[
-              'translate-y-3 px-6 py-8 opacity-0 transition-[opacity,transform] duration-[360ms] ease-[var(--ease-out)] motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none sm:px-8 lg:px-12 lg:py-12',
+              'relative translate-y-3 px-6 py-8 opacity-0 transition-[opacity,transform] duration-[360ms] ease-[var(--ease-out)] motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none sm:px-8 sm:py-10 lg:px-10 lg:py-12',
               shellReady && 'translate-y-0 opacity-100'
             ]"
           >
-            <div class="flex min-h-full flex-col justify-between gap-8">
-              <div class="items-center">
-                <div class="min-w-0">
+            <div
+              class="mx-auto flex min-h-full w-full max-w-sm flex-col justify-center gap-8"
+            >
+              <div class="space-y-7">
+                <div class="flex min-w-0 justify-center">
                   <img
                     src="/icons/logo_name.png"
                     :alt="brandName"
-                    class="h-60 w-auto"
+                    class="h-14 w-auto sm:h-15 lg:h-16"
                   >
                 </div>
 
                 <UForm
                   :schema="schema"
                   :state="state"
-                  class="space-y-5"
+                  class="space-y-5 rounded-[1.5rem] border border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-[color-mix(in_oklch,var(--app-surface)_96%,white)] p-6 shadow-[0_18px_42px_-34px_color-mix(in_oklch,var(--app-accent)_12%,transparent)]"
                   @submit="onSubmit"
                 >
                   <UFormField name="email" label="Email address" required>
@@ -192,12 +194,13 @@ onMounted(() => {
                       color="neutral"
                       variant="outline"
                       name="email"
-                      placeholder="name@agency.gov"
+                      placeholder="Masukkan email"
                       autocomplete="email"
                       type="email"
                       leading-icon="i-lucide-mail"
                       autofocus
                       :ui="{
+                        base: 'h-12 rounded-[1rem] border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-white px-4 text-[var(--app-foreground)] shadow-none',
                         leadingIcon: 'text-[var(--app-foreground-soft)]'
                       }"
                     />
@@ -212,12 +215,13 @@ onMounted(() => {
                       variant="outline"
                       name="password"
                       :type="showPassword ? 'text' : 'password'"
-                      placeholder="Enter your password"
+                      placeholder="Masukkan Password"
                       autocomplete="current-password"
                       enter-key-hint="go"
                       leading-icon="i-lucide-lock-keyhole"
                       trailing
                       :ui="{
+                        base: 'h-12 rounded-[1rem] border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-white px-4 text-[var(--app-foreground)] shadow-none',
                         leadingIcon: 'text-[var(--app-foreground-soft)]'
                       }"
                     >
@@ -228,7 +232,7 @@ onMounted(() => {
                           square
                           color="neutral"
                           variant="ghost"
-                          class="border border-transparent text-[var(--app-foreground-soft)] transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:border-[color-mix(in_oklch,var(--app-accent)_18%,var(--app-border-strong))] hover:bg-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-surface))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.55] motion-reduce:transition-none"
+                          class="border border-transparent text-[var(--app-foreground-soft)] transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:border-[color-mix(in_oklch,var(--app-accent)_16%,var(--app-border-strong))] hover:bg-[color-mix(in_oklch,var(--app-accent)_6%,white)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.55] motion-reduce:transition-none"
                           :icon="
                             showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'
                           "
@@ -247,7 +251,7 @@ onMounted(() => {
                     color="primary"
                     variant="solid"
                     type="submit"
-                    class="cursor-pointer border border-transparent whitespace-nowrap shadow-[0_22px_44px_-28px_color-mix(in_oklch,var(--app-accent)_34%,transparent)] transition-[border-color,color,box-shadow,transform] duration-200 ease-[var(--ease-out)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.55] motion-reduce:transition-none"
+                    class="h-12 cursor-pointer rounded-[1rem] border border-transparent whitespace-nowrap shadow-[0_18px_36px_-24px_color-mix(in_oklch,var(--app-accent)_28%,transparent)] transition-[border-color,color,box-shadow,transform] duration-200 ease-[var(--ease-out)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.55] motion-reduce:transition-none"
                     :loading="loading"
                     :disabled="googleLoading"
                     label="Login"
@@ -274,7 +278,7 @@ onMounted(() => {
                     variant="outline"
                     icon="i-simple-icons-google"
                     type="button"
-                    class="cursor-pointer border-[var(--app-border)] bg-[color-mix(in_oklch,var(--app-surface-muted)_70%,var(--app-blend-base))] whitespace-nowrap text-[var(--app-foreground)] transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:border-[color-mix(in_oklch,var(--app-accent)_18%,var(--app-border-strong))] hover:bg-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-surface))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.55] motion-reduce:transition-none"
+                    class="h-12 cursor-pointer rounded-[1rem] border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-white whitespace-nowrap text-[var(--app-foreground)] transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:border-[color-mix(in_oklch,var(--app-accent)_16%,var(--app-border-strong))] hover:bg-[color-mix(in_oklch,var(--app-accent)_6%,white)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.55] motion-reduce:transition-none"
                     :loading="googleLoading"
                     :disabled="loading"
                     label="Lanjutkan dengan Google"
@@ -282,55 +286,57 @@ onMounted(() => {
                   />
                 </UForm>
               </div>
-
-              <p
-                class="border-t border-[color-mix(in_oklch,var(--app-accent)_14%,var(--app-border))] pt-4 text-sm leading-7 text-[var(--app-foreground-muted)]"
-              >
-                Silahkan menghubungi Admin jika mengalami masalah saat login
-              </p>
             </div>
           </section>
 
           <aside
-            class="border-t border-[var(--app-border)] bg-[linear-gradient(180deg,color-mix(in_oklch,var(--app-surface)_45%,var(--app-background-muted))_0%,color-mix(in_oklch,var(--app-surface-muted)_90%,var(--app-blend-base))_100%)] lg:border-t-0 lg:border-l"
+            class="relative overflow-hidden border-t border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-[linear-gradient(180deg,color-mix(in_oklch,var(--app-background-muted)_64%,white)_0%,color-mix(in_oklch,var(--app-surface-muted)_82%,white)_100%)] lg:border-t-0 lg:border-l"
           >
+            <div
+              aria-hidden="true"
+              class="pointer-events-none absolute top-[-8%] left-[-8%] size-40 rounded-full bg-[color-mix(in_oklch,var(--app-accent)_9%,transparent)] blur-3xl"
+            />
+            <div
+              aria-hidden="true"
+              class="pointer-events-none absolute right-[-8%] bottom-[-12%] size-48 rounded-full bg-[color-mix(in_oklch,var(--app-accent)_8%,transparent)] blur-3xl"
+            />
             <section
               :class="[
-                'translate-y-3 px-6 py-8 opacity-0 transition-[opacity,transform] duration-[360ms] ease-[var(--ease-out)] motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none sm:px-8 lg:px-12 lg:py-12 lg:[transition-delay:90ms]',
+                'relative translate-y-3 px-6 py-8 opacity-0 transition-[opacity,transform] duration-[360ms] ease-[var(--ease-out)] motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none sm:px-8 sm:py-10 lg:px-10 lg:py-12 lg:[transition-delay:90ms]',
                 shellReady && 'translate-y-0 opacity-100'
               ]"
             >
               <div
-                class="flex h-full min-h-full flex-col justify-between gap-10"
+                class="flex h-full min-h-full flex-col justify-center gap-8 lg:gap-9"
               >
-                <div class="space-y-5 lg:max-w-2xl">
+                <div class="space-y-3 lg:max-w-[34rem]">
                   <h2
-                    class="min-w-0 font-display text-4xl leading-[1.02] font-semibold tracking-[-0.06em] text-balance [overflow-wrap:anywhere] text-[var(--app-foreground)] sm:text-5xl"
+                    class="min-w-0 font-display text-[2.65rem] leading-[0.94] font-semibold tracking-[-0.065em] text-balance [overflow-wrap:anywhere] text-[var(--app-foreground)] sm:text-[3rem] lg:text-[3.15rem]"
                   >
                     Selamat Datang di SmartFood KSB
                   </h2>
 
                   <p
-                    class="max-w-xl text-sm leading-7 text-[var(--app-foreground-muted)]"
+                    class="max-w-lg text-sm leading-7 text-[var(--app-foreground-muted)] sm:text-base"
                   >
                     Oleh Dinas Ketahanan Pangan Kabupaten Sumbawa Barat
                   </p>
                 </div>
 
                 <div
-                  class="relative min-h-[16rem] overflow-hidden lg:min-h-[19rem]"
+                  class="relative flex min-h-[16rem] items-center overflow-hidden rounded-[1.5rem] border border-[color-mix(in_oklch,var(--app-accent)_8%,var(--app-border))] bg-[linear-gradient(180deg,color-mix(in_oklch,var(--app-surface)_94%,white)_0%,color-mix(in_oklch,var(--app-surface-muted)_86%,white)_100%)] p-5 shadow-[0_20px_48px_-38px_color-mix(in_oklch,var(--app-accent)_14%,transparent)] sm:p-6 lg:min-h-[20rem]"
                 >
-                  <div class="absolute inset-0" aria-hidden="true">
+                  <div
+                    aria-hidden="true"
+                    class="absolute inset-x-[16%] top-6 h-20 rounded-full bg-[color-mix(in_oklch,var(--app-accent)_7%,transparent)] blur-3xl"
+                  />
+                  <div class="relative mx-auto w-full" aria-hidden="true">
                     <img
                       src="/icons/dashboard_depan.png"
                       :alt="brandName"
-                      class="h-60 w-auto"
+                      class="mx-auto h-auto max-h-[13rem] w-full max-w-[31rem] object-contain sm:max-h-[14rem] lg:max-h-[16rem]"
                     >
                   </div>
-
-                  <div
-                    class="absolute inset-x-[8%] bottom-0 border-t border-[color-mix(in_oklch,var(--app-accent)_14%,var(--app-border))] pt-4"
-                  />
                 </div>
               </div>
             </section>

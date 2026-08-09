@@ -2,7 +2,7 @@ export default defineAppConfig({
   appName: 'SmartFood KSB',
   ui: {
     colors: {
-      primary: 'green',
+      primary: 'slate',
       neutral: 'slate'
     },
     button: {

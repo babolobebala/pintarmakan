@@ -14,11 +14,11 @@ export const supportedDatasetFieldTypes = [
 ] as const
 
 export const supportedDatasetPeriodicities = [
-  'DAILY',
-  'WEEKLY',
-  'MONTHLY',
-  'QUARTERLY',
-  'YEARLY'
+  'HARIAN',
+  'MINGGUAN',
+  'BULANAN',
+  'TRIWULANAN',
+  'TAHUNAN'
 ] as const
 
 export type DatasetFieldType = (typeof supportedDatasetFieldTypes)[number]
@@ -221,20 +221,20 @@ export function getDefaultPeriodInput(periodicity: DatasetPeriodicity | null, da
   const day = padNumber(date.getUTCDate())
 
   switch (periodicity) {
-    case 'MONTHLY':
+    case 'BULANAN':
       return `${year}-${month}`
-    case 'QUARTERLY':
+    case 'TRIWULANAN':
       return `${year}-Q${Math.floor(date.getUTCMonth() / 3) + 1}`
-    case 'YEARLY':
+    case 'TAHUNAN':
       return String(year)
-    case 'WEEKLY': {
+    case 'MINGGUAN': {
       const start = new Date(Date.UTC(year, 0, 1))
       const diff = Math.floor((Date.UTC(year, date.getUTCMonth(), date.getUTCDate()) - start.getTime()) / 86400000)
       const week = Math.max(1, Math.ceil((diff + start.getUTCDay() + 1) / 7))
 
       return `${year}-W${padNumber(week)}`
     }
-    case 'DAILY':
+    case 'HARIAN':
     default:
       return `${year}-${month}-${day}`
   }
@@ -248,7 +248,7 @@ export function normalizeDatasetPeriodInput(periodicity: DatasetPeriodicity | nu
   }
 
   switch (periodicity) {
-    case 'MONTHLY': {
+    case 'BULANAN': {
       const match = /^(\d{4})-(\d{2})$/.exec(value)
 
       if (!match) {
@@ -263,7 +263,7 @@ export function normalizeDatasetPeriodInput(periodicity: DatasetPeriodicity | nu
 
       return normalized
     }
-    case 'QUARTERLY': {
+    case 'TRIWULANAN': {
       const match = /^(\d{4})-Q([1-4])$/i.exec(value)
 
       if (!match) {
@@ -279,7 +279,7 @@ export function normalizeDatasetPeriodInput(periodicity: DatasetPeriodicity | nu
 
       return normalized
     }
-    case 'YEARLY': {
+    case 'TAHUNAN': {
       const match = /^(\d{4})$/.exec(value)
 
       if (!match) {
@@ -288,7 +288,7 @@ export function normalizeDatasetPeriodInput(periodicity: DatasetPeriodicity | nu
 
       return `${match[1]}-01-01`
     }
-    case 'WEEKLY': {
+    case 'MINGGUAN': {
       const match = /^(\d{4})-W(\d{2})$/i.exec(value)
 
       if (!match) {
@@ -303,7 +303,7 @@ export function normalizeDatasetPeriodInput(periodicity: DatasetPeriodicity | nu
 
       return getIsoWeekStart(Number(match[1]), week)
     }
-    case 'DAILY':
+    case 'HARIAN':
     default: {
       const normalized = normalizeDateString(value)
 
@@ -332,22 +332,22 @@ export function formatDatasetPeriod(periodicity: DatasetPeriodicity | null, peri
   const date = new Date(Date.UTC(year, month - 1, day))
 
   switch (periodicity) {
-    case 'MONTHLY':
+    case 'BULANAN':
       return new Intl.DateTimeFormat('id-ID', {
         month: 'long',
         year: 'numeric',
         timeZone: 'UTC'
       }).format(date)
-    case 'QUARTERLY':
+    case 'TRIWULANAN':
       return `Q${Math.floor((month - 1) / 3) + 1} ${year}`
-    case 'YEARLY':
+    case 'TAHUNAN':
       return String(year)
-    case 'WEEKLY':
+    case 'MINGGUAN':
       return `Minggu ${new Intl.DateTimeFormat('id-ID', {
         dateStyle: 'medium',
         timeZone: 'UTC'
       }).format(date)}`
-    case 'DAILY':
+    case 'HARIAN':
     default:
       return new Intl.DateTimeFormat('id-ID', {
         dateStyle: 'medium',

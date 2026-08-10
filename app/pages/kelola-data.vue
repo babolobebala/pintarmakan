@@ -200,15 +200,15 @@ function buildRegionLabel(region: RegionItem) {
 
 function formatPeriodicityLabel(value: string | null) {
   switch (value) {
-    case 'DAILY':
+    case 'HARIAN':
       return 'Harian'
-    case 'WEEKLY':
+    case 'MINGGUAN':
       return 'Mingguan'
-    case 'MONTHLY':
+    case 'BULANAN':
       return 'Bulanan'
-    case 'QUARTERLY':
+    case 'TRIWULANAN':
       return 'Triwulanan'
-    case 'YEARLY':
+    case 'TAHUNAN':
       return 'Tahunan'
     default:
       return 'Tanpa periode'
@@ -221,7 +221,7 @@ function formatRegionLevelLabel(value: string | null) {
       return 'Kabupaten'
     case 'KECAMATAN':
       return 'Kecamatan'
-    case 'DESA_KELURAHAN':
+    case 'DESA':
       return 'Desa/Kelurahan'
     default:
       return 'Semua wilayah'
@@ -730,19 +730,19 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
 
         <div class="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
           <UInput
-            v-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'DAILY'"
+            v-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'HARIAN'"
             v-model="periodValue"
             type="date"
             class="w-full"
           />
           <UInput
-            v-else-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'MONTHLY'"
+            v-else-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'BULANAN'"
             v-model="periodValue"
             type="month"
             class="w-full"
           />
           <UInput
-            v-else-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'YEARLY'"
+            v-else-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'TAHUNAN'"
             v-model="periodValue"
             placeholder="2026"
             class="w-full"
@@ -750,7 +750,7 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
           <UInput
             v-else
             v-model="periodValue"
-            :placeholder="getDatasetPeriodicity(selectedDataset.dataConfig) === 'QUARTERLY' ? '2026-Q3' : '2026-W32'"
+            :placeholder="getDatasetPeriodicity(selectedDataset.dataConfig) === 'TRIWULANAN' ? '2026-Q3' : '2026-W32'"
             class="w-full"
           />
 

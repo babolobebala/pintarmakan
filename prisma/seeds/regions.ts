@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../../server/generated/prisma/client.js'
+type SeedDbClient = InstanceType<typeof import('../../server/generated/prisma/client.js').PrismaClient>
 
 type SeedRegion = {
   readonly id: string
@@ -84,7 +84,7 @@ const seedRegions = [
   { id: '52.07.08.2005', name: 'Pasir Putih', level: 'DESA', parentId: '52.07.08' }
 ] as const satisfies readonly SeedRegion[]
 
-export async function runRegionSeed(db: PrismaClient) {
+export async function runRegionSeed(db: SeedDbClient) {
   let createdCount = 0
   let updatedCount = 0
   let unchangedCount = 0

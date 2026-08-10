@@ -335,19 +335,19 @@ async function onSubmit() {
               class="w-full"
             />
             <UInput
-              v-else-if="periodicity === 'DAILY'"
+              v-else-if="periodicity === 'HARIAN'"
               v-model="periodValue"
               type="date"
               class="w-full"
             />
             <UInput
-              v-else-if="periodicity === 'MONTHLY'"
+              v-else-if="periodicity === 'BULANAN'"
               v-model="periodValue"
               type="month"
               class="w-full"
             />
             <UInput
-              v-else-if="periodicity === 'YEARLY'"
+              v-else-if="periodicity === 'TAHUNAN'"
               v-model="periodValue"
               placeholder="2026"
               class="w-full"
@@ -355,7 +355,7 @@ async function onSubmit() {
             <UInput
               v-else
               v-model="periodValue"
-              :placeholder="periodicity === 'QUARTERLY' ? '2026-Q3' : '2026-W32'"
+              :placeholder="periodicity === 'TRIWULANAN' ? '2026-Q3' : '2026-W32'"
               class="w-full"
             />
           </div>

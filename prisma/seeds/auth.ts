@@ -13,7 +13,8 @@ import {
   roles,
   type AppRoleSlug
 } from '../../auth/permissions.js'
-import type { PrismaClient } from '../../server/generated/prisma/client.js'
+
+type SeedDbClient = InstanceType<typeof import('../../server/generated/prisma/client.js').PrismaClient>
 
 type SeedRoleInput = AppRoleSlug
 
@@ -110,7 +111,7 @@ const seedBidangAssignments = [
 
 const setRolePermission = { user: ['set-role'] } as const
 
-function createSeedAuth(db: PrismaClient) {
+function createSeedAuth(db: SeedDbClient) {
   const baseURL = process.env.BETTER_AUTH_URL || process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
   return betterAuth({
@@ -175,7 +176,7 @@ function canSetRolesForCurrentUser(roleValue: string | null | undefined) {
   return getEffectiveRoles(roleValue).some(role => roles[role].authorize(setRolePermission).success)
 }
 
-async function getSeedUsersByEmail(db: PrismaClient) {
+async function getSeedUsersByEmail(db: SeedDbClient) {
   const users = await db.user.findMany({
     where: {
       email: {
@@ -192,7 +193,7 @@ async function getSeedUsersByEmail(db: PrismaClient) {
   return new Map(users.map(user => [normalizeEmail(user.email), user]))
 }
 
-async function seedAuthBidangs(db: PrismaClient) {
+async function seedAuthBidangs(db: SeedDbClient) {
   let createdCount = 0
   let updatedCount = 0
   let unchangedCount = 0
@@ -249,7 +250,7 @@ async function seedAuthBidangs(db: PrismaClient) {
 }
 
 async function reconcileSeedBidangAssignments(
-  db: PrismaClient,
+  db: SeedDbClient,
   usersByEmail: Map<string, SeedDbUser>
 ) {
   let updatedCount = 0
@@ -478,7 +479,7 @@ async function reconcileExistingUserRoles(
   }
 }
 
-export async function runAuthSeed(db: PrismaClient) {
+export async function runAuthSeed(db: SeedDbClient) {
   const { createdCount: createdBidangCount, updatedCount: updatedBidangCount, unchangedCount: unchangedBidangCount }
     = await seedAuthBidangs(db)
   const auth = createSeedAuth(db)

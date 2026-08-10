@@ -174,7 +174,7 @@ function formatRegionLevelLabel(value: string | null) {
       return 'Kabupaten'
     case 'KECAMATAN':
       return 'Kecamatan'
-    case 'DESA_KELURAHAN':
+    case 'DESA':
       return 'Desa/Kelurahan'
     default:
       return 'Semua wilayah'

@@ -11,6 +11,7 @@ export const appStatements = {
   ...defaultStatements,
   dashboard: ['read'],
   members: ['read', 'create', 'update', 'delete', 'set-password', 'ban'],
+  datasets: ['read', 'create', 'update', 'delete'],
   auditLogs: ['read'],
   businessData: ['read', 'create', 'update', 'delete']
 } as const
@@ -45,7 +46,7 @@ const userOwnStatements = {
 } as const satisfies AppRoleStatements
 
 const operatorOwnStatements = {
-  businessData: ['create', 'update']
+  businessData: ['read', 'create', 'update', 'delete']
 } as const satisfies AppRoleStatements
 
 const adminOwnStatements = {
@@ -55,6 +56,7 @@ const adminOwnStatements = {
 } as const satisfies AppRoleStatements
 
 const superAdminOwnStatements = {
+  datasets: ['read', 'create', 'update', 'delete'],
   auditLogs: ['read']
 } as const satisfies AppRoleStatements
 
@@ -139,6 +141,10 @@ export const appPermissions = {
   membersDelete: { members: ['delete'] },
   membersSetPassword: { members: ['set-password'] },
   membersBan: { members: ['ban'] },
+  datasetsRead: { datasets: ['read'] },
+  datasetsCreate: { datasets: ['create'] },
+  datasetsUpdate: { datasets: ['update'] },
+  datasetsDelete: { datasets: ['delete'] },
   auditLogsRead: { auditLogs: ['read'] },
   businessDataRead: { businessData: ['read'] },
   businessDataCreate: { businessData: ['create'] },

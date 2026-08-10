@@ -47,13 +47,15 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const nextRole = role && isAssignableRole(role) ? role : undefined
+
   const { user, role: assignedRole } = await updateManagedUser(
     event,
     userId,
     {
       email: body.email,
       name: body.name,
-      role
+      role: nextRole
     }
   )
   const bidangAssignment = assignedRole === 'operator' && body.bidangIds

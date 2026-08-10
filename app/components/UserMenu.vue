@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 
-import { appPermissions, formatRoleLabel, hasAccessForRole } from '~~/auth/permissions'
+import {
+  appPermissions,
+  formatRoleLabel,
+  hasAccessForRole,
+  hasRoleAtLeast
+} from '~~/auth/permissions'
 import { authClient } from '~~/lib/auth-client'
 
 const router = useRouter()
@@ -24,6 +29,14 @@ const triggerLabel = computed(() => `Open account menu for ${user.value.label}`)
 
 const canKelolaRole = computed(() => {
   return hasAccessForRole(currentUser.value?.user.role, appPermissions.membersRead)
+})
+
+const canKelolaDataset = computed(() => {
+  return hasAccessForRole(currentUser.value?.user.role, appPermissions.datasetsRead)
+})
+
+const canKelolaData = computed(() => {
+  return hasRoleAtLeast(currentUser.value?.user.role, 'operator')
 })
 
 async function signOut() {
@@ -50,6 +63,24 @@ const items = computed<DropdownMenuItem[][]>(() => {
       label: 'Kelola User',
       icon: 'i-lucide-users',
       to: '/kelola-user',
+      exact: true
+    })
+  }
+
+  if (canKelolaDataset.value) {
+    settingsItems.push({
+      label: 'Kelola Dataset',
+      icon: 'i-lucide-database',
+      to: '/kelola-dataset',
+      exact: true
+    })
+  }
+
+  if (canKelolaData.value) {
+    settingsItems.push({
+      label: 'Kelola Data',
+      icon: 'i-lucide-folder-input',
+      to: '/kelola-data',
       exact: true
     })
   }

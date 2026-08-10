@@ -2,7 +2,7 @@ import type { H3Event } from "h3";
 
 import { createError } from "h3";
 
-import { normalizeRoleSelection } from "~~/auth/permissions";
+import { normalizeRoleSelection, type AppRoleSlug } from "~~/auth/permissions";
 import { db } from "#server/utils/db";
 import { auth } from "#server/utils/auth-instance";
 
@@ -16,12 +16,12 @@ export async function createOrUpdateManagedUser(
     email: string;
     name: string;
     password?: string;
-    roles: readonly string[];
+    role: string | AppRoleSlug;
   },
 ) {
   const email = normalizeEmail(input.email);
-  const roles = normalizeRoleSelection(input.roles);
-  const roleInput = roles.length === 1 ? roles[0]! : roles;
+  const role = normalizeRoleSelection(input.role);
+
   const existingUser = await db.user.findUnique({
     where: {
       email,
@@ -40,7 +40,7 @@ export async function createOrUpdateManagedUser(
         email,
         name: input.name,
         password: input.password,
-        role: roleInput,
+        role,
         data: {
           emailVerified: true,
         },
@@ -49,7 +49,7 @@ export async function createOrUpdateManagedUser(
 
     return {
       user,
-      roles,
+      role,
     };
   }
 
@@ -68,7 +68,7 @@ export async function createOrUpdateManagedUser(
     headers: event.headers,
     body: {
       userId: existingUser.id,
-      role: roleInput,
+      role,
     },
   });
 
@@ -93,7 +93,7 @@ export async function createOrUpdateManagedUser(
 
   return {
     user,
-    roles,
+    role,
   };
 }
 
@@ -103,12 +103,12 @@ export async function updateManagedUser(
   input: {
     email: string;
     name: string;
-    roles: readonly string[];
+    role: string | AppRoleSlug;
   },
 ) {
   const email = normalizeEmail(input.email);
-  const roles = normalizeRoleSelection(input.roles);
-  const roleInput = roles.length === 1 ? roles[0]! : roles;
+  const role = normalizeRoleSelection(input.role);
+
   const existingUser = await db.user.findUnique({
     where: {
       id: userId,
@@ -141,13 +141,13 @@ export async function updateManagedUser(
     headers: event.headers,
     body: {
       userId,
-      role: roleInput,
+      role,
     },
   });
 
   return {
     user,
-    roles,
+    role,
   };
 }
 

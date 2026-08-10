@@ -1,12 +1,19 @@
 import { createAccessControl } from 'better-auth/plugins/access'
 import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access'
 
+// DASHBOARD UNTUK READ DASHBOARD
+// SETTING UNTUK PENGATURAN BIASA
+// MEMBERS UNTUK KELOLA AUTHENTIKASI DAN AUTHORISASI
+// AUDIT LOG UNTUK LOG
+// BUSINESS DATA UNTUK DATA YANG NANTI BISA DIINPUT OLEH BIDANG APA AJA
+
 export const appStatements = {
   ...defaultStatements,
   dashboard: ['read'],
   settings: ['read'],
   members: ['read', 'create', 'update', 'delete', 'set-password', 'ban'],
-  auditLogs: ['read']
+  auditLogs: ['read'],
+  businessData: ['read', 'create', 'update', 'delete']
 } as const
 
 export type AppStatements = typeof appStatements
@@ -21,58 +28,87 @@ export type AppAccessRequest = {
   readonly [TKey in AppStatementKey]?: AppActionRequest<TKey>
 }
 
+type AppRoleStatements = {
+  readonly [TKey in AppStatementKey]?: readonly AppStatementAction<TKey>[]
+}
+
 export const ac = createAccessControl(appStatements)
 
-const userStatements = {
+export const roleHierarchy = ['user', 'operator', 'admin', 'super-admin'] as const
+export type AppRoleSlug = (typeof roleHierarchy)[number]
+
+const roleRank = Object.fromEntries(
+  roleHierarchy.map((role, index) => [role, index])
+) as Record<AppRoleSlug, number>
+
+const userOwnStatements = {
   dashboard: ['read']
-} as const satisfies AppAccessRequest
+} as const satisfies AppRoleStatements
 
-const operatorStatements = {
-  dashboard: ['read'],
-  settings: ['read'],
-  members: ['read']
-} as const satisfies AppAccessRequest
+const operatorOwnStatements = {
+  businessData: ['create', 'update']
+} as const satisfies AppRoleStatements
 
-const adminStatements = {
-  dashboard: ['read'],
+const adminOwnStatements = {
   settings: ['read'],
   members: ['read', 'create', 'update', 'delete', 'set-password', 'ban'],
   user: ['create', 'list', 'get', 'update', 'set-role', 'ban', 'set-password'],
   session: ['revoke']
-} as const satisfies AppAccessRequest
+} as const satisfies AppRoleStatements
 
-const superAdminStatements = {
-  ...adminAc.statements,
-  dashboard: ['read'],
-  settings: ['read'],
-  members: ['read', 'create', 'update', 'delete', 'set-password', 'ban'],
+const superAdminOwnStatements = {
   auditLogs: ['read']
-} as const satisfies AppAccessRequest
+} as const satisfies AppRoleStatements
+
+function composeStatements(...sources: readonly AppRoleStatements[]) {
+  const merged: Partial<Record<AppStatementKey, string[]>> = {}
+
+  for (const source of sources) {
+    for (const [resource, actions] of Object.entries(source) as Array<[AppStatementKey, readonly string[]]>) {
+      const currentActions = merged[resource] ?? []
+
+      merged[resource] = Array.from(new Set([...currentActions, ...actions]))
+    }
+  }
+
+  return merged as AppRoleStatements
+}
+
+const userStatements = composeStatements(userOwnStatements)
+const operatorStatements = composeStatements(userStatements, operatorOwnStatements)
+const adminStatements = composeStatements(operatorStatements, adminOwnStatements)
+const superAdminStatements = composeStatements(
+  adminStatements,
+  adminAc.statements as AppRoleStatements,
+  superAdminOwnStatements
+)
 
 export const predefinedRoles = {
   'user': {
     name: 'User',
-    description: 'Read-only Untuk Semua Dashboard',
+    description: 'Melihat dashboard dan data yang diizinkan.',
     statements: userStatements
   },
   'operator': {
     name: 'Operator',
-    description: '+ Input data, tergantung kepada bidang yang dituju',
+    description: 'Hak User + input/pembaruan data pada Bidang yang ditugaskan.',
     statements: operatorStatements
   },
   'admin': {
     name: 'Admin',
-    description: '+ Input semua bidang dan Kontrol Akses Akun',
+    description: 'Hak Operator untuk seluruh Bidang + pengelolaan akun.',
     statements: adminStatements
   },
   'super-admin': {
     name: 'Super Admin',
-    description: 'Semua',
+    description: 'Akses penuh aplikasi dan administrasi sistem.',
     statements: superAdminStatements
   }
-} as const
-
-export type AppRoleSlug = keyof typeof predefinedRoles
+} as const satisfies Record<AppRoleSlug, {
+  readonly name: string
+  readonly description: string
+  readonly statements: AppRoleStatements
+}>
 
 export const roles = {
   'user': ac.newRole(predefinedRoles.user.statements),
@@ -84,7 +120,9 @@ export const roles = {
 export const defaultRole: AppRoleSlug = 'user'
 export const adminRoleSlugs = ['admin', 'super-admin'] as const satisfies readonly AppRoleSlug[]
 
-export const roleOptions = (Object.entries(predefinedRoles) as Array<[AppRoleSlug, (typeof predefinedRoles)[AppRoleSlug]]>).map(([slug, role]) => {
+export const roleOptions = roleHierarchy.map((slug) => {
+  const role = predefinedRoles[slug]
+
   return {
     slug,
     name: role.name,
@@ -102,11 +140,33 @@ export const appPermissions = {
   membersDelete: { members: ['delete'] },
   membersSetPassword: { members: ['set-password'] },
   membersBan: { members: ['ban'] },
-  auditLogsRead: { auditLogs: ['read'] }
+  auditLogsRead: { auditLogs: ['read'] },
+  businessDataRead: { businessData: ['read'] },
+  businessDataCreate: { businessData: ['create'] },
+  businessDataUpdate: { businessData: ['update'] },
+  businessDataDelete: { businessData: ['delete'] }
 } as const satisfies Record<string, AppAccessRequest>
 
 function dedupeStrings(values: readonly string[]) {
   return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
+}
+
+function parseRoleInput(value?: string | readonly string[] | null) {
+  if (Array.isArray(value)) {
+    return dedupeStrings(value)
+  }
+
+  if (typeof value !== 'string') {
+    return []
+  }
+
+  return dedupeStrings(value.split(','))
+}
+
+function getHighestRankedRole(rolesToCompare: readonly AppRoleSlug[]) {
+  return rolesToCompare.reduce<AppRoleSlug>((highestRole, currentRole) => {
+    return roleRank[currentRole] > roleRank[highestRole] ? currentRole : highestRole
+  }, defaultRole)
 }
 
 export function isKnownRole(role: string): role is AppRoleSlug {
@@ -114,41 +174,57 @@ export function isKnownRole(role: string): role is AppRoleSlug {
 }
 
 export function parseStoredRoles(value?: string | null) {
-  if (!value) {
-    return []
-  }
-
-  return dedupeStrings(value.split(','))
+  return parseRoleInput(value)
 }
 
-export function normalizeRoleSelection(values: readonly string[]) {
-  const normalizedRoles = parseStoredRoles(values.join(',')).filter(isKnownRole)
+export function normalizeRoleSelection(value?: string | readonly string[] | null) {
+  const normalizedRoles = parseRoleInput(value).filter(isKnownRole)
 
   if (normalizedRoles.length > 0) {
-    return normalizedRoles
+    return getHighestRankedRole(normalizedRoles)
   }
 
-  return [defaultRole]
+  return defaultRole
 }
 
-export function getUnknownRoles(values: readonly string[]) {
-  return parseStoredRoles(values.join(',')).filter(role => !isKnownRole(role))
+export function getUnknownRoles(value?: string | readonly string[] | null) {
+  return parseRoleInput(value).filter(role => !isKnownRole(role))
 }
 
-export function getEffectiveRoles(roleValue?: string | null) {
+export function getHighestEffectiveRole(roleValue?: string | null) {
   const normalizedRoles = parseStoredRoles(roleValue).filter(isKnownRole)
 
   if (normalizedRoles.length > 0) {
-    return normalizedRoles
+    return getHighestRankedRole(normalizedRoles)
   }
 
-  return [defaultRole]
+  return defaultRole
+}
+
+export function getEffectiveRoles(roleValue?: string | null) {
+  return [getHighestEffectiveRole(roleValue)]
+}
+
+export function getInheritedRoleSlugs(roleValue?: string | AppRoleSlug | null) {
+  const highestRole = roleValue && isKnownRole(roleValue)
+    ? roleValue
+    : getHighestEffectiveRole(roleValue)
+
+  return roleHierarchy.slice(0, roleRank[highestRole] + 1)
+}
+
+export function hasRoleAtLeast(roleValue: string | AppRoleSlug | null | undefined, minimumRole: AppRoleSlug) {
+  const highestRole = roleValue && isKnownRole(roleValue)
+    ? roleValue
+    : getHighestEffectiveRole(roleValue)
+
+  return roleRank[highestRole] >= roleRank[minimumRole]
 }
 
 export function hasAccessForRole(roleValue: string | null | undefined, request: AppAccessRequest) {
-  return getEffectiveRoles(roleValue).some((role) => {
-    return roles[role].authorize(request).success
-  })
+  const highestRole = getHighestEffectiveRole(roleValue)
+
+  return roles[highestRole].authorize(request).success
 }
 
 export function hasAnyAccessForRole(roleValue: string | null | undefined, requests: readonly AppAccessRequest[]) {
@@ -156,6 +232,10 @@ export function hasAnyAccessForRole(roleValue: string | null | undefined, reques
 }
 
 export function formatRoleLabel(role: string) {
+  if (isKnownRole(role)) {
+    return predefinedRoles[role].name
+  }
+
   return role
     .split('-')
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))

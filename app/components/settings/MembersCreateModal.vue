@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import type { Member, RoleOption } from "~/types";
+import type { BidangOption, Member, RoleOption } from "~/types";
 
 const props = withDefaults(
   defineProps<{
@@ -31,9 +31,20 @@ const toast = useToast();
 const { data: roles } = await useFetch<RoleOption[]>("/api/roles/options", {
   default: () => [],
 });
+const { data: bidangs } = await useFetch<BidangOption[]>("/api/bidang/options", {
+  default: () => [],
+});
 
 const roleOptions = computed(() => roles.value);
 const roleSlugs = computed(() => roleOptions.value.map((role) => role.slug));
+const bidangOptions = computed(() => {
+  return bidangs.value.map((bidang) => ({
+    id: bidang.id,
+    name: bidang.name,
+    description: bidang.description ?? undefined,
+  }));
+});
+const bidangIds = computed(() => bidangOptions.value.map((bidang) => bidang.id));
 
 const schema = z.object({
   name: z.string().min(2, "Too short"),
@@ -42,22 +53,27 @@ const schema = z.object({
     z.literal(""),
     z.string().min(8, "Password must be at least 8 characters"),
   ]),
-  roles: z
-    .array(z.string())
-    .min(1, "Select at least one role")
-    .superRefine((value, ctx) => {
-      const availableRoles = new Set(roleSlugs.value);
+  role: z.string().min(1, "Select a role").superRefine((value, ctx) => {
+    if (!roleSlugs.value.includes(value)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Select a valid role.",
+      });
+    }
+  }),
+  bidangIds: z.array(z.string()).superRefine((value, ctx) => {
+    const availableBidangs = new Set(bidangIds.value);
 
-      for (const role of value) {
-        if (!availableRoles.has(role)) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Select a valid role.",
-          });
-          return;
-        }
+    for (const bidangId of value) {
+      if (!availableBidangs.has(bidangId)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Select a valid Bidang.",
+        });
+        return;
       }
-    }),
+    }
+  }),
 });
 
 type Schema = z.output<typeof schema>;
@@ -66,44 +82,47 @@ const state = reactive<Schema>({
   name: "",
   email: "",
   password: "",
-  roles: ["user"],
+  role: "user",
+  bidangIds: [],
 });
 
 const loading = ref(false);
+const bidangLoading = ref(false);
 const isEdit = computed(() => !!props.member);
 const modalTitle = computed(() =>
   isEdit.value ? "Edit member" : "Add member",
 );
 const modalDescription = computed(() => {
   return isEdit.value
-    ? "Update the member profile, email, and assigned roles."
-    : "Create an internal user record and assign one or more roles.";
+    ? "Update the member profile, system role, and operator Bidang assignments."
+    : "Create an internal user record and assign one system role.";
 });
 const submitLabel = computed(() =>
   isEdit.value ? "Save changes" : "Add member",
 );
-const defaultRoles = computed(() => {
+const defaultRole = computed(() => {
   if (roleSlugs.value.length === 0) {
-    return [];
+    return "";
   }
 
   return roleSlugs.value.includes("user")
-    ? ["user"]
-    : roleSlugs.value.slice(0, 1);
+    ? "user"
+    : (roleSlugs.value[0] ?? "");
 });
+const selectedRole = computed(() => {
+  return roleOptions.value.find((role) => role.slug === state.role) ?? null;
+});
+const shouldShowBidangAssignments = computed(() => state.role === "operator");
+const hasBidangOptions = computed(() => bidangOptions.value.length > 0);
 
 function syncState() {
   if (props.member) {
     state.name = props.member.name;
     state.email = props.member.email;
     state.password = "";
-    state.roles = props.member.roles.filter((role) =>
-      roleSlugs.value.includes(role),
-    );
-
-    if (state.roles.length === 0) {
-      state.roles = defaultRoles.value;
-    }
+    state.role = props.member.roles.find((role) => roleSlugs.value.includes(role))
+      ?? defaultRole.value;
+    state.bidangIds = [];
 
     return;
   }
@@ -111,35 +130,91 @@ function syncState() {
   state.name = "";
   state.email = "";
   state.password = "";
-  state.roles = [...defaultRoles.value];
+  state.role = defaultRole.value;
+  state.bidangIds = [];
+}
+
+async function loadMemberBidangAssignments() {
+  if (!props.member || state.role !== "operator") {
+    state.bidangIds = [];
+    return;
+  }
+
+  bidangLoading.value = true;
+
+  try {
+    const response = await $fetch<{ bidangIds: string[] }>(
+      `/api/members/${props.member.id}/bidang`,
+    );
+
+    state.bidangIds = response.bidangIds.filter((bidangId) =>
+      bidangIds.value.includes(bidangId),
+    );
+  } catch (error) {
+    state.bidangIds = [];
+    toast.add({
+      title: "Unable to load Bidang assignments",
+      description: error instanceof Error ? error.message : "Please try again.",
+      color: "error",
+    });
+  } finally {
+    bidangLoading.value = false;
+  }
 }
 
 watch(
   roleSlugs,
   (value) => {
     if (value.length === 0) {
-      state.roles = [];
+      state.role = "";
       return;
     }
 
-    state.roles = state.roles.filter((role) => value.includes(role));
-
-    if (state.roles.length === 0) {
-      const fallbackRole = value.includes("user") ? "user" : value[0];
-      state.roles = fallbackRole ? [fallbackRole] : [];
+    if (!value.includes(state.role)) {
+      state.role = value.includes("user") ? "user" : (value[0] ?? "");
     }
   },
   { immediate: true },
 );
 
 watch(
+  bidangIds,
+  (value) => {
+    state.bidangIds = state.bidangIds.filter((bidangId) => value.includes(bidangId));
+  },
+  { immediate: true },
+);
+
+watch(
   [open, () => props.member],
-  ([isOpen]) => {
+  async ([isOpen]) => {
     if (isOpen) {
       syncState();
+
+      if (state.role === "operator") {
+        await loadMemberBidangAssignments();
+      }
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => state.role,
+  async (value, previousValue) => {
+    if (!open.value) {
+      return;
+    }
+
+    if (value !== "operator") {
+      state.bidangIds = [];
+      return;
+    }
+
+    if (props.member && previousValue !== "operator") {
+      await loadMemberBidangAssignments();
+    }
+  },
 );
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
@@ -156,9 +231,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           ? {
               name: event.data.name,
               email: event.data.email,
-              roles: event.data.roles,
+              role: event.data.role,
+              bidangIds: event.data.role === "operator" ? event.data.bidangIds : undefined,
             }
-          : event.data,
+          : {
+              ...event.data,
+              bidangIds: event.data.role === "operator" ? event.data.bidangIds : [],
+            },
       },
     );
 
@@ -230,35 +309,53 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </UFormField>
 
         <UFormField
-          label="Roles"
-          name="roles"
-          description="Users can hold multiple roles at once."
+          label="System role"
+          name="role"
+          description="Pilih satu peran sistem tertinggi untuk akun ini."
         >
-          <div class="grid gap-2 sm:grid-cols-2">
-            <label
-              v-for="role in roleOptions"
-              :key="role.slug"
-              class="flex items-center gap-2 rounded-lg border border-default px-3 py-2 text-sm"
-            >
-              <UCheckbox
-                :model-value="state.roles.includes(role.slug)"
-                @update:model-value="
-                  (checked: boolean | 'indeterminate') => {
-                    if (checked) {
-                      state.roles = Array.from(
-                        new Set([...state.roles, role.slug]),
-                      );
-                      return;
-                    }
+          <div class="space-y-3">
+            <USelectMenu
+              v-model="state.role"
+              :items="roleOptions"
+              value-key="slug"
+              label-key="name"
+              placeholder="Select role"
+              class="w-full"
+            />
 
-                    state.roles = state.roles.filter(
-                      (value) => value !== role.slug,
-                    );
-                  }
-                "
-              />
-              <span>{{ role.name }}</span>
-            </label>
+            <p v-if="selectedRole" class="text-xs text-muted">
+              {{ selectedRole.description }}
+            </p>
+          </div>
+        </UFormField>
+
+        <UFormField
+          v-if="shouldShowBidangAssignments"
+          label="Assigned Bidang"
+          name="bidangIds"
+          description="Operator hanya dapat mengubah data pada Bidang yang dipilih."
+        >
+          <div class="space-y-3">
+            <USelectMenu
+              v-model="state.bidangIds"
+              :items="bidangOptions"
+              value-key="id"
+              label-key="name"
+              multiple
+              placeholder="Select Bidang"
+              class="w-full"
+              :loading="bidangLoading"
+              :search-input="{ placeholder: 'Cari Bidang...' }"
+            />
+
+            <UAlert
+              v-if="!hasBidangOptions"
+              icon="i-lucide-info"
+              title="Belum ada master Bidang"
+              description="Belum ada record Bidang di database, jadi operator belum bisa diberi scope."
+              color="neutral"
+              variant="subtle"
+            />
           </div>
         </UFormField>
 

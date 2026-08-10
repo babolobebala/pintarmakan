@@ -13,6 +13,7 @@ import {
   adminRoleSlugs,
   getEffectiveRoles,
   isKnownRole,
+  roleHierarchy,
   roles,
   type AppRoleSlug
 } from '../auth/permissions.js'
@@ -22,7 +23,7 @@ if (fs.existsSync(path.resolve('.env'))) {
   process.loadEnvFile?.()
 }
 
-type SeedRoleInput = AppRoleSlug | readonly AppRoleSlug[]
+type SeedRoleInput = AppRoleSlug
 
 type SeedUser = {
   readonly name: string
@@ -66,7 +67,7 @@ const seedUsers = [
     name: 'Admin User Demo',
     email: 'adminuser@gmail.com',
     password: '12345567890',
-    role: ['user', 'admin']
+    role: 'admin'
   }
 ] as const satisfies readonly SeedUser[]
 
@@ -145,30 +146,25 @@ function normalizeEmail(email: string) {
 }
 
 function normalizeSeedRoles(role: SeedRoleInput) {
-  const values = Array.isArray(role) ? role : [role]
-  const deduped = Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
+  const value = role.trim()
 
-  if (deduped.length === 0) {
-    throw new Error('Seed users must define at least one role.')
+  if (!value) {
+    throw new Error('Seed users must define a role.')
   }
 
-  for (const value of deduped) {
-    if (!isKnownRole(value)) {
-      throw new Error(`Unknown seed role "${value}" in prisma/seed.ts.`)
-    }
+  if (!isKnownRole(value)) {
+    throw new Error(`Unknown seed role "${value}" in prisma/seed.ts.`)
   }
 
-  return deduped as AppRoleSlug[]
+  return value
 }
 
 function toBetterAuthRole(role: SeedRoleInput) {
-  const normalized = normalizeSeedRoles(role)
-
-  return normalized.length === 1 ? normalized[0] : normalized
+  return normalizeSeedRoles(role)
 }
 
 function serializeRoles(role: SeedRoleInput) {
-  return normalizeSeedRoles(role).slice().sort().join(',')
+  return normalizeSeedRoles(role)
 }
 
 function serializeStoredRole(role: string | null | undefined) {
@@ -176,7 +172,7 @@ function serializeStoredRole(role: string | null | undefined) {
 }
 
 function formatRoleLog(role: SeedRoleInput) {
-  return normalizeSeedRoles(role).join(', ')
+  return normalizeSeedRoles(role)
 }
 
 function canSetRolesForCurrentUser(roleValue: string | null | undefined) {
@@ -247,10 +243,10 @@ async function signInPrivilegedSeedUser(
     })
     .filter(candidate => candidate.currentUser && canSetRolesForCurrentUser(candidate.currentUser.role))
     .sort((left, right) => {
-      const leftRoles = normalizeSeedRoles(left.seedUser.role)
-      const rightRoles = normalizeSeedRoles(right.seedUser.role)
+      const leftRole = normalizeSeedRoles(left.seedUser.role)
+      const rightRole = normalizeSeedRoles(right.seedUser.role)
 
-      return Number(rightRoles.includes('super-admin')) - Number(leftRoles.includes('super-admin'))
+      return roleHierarchy.indexOf(rightRole) - roleHierarchy.indexOf(leftRole)
     })
 
   for (const { seedUser } of candidates) {

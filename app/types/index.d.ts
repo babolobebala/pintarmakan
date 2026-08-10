@@ -10,6 +10,12 @@ export interface Member {
   hasPassword: boolean
 }
 
+export interface BidangOption {
+  id: string
+  name: string
+  description?: string | null
+}
+
 export interface AuthSessionUser {
   id: string
   name: string

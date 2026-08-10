@@ -23,6 +23,7 @@ model User {
   sessions      Session[]
   auditLogs     AuditLog[] @relation("ActorAuditLogs")
   pushSubscriptions PushSubscription[]
+  bidangAssignments AuthUserToBidang[] @relation("UserBidangAssignments")
 
   @@map("user")
 }
@@ -105,4 +106,28 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+model AuthBidang {
+  id              String             @id @db.VarChar(191)
+  name            String             @db.VarChar(191)
+  description     String?            @db.Text
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  userAssignments AuthUserToBidang[] @relation("BidangAssignments")
+
+  @@map("auth_bidang")
+}
+
+model AuthUserToBidang {
+  id        String     @id @default(cuid()) @db.VarChar(191)
+  userId    String     @db.VarChar(191)
+  bidangId  String     @db.VarChar(191)
+  createdAt DateTime   @default(now())
+  user      User       @relation("UserBidangAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  bidang    AuthBidang @relation("BidangAssignments", fields: [bidangId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, bidangId])
+  @@index([bidangId])
+  @@map("auth_user_to_bidang")
 }

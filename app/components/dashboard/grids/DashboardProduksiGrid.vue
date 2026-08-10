@@ -9,10 +9,10 @@ defineProps<{
 
 <template>
   <div
-    class="space-y-4"
+    class="space-y-3"
     :class="pending ? 'opacity-75 transition-opacity' : ''"
   >
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       <DashboardWidget
         v-for="widget in payload.widgets.slice(0, 3)"
         :key="widget.id"
@@ -20,43 +20,48 @@ defineProps<{
         :icon="widget.icon"
         muted
       >
-        <div class="space-y-3">
+        <div class="space-y-2">
           <div class="flex items-start justify-between gap-3">
-            <p class="text-2xl font-semibold tracking-tight text-[var(--app-foreground)]">
+            <p class="text-xl font-semibold tracking-tight text-[var(--app-foreground)]">
               {{ widget.value }}
             </p>
             <UBadge color="neutral" variant="subtle">
               {{ widget.badge }}
             </UBadge>
           </div>
-          <p class="text-sm leading-6 text-[var(--app-foreground-muted)]">
+          <p class="text-xs leading-5 text-[var(--app-foreground-muted)]">
             {{ widget.note }}
           </p>
         </div>
       </DashboardWidget>
     </section>
 
-    <section class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.75fr)]">
+    <section class="grid gap-3 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
       <DashboardWidget
         :title="payload.widgets[3]?.title"
         :icon="payload.widgets[3]?.icon"
-        description="Grid dashboard produksi sudah dipisahkan; widget ini masih placeholder sampai dataset produksi riil dihubungkan."
       >
-        <div class="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.9fr)]">
-          <div class="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-5">
-            <p class="cobalt-kicker text-[0.66rem] text-[var(--app-foreground-soft)]">
-              Placeholder canvas
-            </p>
-            <p class="mt-3 text-sm leading-6 text-[var(--app-foreground-muted)]">
-              Slot lebar ini disiapkan untuk chart, ranking, atau peta produksi tanpa perlu mengubah struktur page shell.
-            </p>
+        <div class="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(220px,0.85fr)]">
+          <div class="rounded-2xl border border-dashed border-[var(--app-border)] bg-[var(--app-surface-muted)] p-4">
+            <div class="grid h-full min-h-[220px] grid-cols-3 gap-2">
+              <div class="rounded-xl bg-[var(--app-surface)]/85" />
+              <div class="rounded-xl bg-[var(--app-surface)]/65" />
+              <div class="rounded-xl bg-[var(--app-surface)]/85" />
+              <div class="col-span-2 rounded-xl bg-[var(--app-surface)]/70" />
+              <div class="rounded-xl bg-[var(--app-surface)]/90" />
+              <div class="rounded-xl bg-[var(--app-surface)]/75" />
+              <div class="col-span-2 rounded-xl bg-[var(--app-surface)]/60" />
+            </div>
           </div>
 
-          <div class="rounded-2xl border border-dashed border-[var(--app-border)] bg-[var(--app-surface)] p-5">
-            <p class="text-sm font-medium text-[var(--app-foreground)]">
+          <div class="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
+            <p class="text-xs uppercase tracking-[0.16em] text-[var(--app-foreground-soft)]">
+              Status
+            </p>
+            <p class="mt-2 text-sm font-medium text-[var(--app-foreground)]">
               {{ payload.widgets[3]?.value }}
             </p>
-            <p class="mt-3 text-sm leading-6 text-[var(--app-foreground-muted)]">
+            <p class="mt-2 text-xs leading-5 text-[var(--app-foreground-muted)]">
               {{ payload.widgets[3]?.note }}
             </p>
           </div>
@@ -64,26 +69,25 @@ defineProps<{
       </DashboardWidget>
 
       <DashboardWidget
-        title="Status integrasi"
+        title="Placeholder"
         icon="i-lucide-badge-info"
-        description="Dashboard Produksi Pangan sengaja tetap dummy agar switching dashboard tervalidasi tanpa memalsukan data produksi."
         muted
       >
-        <div class="space-y-3">
+        <div class="space-y-2">
           <div
             v-for="widget in payload.widgets"
             :key="`${widget.id}-status`"
-            class="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-4"
+            class="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-3.5"
           >
             <div class="flex items-center justify-between gap-3">
-              <p class="font-medium text-[var(--app-foreground)]">
+              <p class="text-sm font-medium text-[var(--app-foreground)]">
                 {{ widget.title }}
               </p>
               <UBadge color="neutral" variant="outline">
                 {{ widget.badge }}
               </UBadge>
             </div>
-            <p class="mt-2 text-sm leading-6 text-[var(--app-foreground-muted)]">
+            <p class="mt-1.5 text-xs leading-5 text-[var(--app-foreground-muted)]">
               {{ widget.note }}
             </p>
           </div>

@@ -14,14 +14,6 @@ function readQueryValue(value: unknown) {
   return undefined
 }
 
-function normalizeYearQuery(value: unknown) {
-  const year = readQueryValue(value)
-
-  return year && /^\d{4}$/.test(year.trim())
-    ? year.trim()
-    : undefined
-}
-
 export function useDashboardState() {
   const route = useRoute()
   const router = useRouter()
@@ -39,21 +31,13 @@ export function useDashboardState() {
     return isDashboardKey(queryDashboard) ? queryDashboard : fallbackDashboard
   })
 
-  const requestedYear = computed(() => normalizeYearQuery(route.query.year))
-
-  const activeOption = computed(() => {
-    return options.find(option => option.key === activeDashboard.value) ?? options[0]
-  })
-
-  async function loadDashboard(dashboard: DashboardKey, year?: string) {
+  async function loadDashboard(dashboard: DashboardKey) {
     const currentRequestId = ++requestId
     pending.value = true
     error.value = null
 
     try {
-      const payload = await $fetch<DashboardPayload>(`/api/dashboard/${dashboard}`, {
-        query: year ? { year } : undefined
-      })
+      const payload = await $fetch<DashboardPayload>(`/api/dashboard/${dashboard}`)
 
       if (currentRequestId !== requestId) {
         return
@@ -86,23 +70,12 @@ export function useDashboardState() {
     })
   }
 
-  async function selectYear(year: string | null) {
-    const normalized = year?.trim()
-
-    await router.replace({
-      query: {
-        ...route.query,
-        year: normalized && /^\d{4}$/.test(normalized) ? normalized : undefined
-      }
-    })
-  }
-
   async function refreshDashboard() {
-    await loadDashboard(activeDashboard.value, requestedYear.value)
+    await loadDashboard(activeDashboard.value)
   }
 
-  watch([activeDashboard, requestedYear], async ([dashboard, year]) => {
-    await loadDashboard(dashboard, year)
+  watch(activeDashboard, async (dashboard) => {
+    await loadDashboard(dashboard)
   }, { immediate: true })
 
   watch(() => route.query.dashboard, async (value) => {
@@ -122,14 +95,11 @@ export function useDashboardState() {
 
   return {
     activeDashboard,
-    activeOption,
     data,
     error,
     options,
     pending,
-    requestedYear,
     refreshDashboard,
-    selectDashboard,
-    selectYear
+    selectDashboard
   }
 }

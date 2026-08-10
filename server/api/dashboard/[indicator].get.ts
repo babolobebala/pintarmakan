@@ -7,8 +7,6 @@ export default defineEventHandler(async (event) => {
   await requirePermission(event, appPermissions.dashboardRead)
 
   const dashboard = getRouterParam(event, 'indicator')
-  const query = getQuery(event)
-  const requestedYear = typeof query.year === 'string' ? query.year.trim() : undefined
 
   if (!isDashboardKey(dashboard)) {
     throw createError({
@@ -17,7 +15,5 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return getDashboardPayload(dashboard, {
-    year: requestedYear
-  })
+  return getDashboardPayload(dashboard)
 })

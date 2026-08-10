@@ -38,9 +38,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([props.options.map(option =>
     <UButton
       color="neutral"
       variant="subtle"
-      size="md"
+      size="sm"
       :loading="pending"
-      class="w-full justify-between rounded-[calc(var(--radius-panel)+0.1rem)] px-4 py-3 text-left shadow-sm sm:w-80"
+      class="w-full justify-between rounded-[calc(var(--radius-panel)+0.05rem)] px-3 py-2 text-left shadow-sm sm:w-64"
       :ui="{
         base: 'justify-between',
         label: 'truncate'
@@ -50,14 +50,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([props.options.map(option =>
         <UIcon :name="activeOption.icon" class="size-4" />
       </template>
 
-      <div class="min-w-0 text-left">
-        <p class="cobalt-kicker text-[0.66rem] text-[var(--app-foreground-soft)]">
-          Dashboard
-        </p>
-        <p class="truncate text-sm font-semibold text-[var(--app-foreground)]">
-          {{ activeOption.label }}
-        </p>
-      </div>
+      <span class="truncate text-sm font-medium text-[var(--app-foreground)]">
+        {{ activeOption.label }}
+      </span>
 
       <template #trailing>
         <UIcon name="i-lucide-chevrons-up-down" class="size-4 text-[var(--app-foreground-soft)]" />

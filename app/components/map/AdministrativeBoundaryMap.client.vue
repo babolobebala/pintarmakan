@@ -109,8 +109,8 @@ const props = withDefaults(defineProps<{
   noDataLabel?: string
   popupYear?: string | number | null
 }>(), {
-  title: 'Peta batas administrasi',
-  description: 'Layer OSM dengan kabupaten sebagai latar, kecamatan sebagai batas tengah, dan desa sebagai layer klik utama.',
+  title: undefined,
+  description: undefined,
   selectedKecamatan: null,
   mapHeight: '420px',
   kabupatenGeoJsonPath: '/json/kab.geojson',
@@ -518,7 +518,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div v-if="title || description" class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <p class="text-sm font-medium text-highlighted">
           {{ title }}

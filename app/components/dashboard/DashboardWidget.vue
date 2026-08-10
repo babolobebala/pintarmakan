@@ -23,12 +23,12 @@ const hasHeader = computed(() => {
 
 <template>
   <section
-    class="flex h-full flex-col gap-5 rounded-[calc(var(--radius-shell)-0.55rem)] border px-5 py-5 shadow-sm sm:px-6"
+    class="flex h-full flex-col gap-4 rounded-[calc(var(--radius-shell)-0.55rem)] border px-4 py-4 shadow-sm sm:px-5"
     :class="muted
       ? 'border-[var(--app-border)] bg-[var(--app-surface-muted)]'
       : 'border-[var(--app-border)] bg-[var(--app-surface)]'"
   >
-    <div v-if="hasHeader" class="flex flex-wrap items-start justify-between gap-4">
+    <div v-if="hasHeader" class="flex flex-wrap items-start justify-between gap-3">
       <slot name="header">
         <div class="min-w-0 space-y-1.5">
           <div v-if="icon || title" class="flex items-center gap-2">

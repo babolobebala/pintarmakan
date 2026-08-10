@@ -44,11 +44,14 @@ export interface RoleOption {
 
 export interface DatasetManagementItem {
   id: string
+  ownerBidangId: string
+  ownerBidangName: string
   name: string
   description: string | null
   dataSchema: Record<string, unknown>
   dataConfig: Record<string, unknown>
   periodicity: string | null
+  regionLevel: string | null
   createdAt: string
   updatedAt: string
 }
@@ -71,12 +74,12 @@ export interface DatasetRecordActionPermissions {
 }
 
 export interface DatasetRecordDatasetOption extends DatasetManagementItem {
-  regionLevel: string | null
   permissions: DatasetRecordActionPermissions
-  ownerBidangsForCreate: BidangOption[]
-  ownerBidangsForImport: BidangOption[]
-  updateBidangIds: string[]
-  deleteBidangIds: string[]
+}
+
+export interface DataManagementOptionsResponse {
+  bidangs: BidangOption[]
+  datasetsByBidang: Record<string, DatasetRecordDatasetOption[]>
 }
 
 export interface DatasetRecordListItem {
@@ -85,8 +88,6 @@ export interface DatasetRecordListItem {
   regionId: string
   regionName: string
   regionLevel: string
-  ownerBidangId: string
-  ownerBidangName: string
   periodDate: string
   periodLabel: string
   status: string

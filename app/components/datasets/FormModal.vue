@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { DatasetManagementItem } from '~/types'
+import type { BidangOption, DatasetManagementItem } from '~/types'
 
 import {
   datasetIdPattern,
@@ -26,6 +26,21 @@ const emit = defineEmits<{
 const open = defineModel<boolean>('open', { default: false })
 const toast = useToast()
 const isEdit = computed(() => !!props.dataset)
+const {
+  data: bidangs,
+  error: bidangsError,
+  status: bidangsStatus
+} = await useFetch<BidangOption[]>('/api/bidang/options', {
+  default: () => []
+})
+const bidangItems = computed(() => {
+  return bidangs.value.map(bidang => ({
+    id: bidang.id,
+    name: bidang.name,
+    description: bidang.description ?? undefined
+  }))
+})
+const isLoadingBidangs = computed(() => bidangsStatus.value === 'pending')
 
 const schema = z.object({
   id: z.string()
@@ -33,6 +48,10 @@ const schema = z.object({
     .min(1, 'Dataset ID is required.')
     .max(191, 'Dataset ID is too long.')
     .regex(datasetIdPattern, datasetIdValidationMessage),
+  ownerBidangId: z.string()
+    .trim()
+    .min(1, 'Owner Bidang is required.')
+    .max(191, 'Owner Bidang is too long.'),
   name: z.string()
     .trim()
     .min(1, 'Dataset name is required.')
@@ -64,6 +83,7 @@ type Schema = z.output<typeof schema>
 
 const state = reactive<Schema>({
   id: '',
+  ownerBidangId: '',
   name: '',
   description: '',
   dataSchema: formatDatasetJsonValue({}),
@@ -82,6 +102,7 @@ const submitLabel = computed(() => isEdit.value ? 'Simpan perubahan' : 'Tambah d
 function syncState() {
   if (props.dataset) {
     state.id = props.dataset.id
+    state.ownerBidangId = props.dataset.ownerBidangId
     state.name = props.dataset.name
     state.description = props.dataset.description ?? ''
     state.dataSchema = formatDatasetJsonValue(props.dataset.dataSchema)
@@ -91,6 +112,7 @@ function syncState() {
   }
 
   state.id = ''
+  state.ownerBidangId = ''
   state.name = ''
   state.description = ''
   state.dataSchema = formatDatasetJsonValue({})
@@ -119,6 +141,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         method: isEdit.value ? 'PATCH' : 'POST',
         body: isEdit.value
           ? {
+              ownerBidangId: event.data.ownerBidangId,
               name: event.data.name,
               description: event.data.description,
               dataSchema: event.data.dataSchema,
@@ -177,6 +200,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         class="space-y-4"
         @submit="onSubmit"
       >
+        <UAlert
+          v-if="bidangsError"
+          icon="i-lucide-triangle-alert"
+          title="Gagal memuat opsi bidang"
+          description="Refresh halaman lalu coba lagi sebelum menyimpan dataset."
+          color="error"
+          variant="subtle"
+        />
+
         <div class="grid gap-4 lg:grid-cols-2">
           <UFormField
             label="Dataset ID"
@@ -193,6 +225,25 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             />
           </UFormField>
 
+          <UFormField
+            label="Owner Bidang"
+            name="ownerBidangId"
+            description="Pilih bidang pemilik struktural dataset ini."
+          >
+            <USelectMenu
+              v-model="state.ownerBidangId"
+              :items="bidangItems"
+              value-key="id"
+              label-key="name"
+              placeholder="Pilih bidang"
+              class="w-full"
+              :loading="isLoadingBidangs"
+              :search-input="{ placeholder: 'Cari bidang...' }"
+            />
+          </UFormField>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-1">
           <UFormField label="Nama dataset" name="name">
             <UInput v-model="state.name" class="w-full" />
           </UFormField>

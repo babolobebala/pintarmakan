@@ -10,7 +10,14 @@ export default defineEventHandler(async (event) => {
     orderBy: [
       { updatedAt: 'desc' },
       { id: 'asc' }
-    ]
+    ],
+    include: {
+      ownerBidang: {
+        select: {
+          name: true
+        }
+      }
+    }
   })
 
   return datasets.map(serializeDataset)

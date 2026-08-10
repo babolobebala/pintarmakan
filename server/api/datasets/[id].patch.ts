@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { db } from '#server/utils/db'
 import {
+  buildDatasetOwnerPermissionWriteInput,
   buildDatasetWriteInput,
   getDatasetChangedFields,
   serializeDataset
@@ -13,6 +14,7 @@ import { requirePermission } from '~~/server/utils/access'
 
 const updateDatasetSchema = z.object({
   id: z.string().trim().max(191).regex(datasetIdPattern).optional(),
+  ownerBidangId: z.string().trim().min(1).max(191),
   name: z.string().trim().min(1).max(191),
   description: z.string().trim().max(65535).nullable().optional(),
   dataSchema: z.unknown(),
@@ -39,16 +41,41 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const existingDataset = await db.dataset.findUnique({
-    where: {
-      id: datasetId
-    }
-  })
+  const ownerBidangId = body.ownerBidangId.trim()
+  const [existingDataset, ownerBidang] = await Promise.all([
+    db.dataset.findUnique({
+      where: {
+        id: datasetId
+      },
+      include: {
+        ownerBidang: {
+          select: {
+            name: true
+          }
+        }
+      }
+    }),
+    db.authBidang.findUnique({
+      where: {
+        id: ownerBidangId
+      },
+      select: {
+        id: true
+      }
+    })
+  ])
 
   if (!existingDataset) {
     throw createError({
       statusCode: 404,
       statusMessage: 'Dataset not found.'
+    })
+  }
+
+  if (!ownerBidang) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Selected owner Bidang was not found.'
     })
   }
 
@@ -69,26 +96,60 @@ export default defineEventHandler(async (event) => {
     return serializeDataset(existingDataset)
   }
 
-  const dataset = await db.dataset.update({
-    where: {
-      id: datasetId
-    },
-    data: datasetInput
-  })
-
-  await db.auditLog.create({
-    data: {
-      actorId: session.user.id,
-      action: 'dataset.update',
-      entityType: 'dataset',
-      entityId: dataset.id,
-      metadata: {
-        datasetId: dataset.id,
-        changedFields,
-        periodicityBefore: getDatasetPeriodicity(existingDataset.dataConfig),
-        periodicityAfter: getDatasetPeriodicity(dataset.dataConfig)
+  const dataset = await db.$transaction(async (tx) => {
+    const updatedDataset = await tx.dataset.update({
+      where: {
+        id: datasetId
+      },
+      data: datasetInput,
+      include: {
+        ownerBidang: {
+          select: {
+            name: true
+          }
+        }
       }
+    })
+
+    if (existingDataset.ownerBidangId !== updatedDataset.ownerBidangId) {
+      await tx.authBidangDatasetPermission.upsert({
+        where: {
+          bidangId_datasetId: {
+            bidangId: updatedDataset.ownerBidangId,
+            datasetId: updatedDataset.id
+          }
+        },
+        create: {
+          bidangId: updatedDataset.ownerBidangId,
+          datasetId: updatedDataset.id,
+          ...buildDatasetOwnerPermissionWriteInput()
+        },
+        update: buildDatasetOwnerPermissionWriteInput()
+      })
     }
+
+    await tx.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        action: 'dataset.update',
+        entityType: 'dataset',
+        entityId: updatedDataset.id,
+        metadata: {
+          datasetId: updatedDataset.id,
+          changedFields,
+          before: {
+            ownerBidangId: existingDataset.ownerBidangId
+          },
+          after: {
+            ownerBidangId: updatedDataset.ownerBidangId
+          },
+          periodicityBefore: getDatasetPeriodicity(existingDataset.dataConfig),
+          periodicityAfter: getDatasetPeriodicity(updatedDataset.dataConfig)
+        }
+      }
+    })
+
+    return updatedDataset
   })
 
   return serializeDataset(dataset)

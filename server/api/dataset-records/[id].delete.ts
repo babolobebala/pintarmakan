@@ -24,7 +24,6 @@ export default defineEventHandler(async (event) => {
       id: true,
       datasetId: true,
       regionId: true,
-      ownerBidangId: true,
       periodDate: true,
       status: true
     }
@@ -39,8 +38,7 @@ export default defineEventHandler(async (event) => {
 
   await assertDatasetPermissionForUser(session.user, {
     datasetId: record.datasetId,
-    action: 'delete',
-    ownerBidangId: record.ownerBidangId
+    action: 'delete'
   })
 
   await db.datasetRecord.delete({
@@ -59,7 +57,6 @@ export default defineEventHandler(async (event) => {
         datasetId: record.datasetId,
         regionId: record.regionId,
         periodDate: record.periodDate.toISOString().slice(0, 10),
-        ownerBidangId: record.ownerBidangId,
         status: record.status
       }
     }

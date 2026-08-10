@@ -71,6 +71,16 @@ const columns: TableColumn<DatasetManagementItem>[] = [
     }
   },
   {
+    accessorKey: 'ownerBidangName',
+    header: 'Owner Bidang',
+    meta: {
+      class: {
+        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
     accessorKey: 'description',
     header: 'Deskripsi',
     meta: {
@@ -83,6 +93,16 @@ const columns: TableColumn<DatasetManagementItem>[] = [
   {
     accessorKey: 'periodicity',
     header: 'Periodicity',
+    meta: {
+      class: {
+        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'regionLevel',
+    header: 'Region Level',
     meta: {
       class: {
         th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
@@ -133,8 +153,10 @@ const filteredDatasets = computed(() => {
     return [
       dataset.id,
       dataset.name,
+      dataset.ownerBidangName,
       dataset.description ?? '',
-      dataset.periodicity ?? ''
+      dataset.periodicity ?? '',
+      dataset.regionLevel ?? ''
     ]
       .join(' ')
       .toLowerCase()
@@ -144,6 +166,19 @@ const filteredDatasets = computed(() => {
 
 function formatDateTime(value: string) {
   return dateTimeFormatter.format(new Date(value))
+}
+
+function formatRegionLevelLabel(value: string | null) {
+  switch (value) {
+    case 'KABUPATEN':
+      return 'Kabupaten'
+    case 'KECAMATAN':
+      return 'Kecamatan'
+    case 'DESA_KELURAHAN':
+      return 'Desa/Kelurahan'
+    default:
+      return 'Semua wilayah'
+  }
 }
 
 function openEditModal(dataset: DatasetManagementItem) {
@@ -213,7 +248,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
     <AppPageIntro
       kicker="Struktur data"
       title="Kelola Dataset"
-      description="Kelola definisi dataset global, ID teknis, schema JSON, dan config JSON untuk monitoring dashboard."
+      description="Kelola definisi dataset global, bidang pemilik, ID teknis, schema JSON, dan config JSON untuk monitoring dashboard."
     />
 
     <div class="space-y-4">
@@ -239,7 +274,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             <UInput
               v-model="q"
               icon="i-lucide-search"
-              placeholder="Cari ID, nama, deskripsi, atau periodicity..."
+              placeholder="Cari ID, owner bidang, nama, deskripsi, atau periodicity..."
               class="w-full sm:w-72"
             />
             <DatasetsFormModal
@@ -250,13 +285,15 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
         </div>
 
         <div v-if="isPending && !datasets.length" class="px-4 py-3">
-          <div class="min-w-[960px] divide-y divide-default">
+          <div class="min-w-[1120px] divide-y divide-default">
             <div
-              class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,1.7fr)_120px_180px_180px_96px] gap-4 px-4 py-3"
+              class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,1.4fr)_minmax(0,1.7fr)_120px_180px_180px_96px] gap-4 px-4 py-3"
             >
               <div class="h-3 w-20 rounded bg-elevated" />
               <div class="h-3 w-24 rounded bg-elevated" />
               <div class="h-3 w-28 rounded bg-elevated/80" />
+              <div class="h-3 w-24 rounded bg-elevated" />
+              <div class="h-3 w-24 rounded bg-elevated" />
               <div class="h-3 w-20 rounded bg-elevated" />
               <div class="h-3 w-24 rounded bg-elevated/80" />
               <div class="h-3 w-24 rounded bg-elevated" />
@@ -265,13 +302,18 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             <div
               v-for="row in 5"
               :key="row"
-              class="grid min-w-[960px] grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,1.7fr)_120px_180px_180px_96px] gap-4 px-4 py-4"
+              class="grid min-w-[1240px] grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1.4fr)_120px_140px_minmax(0,1.7fr)_180px_180px_96px] gap-4 px-4 py-4"
             >
               <div class="h-6 w-40 rounded-full bg-elevated/80" />
               <div class="space-y-2">
                 <div class="h-3 w-40 rounded bg-elevated" />
                 <div class="h-3 w-28 rounded bg-elevated/80" />
               </div>
+              <div class="space-y-2">
+                <div class="h-3 w-36 rounded bg-elevated" />
+                <div class="h-3 w-24 rounded bg-elevated/80" />
+              </div>
+              <div class="h-6 w-24 rounded-full bg-elevated/80" />
               <div class="space-y-2">
                 <div class="h-3 w-full rounded bg-elevated" />
                 <div class="h-3 w-3/4 rounded bg-elevated/80" />
@@ -307,7 +349,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             :columns="columns"
             :loading="isPending && datasets.length > 0"
             :ui="{
-              root: 'min-w-[1120px]',
+              root: 'min-w-[1240px]',
               thead: 'bg-elevated/35',
               tr: 'border-b border-default last:border-b-0',
               td: 'border-b-0',
@@ -329,6 +371,17 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
               </div>
             </template>
 
+            <template #ownerBidangName-cell="{ row }">
+              <div class="min-w-0">
+                <p class="truncate text-sm text-highlighted">
+                  {{ row.original.ownerBidangName }}
+                </p>
+                <p class="truncate text-xs text-muted">
+                  {{ row.original.ownerBidangId }}
+                </p>
+              </div>
+            </template>
+
             <template #description-cell="{ row }">
               <p class="max-w-md text-sm text-muted">
                 {{ row.original.description || '—' }}
@@ -343,6 +396,18 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
                 size="sm"
               >
                 {{ row.original.periodicity }}
+              </UBadge>
+              <span v-else class="text-sm text-muted">—</span>
+            </template>
+
+            <template #regionLevel-cell="{ row }">
+              <UBadge
+                v-if="row.original.regionLevel"
+                color="neutral"
+                variant="outline"
+                size="sm"
+              >
+                {{ formatRegionLevelLabel(row.original.regionLevel) }}
               </UBadge>
               <span v-else class="text-sm text-muted">—</span>
             </template>
@@ -390,7 +455,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
                   "
                   :description="
                     isSearching
-                      ? 'Try a different ID or dataset name.'
+                      ? 'Try a different ID, owner bidang, or dataset name.'
                       : 'Create a dataset to start managing technical definitions.'
                   "
                   variant="naked"

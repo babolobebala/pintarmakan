@@ -3,11 +3,10 @@ import { createError, getQuery } from 'h3'
 import { db } from '#server/utils/db'
 import {
   assertDatasetPermissionForUser,
-  listAccessibleDatasetsForUser,
   serializeDatasetRecord
 } from '#server/utils/dataset-records'
 import { appPermissions } from '~~/auth/permissions'
-import { getDatasetPeriodicity, normalizeDatasetPeriodInput } from '~~/shared/datasets'
+import { normalizeDatasetPeriodInput } from '~~/shared/datasets'
 import { requirePermission } from '~~/server/utils/access'
 
 export default defineEventHandler(async (event) => {
@@ -22,33 +21,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await assertDatasetPermissionForUser(session.user, {
+  const datasetContext = await assertDatasetPermissionForUser(session.user, {
     datasetId,
     action: 'read'
   })
-
-  const dataset = await db.dataset.findUnique({
-    where: {
-      id: datasetId
-    }
-  })
-
-  if (!dataset) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Dataset not found.'
-    })
-  }
-
-  const accessibleDatasets = await listAccessibleDatasetsForUser(session.user)
-  const datasetOption = accessibleDatasets.find(item => item.id === datasetId)
-
-  if (!datasetOption) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Forbidden'
-    })
-  }
 
   const regionId = typeof query.regionId === 'string' && query.regionId.trim()
     ? query.regionId.trim()
@@ -61,7 +37,7 @@ export default defineEventHandler(async (event) => {
     : undefined
 
   const periodDate = periodValue
-    ? normalizeDatasetPeriodInput(datasetOption.periodicity as never, periodValue)
+    ? normalizeDatasetPeriodInput(datasetContext.dataset.periodicity as never, periodValue)
     : null
 
   const records = await db.datasetRecord.findMany({
@@ -84,12 +60,6 @@ export default defineEventHandler(async (event) => {
           level: true
         }
       },
-      ownerBidang: {
-        select: {
-          id: true,
-          name: true
-        }
-      },
       creator: {
         select: {
           id: true,
@@ -100,10 +70,8 @@ export default defineEventHandler(async (event) => {
   })
 
   return records.map(record => serializeDatasetRecord(record, {
-    periodicity: getDatasetPeriodicity(dataset.dataConfig),
-    canUpdate: datasetOption.permissions.isSuperAdmin
-      || datasetOption.updateBidangIds.includes(record.ownerBidangId),
-    canDelete: datasetOption.permissions.isSuperAdmin
-      || datasetOption.deleteBidangIds.includes(record.ownerBidangId)
+    periodicity: datasetContext.dataset.periodicity,
+    canUpdate: datasetContext.dataset.permissions.canUpdate,
+    canDelete: datasetContext.dataset.permissions.canDelete
   }))
 })

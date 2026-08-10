@@ -433,7 +433,6 @@ The following values belong only in relational columns:
 
 - `datasetId`
 - `regionId`
-- `ownerBidangId`
 - `periodDate`
 - `status`
 - `createdBy`
@@ -603,7 +602,7 @@ The database must enforce:
 
 `UNIQUE(datasetId, regionId, periodDate)`
 
-`ownerBidangId` must not be included in this unique constraint.
+`datasets.ownerBidangId` must not be duplicated into this unique constraint.
 
 There must never be two independent snapshots for the same dataset, region, and normalized period.
 
@@ -631,13 +630,12 @@ Dataset authorization uses the existing application architecture:
 
 All permission flags follow deny-by-default behavior and default to `false`.
 
-`dataset_records.ownerBidangId` identifies which bidang owns or is responsible for the specific record.
-
 Keep these concepts separate:
 
 - `user.role` = global application role or access level
+- `datasets.ownerBidangId` = canonical structural owner of the dataset
 - `auth_bidang_dataset_permissions` = which actions a bidang may perform against a dataset
-- `dataset_records.ownerBidangId` = which bidang owns or is responsible for a particular record
+- `dataset_records` = business snapshots only and do not store ownership directly
 
 Do not store authorization inside:
 
@@ -653,11 +651,12 @@ When creating or updating `dataset_records`, server-side code must:
 
 1. authenticate the request using the existing Better Auth implementation;
 2. load the referenced dataset;
-3. read `dataset.dataSchema`;
-4. validate submitted data against all declared fields;
-5. reject unknown fields;
-6. enforce `required`;
-7. enforce declared field types;
+3. resolve `datasets.ownerBidangId` as the canonical dataset owner;
+4. read `dataset.dataSchema`;
+5. validate submitted data against all declared fields;
+6. reject unknown fields;
+7. enforce `required`;
+8. enforce declared field types;
 8. enforce valid `select.options`;
 9. allow `null` only when `required = false`;
 10. persist actual JSON values, not serialized JSON strings;

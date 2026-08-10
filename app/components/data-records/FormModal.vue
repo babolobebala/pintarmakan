@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { DatasetRecordDatasetOption, DatasetRecordListItem, RegionItem } from '~/types'
+import type {
+  DatasetRecordDatasetOption,
+  DatasetRecordListItem,
+  RegionItem
+} from '~/types'
 
 import {
   formatDatasetPeriod,
@@ -36,7 +40,6 @@ const isEdit = computed(() => !!props.record)
 const loading = ref(false)
 const submitError = ref('')
 const regionId = ref('')
-const ownerBidangId = ref('')
 const periodValue = ref('')
 const status = ref('draft')
 const dataState = reactive<Record<string, unknown>>({})
@@ -92,17 +95,6 @@ const regionOptions = computed(() => {
   })
 })
 
-const ownerBidangOptions = computed(() => {
-  return props.dataset?.ownerBidangsForCreate ?? []
-})
-const ownerBidangSelectItems = computed(() => {
-  return ownerBidangOptions.value.map(bidang => ({
-    id: bidang.id,
-    name: bidang.name,
-    description: bidang.description ?? undefined
-  }))
-})
-
 const modalTitle = computed(() => isEdit.value ? 'Ubah data' : 'Tambah data')
 const modalDescription = computed(() => {
   if (!props.dataset) {
@@ -110,8 +102,8 @@ const modalDescription = computed(() => {
   }
 
   return isEdit.value
-    ? `Perbarui snapshot ${props.dataset.name} tanpa mengubah dataset, wilayah, periode, atau owner bidang.`
-    : `Buat snapshot baru untuk ${props.dataset.name} sesuai schema dataset yang aktif.`
+    ? `Perbarui snapshot ${props.dataset.name} tanpa mengubah dataset, wilayah, atau periode.`
+    : `Buat snapshot baru untuk ${props.dataset.name} pada bidang pemilik dataset yang sedang aktif.`
 })
 const submitLabel = computed(() => isEdit.value ? 'Simpan perubahan' : 'Simpan data')
 
@@ -163,7 +155,6 @@ function syncState() {
 
   if (props.record) {
     regionId.value = props.record.regionId
-    ownerBidangId.value = props.record.ownerBidangId
     periodValue.value = props.record.periodDate
     status.value = props.record.status
     resetDataState()
@@ -172,9 +163,6 @@ function syncState() {
   }
 
   regionId.value = ''
-  ownerBidangId.value = ownerBidangOptions.value.length === 1
-    ? ownerBidangOptions.value[0]?.id ?? ''
-    : ''
   periodValue.value = getDefaultPeriodInput(periodicity.value)
   status.value = 'draft'
   resetDataState()
@@ -204,11 +192,6 @@ async function onSubmit() {
 
   if (!status.value.trim()) {
     submitError.value = 'Status is required.'
-    return
-  }
-
-  if (!isEdit.value && !ownerBidangId.value.trim()) {
-    submitError.value = 'Owner Bidang must be selected.'
     return
   }
 
@@ -243,7 +226,6 @@ async function onSubmit() {
           : {
               datasetId: props.dataset.id,
               regionId: regionId.value,
-              ownerBidangId: ownerBidangId.value,
               periodValue: periodValue.value,
               status: status.value,
               data: validation.data
@@ -327,6 +309,9 @@ async function onSubmit() {
             <p class="text-xs text-muted">
               {{ dataset.id }}
             </p>
+            <p class="text-xs text-muted">
+              Owner Bidang: {{ dataset.ownerBidangName }}
+            </p>
           </div>
 
           <div class="space-y-2">
@@ -337,7 +322,7 @@ async function onSubmit() {
           </div>
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-3">
+        <div class="grid gap-4 lg:grid-cols-2">
           <div class="space-y-2">
             <p class="text-sm font-medium text-highlighted">
               Periode
@@ -395,35 +380,6 @@ async function onSubmit() {
               placeholder="Pilih wilayah"
               class="w-full"
               :search-input="{ placeholder: 'Cari wilayah...' }"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <p class="text-sm font-medium text-highlighted">
-              Owner Bidang
-            </p>
-            <UInput
-              v-if="isEdit"
-              :model-value="record?.ownerBidangName || ownerBidangId"
-              disabled
-              readonly
-              class="w-full"
-            />
-            <UInput
-              v-else-if="ownerBidangOptions.length === 1"
-              :model-value="ownerBidangOptions[0]?.name || ''"
-              disabled
-              readonly
-              class="w-full"
-            />
-            <USelectMenu
-              v-else
-              v-model="ownerBidangId"
-              :items="ownerBidangSelectItems"
-              value-key="id"
-              label-key="name"
-              placeholder="Pilih owner bidang"
-              class="w-full"
             />
           </div>
         </div>

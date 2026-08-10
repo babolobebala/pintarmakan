@@ -34,11 +34,10 @@ const navigation = computed(() => {
     label: 'Settings',
     to: '/settings',
     icon: 'i-lucide-settings-2',
-    permission: appPermissions.settingsRead,
     active: route.path === '/settings' || route.path.startsWith('/settings/')
   }]
 
-  return items.filter(item => hasAccessForRole(currentUser.value?.user.role, item.permission))
+  return items.filter(item => !item.permission || hasAccessForRole(currentUser.value?.user.role, item.permission))
 })
 
 const mobileItems = computed<DropdownMenuItem[][]>(() => ([navigation.value.map(item => ({

@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { appPermissions, formatRoleLabel } from '~~/auth/permissions'
+import { formatRoleLabel } from '~~/auth/permissions'
 import PushNotificationsCard from '~/components/settings/PushNotificationsCard.vue'
-
-definePageMeta({
-  permission: appPermissions.settingsRead
-})
 
 const toast = useToast()
 const { data: currentUser } = await useCurrentUser()

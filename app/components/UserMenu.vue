@@ -20,10 +20,6 @@ const user = computed(() => ({
     : undefined
 }))
 
-const canOpenPengaturan = computed(() => {
-  return hasAccessForRole(currentUser.value?.user.role, appPermissions.settingsRead)
-})
-
 const canKelolaRole = computed(() => {
   return hasAccessForRole(currentUser.value?.user.role, appPermissions.membersRead)
 })
@@ -40,25 +36,23 @@ const items = computed<DropdownMenuItem[][]>(() => {
     avatar: user.value.avatar
   }]]
 
-  if (canOpenPengaturan.value) {
-    const settingsItems: DropdownMenuItem[] = [{
-      label: 'Pengaturan',
-      icon: 'i-lucide-settings-2',
-      to: '/pengaturan',
+  const settingsItems: DropdownMenuItem[] = [{
+    label: 'Pengaturan',
+    icon: 'i-lucide-settings-2',
+    to: '/pengaturan',
+    exact: true
+  }]
+
+  if (canKelolaRole.value) {
+    settingsItems.push({
+      label: 'Manage Users',
+      icon: 'i-lucide-users',
+      to: '/kelola-user',
       exact: true
-    }]
-
-    if (canKelolaRole.value) {
-      settingsItems.push({
-        label: 'Manage Users',
-        icon: 'i-lucide-users',
-        to: '/kelola-user',
-        exact: true
-      })
-    }
-
-    groups.push(settingsItems)
+    })
   }
+
+  groups.push(settingsItems)
 
   groups.push([{
     label: 'Log out',

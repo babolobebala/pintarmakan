@@ -10,7 +10,6 @@ import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access'
 export const appStatements = {
   ...defaultStatements,
   dashboard: ['read'],
-  settings: ['read'],
   members: ['read', 'create', 'update', 'delete', 'set-password', 'ban'],
   auditLogs: ['read'],
   businessData: ['read', 'create', 'update', 'delete']
@@ -50,7 +49,6 @@ const operatorOwnStatements = {
 } as const satisfies AppRoleStatements
 
 const adminOwnStatements = {
-  settings: ['read'],
   members: ['read', 'create', 'update', 'delete', 'set-password', 'ban'],
   user: ['create', 'list', 'get', 'update', 'set-role', 'ban', 'set-password'],
   session: ['revoke']
@@ -133,7 +131,6 @@ export const roleOptions = roleHierarchy.map((slug) => {
 
 export const appPermissions = {
   dashboardRead: { dashboard: ['read'] },
-  settingsRead: { settings: ['read'] },
   membersRead: { members: ['read'] },
   membersCreate: { members: ['create'] },
   membersUpdate: { members: ['update'] },

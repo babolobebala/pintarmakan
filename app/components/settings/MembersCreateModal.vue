@@ -1,164 +1,171 @@
 <script setup lang="ts">
-import * as z from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
-import type { BidangOption, Member, RoleOption } from "~/types";
+import * as z from 'zod'
+import type { FormSubmitEvent } from '@nuxt/ui'
+import type { BidangOption, Member, RoleOption } from '~/types'
 
 const props = withDefaults(
   defineProps<{
-    member?: Member | null;
-    showTrigger?: boolean;
-    canManagePassword?: boolean;
-    canManageStatus?: boolean;
+    member?: Member | null
+    showTrigger?: boolean
+    canManagePassword?: boolean
+    canManageStatus?: boolean
   }>(),
   {
     member: null,
     showTrigger: true,
     canManagePassword: false,
-    canManageStatus: false,
-  },
-);
+    canManageStatus: false
+  }
+)
 
 const emit = defineEmits<{
-  created: [];
-  updated: [];
-  password: [member: Member];
-  status: [member: Member];
-}>();
+  created: []
+  updated: []
+  password: [member: Member]
+  status: [member: Member]
+}>()
 
-const open = defineModel<boolean>("open", { default: false });
-const toast = useToast();
+const open = defineModel<boolean>('open', { default: false })
+const toast = useToast()
 
-const { data: roles } = await useFetch<RoleOption[]>("/api/roles/options", {
-  default: () => [],
-});
-const { data: bidangs } = await useFetch<BidangOption[]>("/api/bidang/options", {
-  default: () => [],
-});
+const { data: roles } = await useFetch<RoleOption[]>('/api/roles/options', {
+  default: () => []
+})
+const { data: bidangs } = await useFetch<BidangOption[]>(
+  '/api/bidang/options',
+  {
+    default: () => []
+  }
+)
 
-const roleOptions = computed(() => roles.value);
-const roleSlugs = computed(() => roleOptions.value.map((role) => role.slug));
+const roleOptions = computed(() => roles.value)
+const roleSlugs = computed(() => roleOptions.value.map(role => role.slug))
 const bidangOptions = computed(() => {
-  return bidangs.value.map((bidang) => ({
+  return bidangs.value.map(bidang => ({
     id: bidang.id,
     name: bidang.name,
-    description: bidang.description ?? undefined,
-  }));
-});
-const bidangIds = computed(() => bidangOptions.value.map((bidang) => bidang.id));
+    description: bidang.description ?? undefined
+  }))
+})
+const bidangIds = computed(() =>
+  bidangOptions.value.map(bidang => bidang.id)
+)
 
 const schema = z.object({
-  name: z.string().min(2, "Too short"),
-  email: z.email("Invalid email"),
+  name: z.string().min(2, 'Too short'),
+  email: z.email('Invalid email'),
   password: z.union([
-    z.literal(""),
-    z.string().min(8, "Password must be at least 8 characters"),
+    z.literal(''),
+    z.string().min(8, 'Password must be at least 8 characters')
   ]),
-  role: z.string().min(1, "Select a role").superRefine((value, ctx) => {
-    if (!roleSlugs.value.includes(value)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Select a valid role.",
-      });
-    }
-  }),
+  role: z
+    .string()
+    .min(1, 'Select a role')
+    .superRefine((value, ctx) => {
+      if (!roleSlugs.value.includes(value)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Select a valid role.'
+        })
+      }
+    }),
   bidangIds: z.array(z.string()).superRefine((value, ctx) => {
-    const availableBidangs = new Set(bidangIds.value);
+    const availableBidangs = new Set(bidangIds.value)
 
     for (const bidangId of value) {
       if (!availableBidangs.has(bidangId)) {
         ctx.addIssue({
-          code: "custom",
-          message: "Select a valid Bidang.",
-        });
-        return;
+          code: 'custom',
+          message: 'Select a valid Bidang.'
+        })
+        return
       }
     }
-  }),
-});
+  })
+})
 
-type Schema = z.output<typeof schema>;
+type Schema = z.output<typeof schema>
 
 const state = reactive<Schema>({
-  name: "",
-  email: "",
-  password: "",
-  role: "user",
-  bidangIds: [],
-});
+  name: '',
+  email: '',
+  password: '',
+  role: 'user',
+  bidangIds: []
+})
 
-const loading = ref(false);
-const bidangLoading = ref(false);
-const isEdit = computed(() => !!props.member);
+const loading = ref(false)
+const bidangLoading = ref(false)
+const isEdit = computed(() => !!props.member)
 const modalTitle = computed(() =>
-  isEdit.value ? "Edit member" : "Add member",
-);
+  isEdit.value ? 'Edit member' : 'Add member'
+)
 const modalDescription = computed(() => {
   return isEdit.value
-    ? "Update the member profile, system role, and operator Bidang assignments."
-    : "Create an internal user record and assign one system role.";
-});
+    ? 'Update the member profile, system role, and operator Bidang assignments.'
+    : 'Create an internal user record and assign one system role.'
+})
 const submitLabel = computed(() =>
-  isEdit.value ? "Save changes" : "Add member",
-);
+  isEdit.value ? 'Save changes' : 'Add member'
+)
 const defaultRole = computed(() => {
   if (roleSlugs.value.length === 0) {
-    return "";
+    return ''
   }
 
-  return roleSlugs.value.includes("user")
-    ? "user"
-    : (roleSlugs.value[0] ?? "");
-});
+  return roleSlugs.value.includes('user') ? 'user' : (roleSlugs.value[0] ?? '')
+})
 const selectedRole = computed(() => {
-  return roleOptions.value.find((role) => role.slug === state.role) ?? null;
-});
-const shouldShowBidangAssignments = computed(() => state.role === "operator");
-const hasBidangOptions = computed(() => bidangOptions.value.length > 0);
+  return roleOptions.value.find(role => role.slug === state.role) ?? null
+})
+const shouldShowBidangAssignments = computed(() => state.role === 'operator')
+const hasBidangOptions = computed(() => bidangOptions.value.length > 0)
 
 function syncState() {
   if (props.member) {
-    state.name = props.member.name;
-    state.email = props.member.email;
-    state.password = "";
-    state.role = props.member.roles.find((role) => roleSlugs.value.includes(role))
-      ?? defaultRole.value;
-    state.bidangIds = [];
+    state.name = props.member.name
+    state.email = props.member.email
+    state.password = ''
+    state.role
+      = props.member.roles.find(role => roleSlugs.value.includes(role))
+        ?? defaultRole.value
+    state.bidangIds = []
 
-    return;
+    return
   }
 
-  state.name = "";
-  state.email = "";
-  state.password = "";
-  state.role = defaultRole.value;
-  state.bidangIds = [];
+  state.name = ''
+  state.email = ''
+  state.password = ''
+  state.role = defaultRole.value
+  state.bidangIds = []
 }
 
 async function loadMemberBidangAssignments() {
-  if (!props.member || state.role !== "operator") {
-    state.bidangIds = [];
-    return;
+  if (!props.member || state.role !== 'operator') {
+    state.bidangIds = []
+    return
   }
 
-  bidangLoading.value = true;
+  bidangLoading.value = true
 
   try {
     const response = await $fetch<{ bidangIds: string[] }>(
-      `/api/members/${props.member.id}/bidang`,
-    );
+      `/api/members/${props.member.id}/bidang`
+    )
 
-    state.bidangIds = response.bidangIds.filter((bidangId) =>
-      bidangIds.value.includes(bidangId),
-    );
+    state.bidangIds = response.bidangIds.filter(bidangId =>
+      bidangIds.value.includes(bidangId)
+    )
   } catch (error) {
-    state.bidangIds = [];
+    state.bidangIds = []
     toast.add({
-      title: "Unable to load Bidang assignments",
-      description: error instanceof Error ? error.message : "Please try again.",
-      color: "error",
-    });
+      title: 'Unable to load Bidang assignments',
+      description: error instanceof Error ? error.message : 'Please try again.',
+      color: 'error'
+    })
   } finally {
-    bidangLoading.value = false;
+    bidangLoading.value = false
   }
 }
 
@@ -166,106 +173,112 @@ watch(
   roleSlugs,
   (value) => {
     if (value.length === 0) {
-      state.role = "";
-      return;
+      state.role = ''
+      return
     }
 
     if (!value.includes(state.role)) {
-      state.role = value.includes("user") ? "user" : (value[0] ?? "");
+      state.role = value.includes('user') ? 'user' : (value[0] ?? '')
     }
   },
-  { immediate: true },
-);
+  { immediate: true }
+)
 
 watch(
   bidangIds,
   (value) => {
-    state.bidangIds = state.bidangIds.filter((bidangId) => value.includes(bidangId));
+    state.bidangIds = state.bidangIds.filter(bidangId =>
+      value.includes(bidangId)
+    )
   },
-  { immediate: true },
-);
+  { immediate: true }
+)
 
 watch(
   [open, () => props.member],
   async ([isOpen]) => {
     if (isOpen) {
-      syncState();
+      syncState()
 
-      if (state.role === "operator") {
-        await loadMemberBidangAssignments();
+      if (state.role === 'operator') {
+        await loadMemberBidangAssignments()
       }
     }
   },
-  { immediate: true },
-);
+  { immediate: true }
+)
 
 watch(
   () => state.role,
   async (value, previousValue) => {
     if (!open.value) {
-      return;
+      return
     }
 
-    if (value !== "operator") {
-      state.bidangIds = [];
-      return;
+    if (value !== 'operator') {
+      state.bidangIds = []
+      return
     }
 
-    if (props.member && previousValue !== "operator") {
-      await loadMemberBidangAssignments();
+    if (props.member && previousValue !== 'operator') {
+      await loadMemberBidangAssignments()
     }
-  },
-);
+  }
+)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  loading.value = true;
+  loading.value = true
 
   try {
     await $fetch(
       isEdit.value && props.member
         ? `/api/members/${props.member.id}`
-        : "/api/members",
+        : '/api/members',
       {
-        method: isEdit.value ? "PATCH" : "POST",
+        method: isEdit.value ? 'PATCH' : 'POST',
         body: isEdit.value
           ? {
               name: event.data.name,
               email: event.data.email,
               role: event.data.role,
-              bidangIds: event.data.role === "operator" ? event.data.bidangIds : undefined,
+              bidangIds:
+                event.data.role === 'operator'
+                  ? event.data.bidangIds
+                  : undefined
             }
           : {
               ...event.data,
-              bidangIds: event.data.role === "operator" ? event.data.bidangIds : [],
-            },
-      },
-    );
+              bidangIds:
+                event.data.role === 'operator' ? event.data.bidangIds : []
+            }
+      }
+    )
 
     toast.add({
-      title: isEdit.value ? "Member updated" : "Member saved",
+      title: isEdit.value ? 'Member updated' : 'Member saved',
       description: isEdit.value
         ? `${event.data.email} has been updated.`
         : `${event.data.email} is now an approved user.`,
-      color: "success",
-    });
+      color: 'success'
+    })
 
-    open.value = false;
-    syncState();
+    open.value = false
+    syncState()
 
     if (isEdit.value) {
-      emit("updated");
-      return;
+      emit('updated')
+      return
     }
 
-    emit("created");
+    emit('created')
   } catch (error) {
     toast.add({
-      title: isEdit.value ? "Unable to update member" : "Unable to save member",
-      description: error instanceof Error ? error.message : "Please try again.",
-      color: "error",
-    });
+      title: isEdit.value ? 'Unable to update member' : 'Unable to save member',
+      description: error instanceof Error ? error.message : 'Please try again.',
+      color: 'error'
+    })
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 </script>
@@ -364,7 +377,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           class="space-y-3 rounded-xl border border-default/70 bg-elevated/30 p-4"
         >
           <div class="space-y-1">
-            <p class="text-sm font-medium text-highlighted">Account access</p>
+            <p class="text-sm font-medium text-highlighted">
+              Account access
+            </p>
             <p class="text-xs text-muted">
               Keep existing password and activation tools available while
               editing the member.

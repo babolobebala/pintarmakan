@@ -2,12 +2,34 @@ import type { H3Event } from 'h3'
 
 import { createError } from 'h3'
 
-import { normalizeRoleSelection, type AppRoleSlug } from '~~/auth/permissions'
+import {
+  getHighestEffectiveRole,
+  isAssignableRole,
+  type AssignableRoleSlug
+} from '~~/auth/permissions'
 import { db } from '#server/utils/db'
 import { auth } from '#server/utils/auth-instance'
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
+}
+
+function getProtectedSuperAdminError(action: string) {
+  return createError({
+    statusCode: 403,
+    statusMessage: `Super Admin accounts cannot be ${action} through this user-management flow.`
+  })
+}
+
+function assertAssignableRole(role: string): AssignableRoleSlug {
+  if (!isAssignableRole(role)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Role must be one of: user, operator, admin.'
+    })
+  }
+
+  return role
 }
 
 export async function createOrUpdateManagedUser(
@@ -16,11 +38,11 @@ export async function createOrUpdateManagedUser(
     email: string
     name: string
     password?: string
-    role: string | AppRoleSlug
+    role: AssignableRoleSlug
   }
 ) {
   const email = normalizeEmail(input.email)
-  const role = normalizeRoleSelection(input.role)
+  const role = assertAssignableRole(input.role)
 
   const existingUser = await db.user.findUnique({
     where: {
@@ -51,6 +73,10 @@ export async function createOrUpdateManagedUser(
       user,
       role
     }
+  }
+
+  if (getHighestEffectiveRole(existingUser.role) === 'super-admin') {
+    throw getProtectedSuperAdminError('modified')
   }
 
   const user = await auth.api.adminUpdateUser({
@@ -103,18 +129,18 @@ export async function updateManagedUser(
   input: {
     email: string
     name: string
-    role: string | AppRoleSlug
+    role?: AssignableRoleSlug
   }
 ) {
   const email = normalizeEmail(input.email)
-  const role = normalizeRoleSelection(input.role)
 
   const existingUser = await db.user.findUnique({
     where: {
       id: userId
     },
     select: {
-      id: true
+      id: true,
+      role: true
     }
   })
 
@@ -123,6 +149,12 @@ export async function updateManagedUser(
       statusCode: 404,
       statusMessage: 'User not found.'
     })
+  }
+
+  const currentRole = getHighestEffectiveRole(existingUser.role)
+
+  if (currentRole === 'super-admin' && input.role) {
+    throw getProtectedSuperAdminError('reassigned')
   }
 
   const user = await auth.api.adminUpdateUser({
@@ -137,13 +169,24 @@ export async function updateManagedUser(
     }
   })
 
-  await auth.api.setRole({
-    headers: event.headers,
-    body: {
-      userId,
-      role
+  if (currentRole === 'super-admin') {
+    return {
+      user,
+      role: currentRole
     }
-  })
+  }
+
+  const role = input.role ? assertAssignableRole(input.role) : currentRole
+
+  if (input.role) {
+    await auth.api.setRole({
+      headers: event.headers,
+      body: {
+        userId,
+        role
+      }
+    })
+  }
 
   return {
     user,
@@ -161,7 +204,8 @@ export async function setManagedUserPassword(
       id: userId
     },
     select: {
-      id: true
+      id: true,
+      role: true
     }
   })
 
@@ -170,6 +214,10 @@ export async function setManagedUserPassword(
       statusCode: 404,
       statusMessage: 'User not found.'
     })
+  }
+
+  if (getHighestEffectiveRole(user.role) === 'super-admin') {
+    throw getProtectedSuperAdminError('updated')
   }
 
   await auth.api.setUserPassword({
@@ -192,6 +240,7 @@ export async function setManagedUserStatus(
     },
     select: {
       id: true,
+      role: true,
       banned: true
     }
   })
@@ -201,6 +250,10 @@ export async function setManagedUserStatus(
       statusCode: 404,
       statusMessage: 'User not found.'
     })
+  }
+
+  if (getHighestEffectiveRole(user.role) === 'super-admin') {
+    throw getProtectedSuperAdminError('activated or deactivated')
   }
 
   if (active) {
@@ -240,7 +293,8 @@ export async function removeManagedUser(event: H3Event, userId: string) {
       id: userId
     },
     select: {
-      id: true
+      id: true,
+      role: true
     }
   })
 
@@ -249,6 +303,10 @@ export async function removeManagedUser(event: H3Event, userId: string) {
       statusCode: 404,
       statusMessage: 'User not found.'
     })
+  }
+
+  if (getHighestEffectiveRole(user.role) === 'super-admin') {
+    throw getProtectedSuperAdminError('deleted')
   }
 
   await auth.api.removeUser({

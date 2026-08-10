@@ -1,7 +1,7 @@
 import { createError, readBody } from 'h3'
 import { z } from 'zod'
 
-import { appPermissions, getUnknownRoles, normalizeRoleSelection } from '~~/auth/permissions'
+import { appPermissions, isAssignableRole, isKnownRole } from '~~/auth/permissions'
 import { createOrUpdateManagedUser } from '#server/utils/auth-admin'
 import { replaceUserBidangAssignments } from '#server/utils/bidang'
 import { db } from '#server/utils/db'
@@ -19,16 +19,21 @@ export default defineEventHandler(async (event) => {
   const session = await requirePermission(event, appPermissions.membersCreate)
   const body = createMemberSchema.parse(await readBody(event))
   const password = body.password?.trim() || undefined
-  const unknownRoles = getUnknownRoles(body.role)
+  const role = body.role.trim()
 
-  if (unknownRoles.length > 0) {
+  if (!isKnownRole(role)) {
     throw createError({
       statusCode: 400,
-      statusMessage: `Unknown role: ${unknownRoles.join(', ')}`
+      statusMessage: `Unknown role: ${role}`
     })
   }
 
-  const role = normalizeRoleSelection(body.role)
+  if (!isAssignableRole(role)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Super Admin cannot be assigned through this user-management flow.'
+    })
+  }
 
   const { user, role: assignedRole } = await createOrUpdateManagedUser(event, {
     email: body.email,

@@ -1,4 +1,4 @@
-import { appPermissions, roleOptions } from '~~/auth/permissions'
+import { appPermissions, assignableRoleOptions } from '~~/auth/permissions'
 import { requireAnyPermission } from '~~/server/utils/access'
 
 export default defineEventHandler(async (event) => {
@@ -7,5 +7,5 @@ export default defineEventHandler(async (event) => {
     appPermissions.membersUpdate
   ])
 
-  return roleOptions
+  return assignableRoleOptions
 })

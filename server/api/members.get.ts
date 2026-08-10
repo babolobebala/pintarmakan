@@ -1,5 +1,5 @@
 import { db } from '#server/utils/db'
-import { appPermissions, getEffectiveRoles } from '~~/auth/permissions'
+import { appPermissions, getHighestEffectiveRole } from '~~/auth/permissions'
 import { requirePermission } from '~~/server/utils/access'
 
 export default defineEventHandler(async (event) => {
@@ -16,6 +16,20 @@ export default defineEventHandler(async (event) => {
       image: true,
       role: true,
       banned: true,
+      bidangAssignments: {
+        orderBy: {
+          bidangId: 'asc'
+        },
+        select: {
+          bidang: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          }
+        }
+      },
       accounts: {
         select: {
           providerId: true,
@@ -26,6 +40,8 @@ export default defineEventHandler(async (event) => {
   })
 
   return users.map((user) => {
+    const effectiveRole = getHighestEffectiveRole(user.role)
+
     return {
       id: user.id,
       name: user.name,
@@ -36,7 +52,11 @@ export default defineEventHandler(async (event) => {
             alt: user.name
           }
         : undefined,
-      roles: getEffectiveRoles(user.role),
+      role: effectiveRole,
+      roles: [effectiveRole],
+      bidangs: user.bidangAssignments
+        .map(assignment => assignment.bidang)
+        .sort((left, right) => left.name.localeCompare(right.name)),
       isBanned: user.banned,
       hasPassword: user.accounts.some((account) => {
         return account.providerId === 'credential' && !!account.password

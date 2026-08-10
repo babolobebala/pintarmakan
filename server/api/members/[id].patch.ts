@@ -4,8 +4,8 @@ import { z } from 'zod'
 import {
   appPermissions,
   getEffectiveRoles,
-  getUnknownRoles,
-  normalizeRoleSelection
+  isAssignableRole,
+  isKnownRole
 } from '~~/auth/permissions'
 import { requirePermission } from '~~/server/utils/access'
 import { updateManagedUser } from '#server/utils/auth-admin'
@@ -15,7 +15,7 @@ import { db } from '#server/utils/db'
 const updateMemberSchema = z.object({
   name: z.string().trim().min(2).max(191),
   email: z.email().trim().max(191),
-  role: z.string().trim().min(1),
+  role: z.string().trim().min(1).optional(),
   bidangIds: z.array(z.string().trim().min(1)).optional()
 })
 
@@ -31,16 +31,22 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = updateMemberSchema.parse(await readBody(event))
-  const unknownRoles = getUnknownRoles(body.role)
+  const role = body.role?.trim()
 
-  if (unknownRoles.length > 0) {
+  if (role && !isKnownRole(role)) {
     throw createError({
       statusCode: 400,
-      statusMessage: `Unknown role: ${unknownRoles.join(', ')}`
+      statusMessage: `Unknown role: ${role}`
     })
   }
 
-  const role = normalizeRoleSelection(body.role)
+  if (role && !isAssignableRole(role)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Super Admin cannot be assigned through this user-management flow.'
+    })
+  }
+
   const { user, role: assignedRole } = await updateManagedUser(
     event,
     userId,

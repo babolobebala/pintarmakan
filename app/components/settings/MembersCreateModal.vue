@@ -2,6 +2,7 @@
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { BidangOption, Member, RoleOption } from '~/types'
+import { formatRoleLabel } from '~~/auth/permissions'
 
 const props = withDefaults(
   defineProps<{
@@ -31,7 +32,11 @@ const toast = useToast()
 const { data: roles } = await useFetch<RoleOption[]>('/api/roles/options', {
   default: () => []
 })
-const { data: bidangs } = await useFetch<BidangOption[]>(
+const {
+  data: bidangs,
+  error: bidangOptionsError,
+  status: bidangOptionsStatus
+} = await useFetch<BidangOption[]>(
   '/api/bidang/options',
   {
     default: () => []
@@ -50,6 +55,10 @@ const bidangOptions = computed(() => {
 const bidangIds = computed(() =>
   bidangOptions.value.map(bidang => bidang.id)
 )
+const isEdit = computed(() => !!props.member)
+const isReadOnlySuperAdmin = computed(() =>
+  isEdit.value && props.member?.role === 'super-admin'
+)
 
 const schema = z.object({
   name: z.string().min(2, 'Too short'),
@@ -62,6 +71,10 @@ const schema = z.object({
     .string()
     .min(1, 'Select a role')
     .superRefine((value, ctx) => {
+      if (isReadOnlySuperAdmin.value && value === 'super-admin') {
+        return
+      }
+
       if (!roleSlugs.value.includes(value)) {
         ctx.addIssue({
           code: 'custom',
@@ -95,18 +108,16 @@ const state = reactive<Schema>({
 })
 
 const loading = ref(false)
-const bidangLoading = ref(false)
-const isEdit = computed(() => !!props.member)
 const modalTitle = computed(() =>
-  isEdit.value ? 'Edit member' : 'Add member'
+  isEdit.value ? 'Ubah user' : 'Tambah user'
 )
 const modalDescription = computed(() => {
   return isEdit.value
-    ? 'Update the member profile, system role, and operator Bidang assignments.'
-    : 'Create an internal user record and assign one system role.'
+    ? 'Perbarui profil user, role sistem, dan penugasan Bidang operator.'
+    : 'Buat akun internal dan tetapkan satu role sistem.'
 })
 const submitLabel = computed(() =>
-  isEdit.value ? 'Save changes' : 'Add member'
+  isEdit.value ? 'Simpan perubahan' : 'Tambah user'
 )
 const defaultRole = computed(() => {
   if (roleSlugs.value.length === 0) {
@@ -118,18 +129,40 @@ const defaultRole = computed(() => {
 const selectedRole = computed(() => {
   return roleOptions.value.find(role => role.slug === state.role) ?? null
 })
-const shouldShowBidangAssignments = computed(() => state.role === 'operator')
+const selectedRoleDescription = computed(() => {
+  if (isReadOnlySuperAdmin.value) {
+    return 'Akun Super Admin tetap valid, tetapi role-nya tidak dapat diubah dari form ini.'
+  }
+
+  return selectedRole.value?.description ?? null
+})
+const shouldShowBidangAssignments = computed(() =>
+  !isReadOnlySuperAdmin.value && state.role === 'operator'
+)
 const hasBidangOptions = computed(() => bidangOptions.value.length > 0)
+const isBidangOptionsLoading = computed(() => bidangOptionsStatus.value === 'pending')
+const hasBidangOptionsError = computed(() => !!bidangOptionsError.value)
+const bidangOptionsErrorMessage = computed(() => {
+  if (!hasBidangOptionsError.value) {
+    return ''
+  }
+
+  return bidangOptionsError.value instanceof Error
+    ? bidangOptionsError.value.message
+    : 'Coba muat ulang halaman lalu ulangi kembali.'
+})
+const submitDisabled = computed(() => {
+  return shouldShowBidangAssignments.value
+    && (isBidangOptionsLoading.value || hasBidangOptionsError.value)
+})
 
 function syncState() {
   if (props.member) {
     state.name = props.member.name
     state.email = props.member.email
     state.password = ''
-    state.role
-      = props.member.roles.find(role => roleSlugs.value.includes(role))
-        ?? defaultRole.value
-    state.bidangIds = []
+    state.role = props.member.role
+    state.bidangIds = props.member.bidangs.map(bidang => bidang.id)
 
     return
   }
@@ -141,39 +174,15 @@ function syncState() {
   state.bidangIds = []
 }
 
-async function loadMemberBidangAssignments() {
-  if (!props.member || state.role !== 'operator') {
-    state.bidangIds = []
-    return
-  }
-
-  bidangLoading.value = true
-
-  try {
-    const response = await $fetch<{ bidangIds: string[] }>(
-      `/api/members/${props.member.id}/bidang`
-    )
-
-    state.bidangIds = response.bidangIds.filter(bidangId =>
-      bidangIds.value.includes(bidangId)
-    )
-  } catch (error) {
-    state.bidangIds = []
-    toast.add({
-      title: 'Unable to load Bidang assignments',
-      description: error instanceof Error ? error.message : 'Please try again.',
-      color: 'error'
-    })
-  } finally {
-    bidangLoading.value = false
-  }
-}
-
 watch(
   roleSlugs,
   (value) => {
     if (value.length === 0) {
       state.role = ''
+      return
+    }
+
+    if (isReadOnlySuperAdmin.value && state.role === 'super-admin') {
       return
     }
 
@@ -196,37 +205,27 @@ watch(
 
 watch(
   [open, () => props.member],
-  async ([isOpen]) => {
+  ([isOpen]) => {
     if (isOpen) {
       syncState()
-
-      if (state.role === 'operator') {
-        await loadMemberBidangAssignments()
-      }
     }
   },
   { immediate: true }
 )
 
-watch(
-  () => state.role,
-  async (value, previousValue) => {
-    if (!open.value) {
-      return
-    }
-
-    if (value !== 'operator') {
-      state.bidangIds = []
-      return
-    }
-
-    if (props.member && previousValue !== 'operator') {
-      await loadMemberBidangAssignments()
-    }
-  }
-)
-
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (shouldShowBidangAssignments.value && (isBidangOptionsLoading.value || hasBidangOptionsError.value)) {
+    toast.add({
+      title: 'Bidang belum siap digunakan',
+      description: hasBidangOptionsError.value
+        ? 'Data Bidang gagal dimuat. Periksa kembali sebelum menyimpan perubahan operator.'
+        : 'Tunggu hingga daftar Bidang selesai dimuat.',
+      color: 'error'
+    })
+
+    return
+  }
+
   loading.value = true
 
   try {
@@ -240,7 +239,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           ? {
               name: event.data.name,
               email: event.data.email,
-              role: event.data.role,
+              role: isReadOnlySuperAdmin.value ? undefined : event.data.role,
               bidangIds:
                 event.data.role === 'operator'
                   ? event.data.bidangIds
@@ -255,10 +254,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     )
 
     toast.add({
-      title: isEdit.value ? 'Member updated' : 'Member saved',
+      title: isEdit.value ? 'User diperbarui' : 'User disimpan',
       description: isEdit.value
-        ? `${event.data.email} has been updated.`
-        : `${event.data.email} is now an approved user.`,
+        ? `${event.data.email} berhasil diperbarui.`
+        : `${event.data.email} berhasil dibuat.`,
       color: 'success'
     })
 
@@ -273,8 +272,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     emit('created')
   } catch (error) {
     toast.add({
-      title: isEdit.value ? 'Unable to update member' : 'Unable to save member',
-      description: error instanceof Error ? error.message : 'Please try again.',
+      title: isEdit.value ? 'Gagal memperbarui user' : 'Gagal menyimpan user',
+      description: error instanceof Error ? error.message : 'Silakan coba lagi.',
       color: 'error'
     })
   } finally {
@@ -290,7 +289,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     :description="modalDescription"
     :ui="{ content: 'sm:max-w-2xl' }"
   >
-    <UButton v-if="showTrigger" label="Add member" icon="i-lucide-user-plus" />
+    <UButton v-if="showTrigger" label="Tambah user" icon="i-lucide-user-plus" />
 
     <template #body>
       <UForm
@@ -299,7 +298,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         class="space-y-4"
         @submit="onSubmit"
       >
-        <UFormField label="Name" name="name">
+        <UFormField label="Nama" name="name">
           <UInput v-model="state.name" class="w-full" />
         </UFormField>
 
@@ -309,9 +308,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
         <UFormField
           v-if="!isEdit"
-          label="Initial password"
+          label="Password awal"
           name="password"
-          description="Optional. Leave blank for Google-only access for now."
+          description="Opsional. Biarkan kosong jika akun hanya akan memakai login Google."
         >
           <UInput
             v-model="state.password"
@@ -322,29 +321,41 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </UFormField>
 
         <UFormField
-          label="System role"
+          label="Role Sistem"
           name="role"
-          description="Pilih satu peran sistem tertinggi untuk akun ini."
+          :description="
+            isReadOnlySuperAdmin
+              ? 'Role Super Admin ditampilkan sebagai informasi dan tidak dapat diubah dari form ini.'
+              : 'Pilih satu role sistem tertinggi untuk akun ini.'
+          "
         >
           <div class="space-y-3">
+            <UInput
+              v-if="isReadOnlySuperAdmin"
+              :model-value="formatRoleLabel(state.role)"
+              readonly
+              disabled
+              class="w-full"
+            />
             <USelectMenu
+              v-else
               v-model="state.role"
               :items="roleOptions"
               value-key="slug"
               label-key="name"
-              placeholder="Select role"
+              placeholder="Pilih role"
               class="w-full"
             />
 
-            <p v-if="selectedRole" class="text-xs text-muted">
-              {{ selectedRole.description }}
+            <p v-if="selectedRoleDescription" class="text-xs text-muted">
+              {{ selectedRoleDescription }}
             </p>
           </div>
         </UFormField>
 
         <UFormField
           v-if="shouldShowBidangAssignments"
-          label="Assigned Bidang"
+          label="Bidang yang Ditugaskan"
           name="bidangIds"
           description="Operator hanya dapat mengubah data pada Bidang yang dipilih."
         >
@@ -355,14 +366,23 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               value-key="id"
               label-key="name"
               multiple
-              placeholder="Select Bidang"
+              placeholder="Pilih Bidang"
               class="w-full"
-              :loading="bidangLoading"
+              :loading="isBidangOptionsLoading"
               :search-input="{ placeholder: 'Cari Bidang...' }"
             />
 
             <UAlert
-              v-if="!hasBidangOptions"
+              v-if="hasBidangOptionsError"
+              icon="i-lucide-triangle-alert"
+              title="Data Bidang gagal dimuat"
+              :description="bidangOptionsErrorMessage"
+              color="error"
+              variant="subtle"
+            />
+
+            <UAlert
+              v-else-if="!hasBidangOptions"
               icon="i-lucide-info"
               title="Belum ada master Bidang"
               description="Belum ada record Bidang di database, jadi operator belum bisa diberi scope."
@@ -373,16 +393,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </UFormField>
 
         <div
-          v-if="isEdit && member && (canManagePassword || canManageStatus)"
+          v-if="isEdit && member && !isReadOnlySuperAdmin && (canManagePassword || canManageStatus)"
           class="space-y-3 rounded-xl border border-default/70 bg-elevated/30 p-4"
         >
           <div class="space-y-1">
             <p class="text-sm font-medium text-highlighted">
-              Account access
+              Akses akun
             </p>
             <p class="text-xs text-muted">
-              Keep existing password and activation tools available while
-              editing the member.
+              Gunakan kontrol ini untuk password dan status akun tanpa keluar dari form.
             </p>
           </div>
 
@@ -412,12 +431,17 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
         <div class="flex justify-end gap-2 border-t border-default pt-4">
           <UButton
-            label="Cancel"
+            label="Batal"
             color="neutral"
             variant="subtle"
             @click="open = false"
           />
-          <UButton :label="submitLabel" type="submit" :loading="loading" />
+          <UButton
+            :label="submitLabel"
+            type="submit"
+            :loading="loading"
+            :disabled="submitDisabled"
+          />
         </div>
       </UForm>
     </template>

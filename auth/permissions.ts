@@ -117,6 +117,8 @@ export const roles = {
 
 export const defaultRole: AppRoleSlug = 'user'
 export const adminRoleSlugs = ['admin', 'super-admin'] as const satisfies readonly AppRoleSlug[]
+export const assignableRoleSlugs = ['user', 'operator', 'admin'] as const satisfies readonly AppRoleSlug[]
+export type AssignableRoleSlug = (typeof assignableRoleSlugs)[number]
 
 export const roleOptions = roleHierarchy.map((slug) => {
   const role = predefinedRoles[slug]
@@ -169,6 +171,12 @@ function getHighestRankedRole(rolesToCompare: readonly AppRoleSlug[]) {
 export function isKnownRole(role: string): role is AppRoleSlug {
   return Object.prototype.hasOwnProperty.call(predefinedRoles, role)
 }
+
+export function isAssignableRole(role: string): role is AssignableRoleSlug {
+  return role !== 'super-admin' && isKnownRole(role)
+}
+
+export const assignableRoleOptions = roleOptions.filter(role => isAssignableRole(role.slug))
 
 export function parseStoredRoles(value?: string | null) {
   return parseRoleInput(value)

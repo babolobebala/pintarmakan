@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import type { Member } from '~/types'
+import type { AppRoleSlug } from '~~/auth/permissions'
 
+import AppPageIntro from '~/components/AppPageIntro.vue'
 import {
   appPermissions,
   formatRoleLabel,
@@ -135,7 +137,34 @@ async function deleteMember() {
 }
 
 function getMemberSearchValue(member: Member) {
-  return `${member.name} ${member.email}`.toLowerCase()
+  return [
+    member.name,
+    member.email,
+    formatRoleLabel(member.role),
+    ...member.bidangs.map(bidang => bidang.name)
+  ]
+    .join(' ')
+    .toLowerCase()
+}
+
+const maxVisibleBidangBadges = 2
+const roleBadgeByRole: Record<AppRoleSlug, { color: 'neutral' | 'info' | 'warning' | 'primary', variant: 'subtle' }> = {
+  'user': {
+    color: 'neutral',
+    variant: 'subtle'
+  },
+  'operator': {
+    color: 'info',
+    variant: 'subtle'
+  },
+  'admin': {
+    color: 'warning',
+    variant: 'subtle'
+  },
+  'super-admin': {
+    color: 'primary',
+    variant: 'subtle'
+  }
 }
 
 const filteredMembers = computed(() => {
@@ -172,8 +201,18 @@ const columns: TableColumn<Member>[] = [
     }
   },
   {
-    accessorKey: 'roles',
+    accessorKey: 'role',
     header: 'Role',
+    meta: {
+      class: {
+        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'bidangs',
+    header: 'Bidang',
     meta: {
       class: {
         th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
@@ -207,31 +246,51 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
         icon: 'i-lucide-trash-2',
         color: 'error',
         disabled:
-          !canDeleteMembers.value || member.id === currentUser.value?.user.id,
+          !canDeleteMembers.value
+          || member.id === currentUser.value?.user.id
+          || member.role === 'super-admin',
         onSelect: () => openDeleteModal(member)
       }
     ]
   ]
 }
+
+function getVisibleBidangs(member: Member) {
+  return member.bidangs.slice(0, maxVisibleBidangBadges)
+}
+
+function getHiddenBidangCount(member: Member) {
+  return Math.max(member.bidangs.length - maxVisibleBidangBadges, 0)
+}
+
+function getBidangSummary(member: Member) {
+  if (member.role === 'user') {
+    return '—'
+  }
+
+  if (member.role === 'admin' || member.role === 'super-admin') {
+    return 'Semua Bidang'
+  }
+
+  if (member.bidangs.length === 0) {
+    return 'Belum ditugaskan'
+  }
+
+  return null
+}
+
+function getRoleBadgeProps(role: string) {
+  return roleBadgeByRole[role as AppRoleSlug] ?? roleBadgeByRole.user
+}
 </script>
 
 <template>
   <div class="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-6 lg:gap-8">
-    <section class="rounded-[var(--radius-shell)] border border-[var(--app-border)] bg-[var(--app-surface)] px-5 py-5 shadow-sm sm:px-6">
-      <div class="space-y-2">
-        <p class="cobalt-kicker text-[var(--app-foreground-soft)]">
-          Kontrol akses
-        </p>
-        <div class="space-y-1">
-          <h1 class="text-2xl font-semibold tracking-tight text-[var(--app-foreground)]">
-            Kelola User
-          </h1>
-          <p class="text-sm leading-6 text-[var(--app-foreground-muted)]">
-            Kelola akun internal dan peran Better Auth tanpa navigasi tab di bagian atas halaman.
-          </p>
-        </div>
-      </div>
-    </section>
+    <AppPageIntro
+      kicker="Kontrol akses"
+      title="Kelola User"
+      description="Kelola akun internal dan peran Better Auth tanpa navigasi tab di bagian atas halaman."
+    />
 
     <div class="space-y-4">
       <section
@@ -243,14 +302,14 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
           <div class="space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <h2 class="text-lg font-semibold text-highlighted">
-                Members
+                User
               </h2>
               <UBadge color="neutral" variant="subtle" size="sm">
                 {{ totalMembersLabel }}
               </UBadge>
             </div>
             <p class="text-sm text-muted">
-              Manage internal users and assign their Better Auth roles.
+              Kelola user internal, role sistem, dan cakupan Bidang operator.
             </p>
           </div>
 
@@ -258,7 +317,7 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
             <UInput
               v-model="q"
               icon="i-lucide-search"
-              placeholder="Search members..."
+              placeholder="Cari nama, email, role, atau Bidang..."
               class="w-full sm:w-72"
             />
             <SettingsMembersCreateModal
@@ -271,17 +330,18 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
         <div v-if="isPending && !members.length" class="px-4 py-3">
           <div class="min-w-[720px] divide-y divide-default">
             <div
-              class="grid grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_96px] gap-4 px-4 py-3"
+              class="grid grid-cols-[minmax(0,1.7fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.4fr)_96px] gap-4 px-4 py-3"
             >
               <div class="h-3 w-20 rounded bg-elevated" />
               <div class="h-3 w-20 rounded bg-elevated" />
               <div class="h-3 w-16 rounded bg-elevated" />
+              <div class="h-3 w-24 rounded bg-elevated/80" />
               <div class="ms-auto h-3 w-16 rounded bg-elevated" />
             </div>
             <div
               v-for="row in 5"
               :key="row"
-              class="grid min-w-[720px] grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_96px] gap-4 px-4 py-4"
+              class="grid min-w-[720px] grid-cols-[minmax(0,1.7fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.4fr)_96px] gap-4 px-4 py-4"
             >
               <div class="flex items-center gap-3">
                 <div class="size-9 rounded-full bg-elevated" />
@@ -291,6 +351,7 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
                 </div>
               </div>
               <div class="h-3 w-40 self-center rounded bg-elevated" />
+              <div class="h-6 w-20 rounded-full bg-elevated/80" />
               <div class="flex flex-wrap gap-2">
                 <div class="h-6 w-20 rounded-full bg-elevated" />
                 <div class="h-6 w-16 rounded-full bg-elevated/80" />
@@ -323,7 +384,7 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
             :columns="columns"
             :loading="isPending && members.length > 0"
             :ui="{
-              root: 'min-w-[720px]',
+              root: 'min-w-[920px]',
               thead: 'bg-elevated/35',
               tr: 'border-b border-default last:border-b-0',
               td: 'border-b-0',
@@ -360,17 +421,41 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
               </p>
             </template>
 
-            <template #roles-cell="{ row }">
-              <div class="flex flex-wrap gap-2">
-                <UBadge
-                  v-for="role in row.original.roles"
-                  :key="role"
-                  color="neutral"
-                  variant="soft"
-                  size="sm"
-                >
-                  {{ formatRoleLabel(role) }}
-                </UBadge>
+            <template #role-cell="{ row }">
+              <UBadge
+                v-bind="getRoleBadgeProps(row.original.role)"
+                size="sm"
+              >
+                {{ formatRoleLabel(row.original.role) }}
+              </UBadge>
+            </template>
+
+            <template #bidangs-cell="{ row }">
+              <div class="flex min-h-8 flex-wrap items-center gap-2">
+                <template v-if="getBidangSummary(row.original)">
+                  <span class="text-sm text-muted">
+                    {{ getBidangSummary(row.original) }}
+                  </span>
+                </template>
+                <template v-else>
+                  <UBadge
+                    v-for="bidang in getVisibleBidangs(row.original)"
+                    :key="bidang.id"
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ bidang.name }}
+                  </UBadge>
+                  <UBadge
+                    v-if="getHiddenBidangCount(row.original) > 0"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                  >
+                    +{{ getHiddenBidangCount(row.original) }}
+                  </UBadge>
+                </template>
               </div>
             </template>
 

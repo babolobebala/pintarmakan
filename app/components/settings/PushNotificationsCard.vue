@@ -87,10 +87,6 @@ const canToggle = computed(() => {
   return notificationState.value === 'enabled' || notificationState.value === 'disabled'
 })
 
-const helperState = computed(() => {
-  return 'helper' in state.value ? state.value : null
-})
-
 const switchDescription = computed(() => {
   if (!isReady.value) {
     return 'Checking notification support and current subscription status.'
@@ -231,10 +227,7 @@ async function toggleNotifications(nextValue: boolean | string) {
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="space-y-1">
         <p class="font-medium text-highlighted">
-          Push Notifications
-        </p>
-        <p class="text-muted">
-          Receive important notifications on this device.
+          Tampilkan Notifikasi
         </p>
         <p class="text-muted">
           {{ state.detail }}
@@ -257,14 +250,5 @@ async function toggleNotifications(nextValue: boolean | string) {
         />
       </div>
     </div>
-
-    <UAlert
-      v-if="helperState"
-      :icon="helperState.helperIcon"
-      :title="helperState.helperTitle"
-      :description="helperState.helper"
-      :color="helperState.color"
-      variant="subtle"
-    />
   </div>
 </template>

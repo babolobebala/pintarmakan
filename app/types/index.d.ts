@@ -5,7 +5,9 @@ export interface Member {
   name: string
   email: string
   avatar?: AvatarProps
+  role: string
   roles: string[]
+  bidangs: BidangOption[]
   isBanned: boolean
   hasPassword: boolean
 }

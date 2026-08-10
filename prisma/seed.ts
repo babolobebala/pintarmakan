@@ -32,6 +32,12 @@ type SeedUser = {
   readonly role: SeedRoleInput
 }
 
+type SeedBidang = {
+  readonly id: string
+  readonly name: string
+  readonly description: string | null
+}
+
 type SeedDbUser = {
   readonly id: string
   readonly email: string
@@ -64,12 +70,49 @@ const seedUsers = [
     role: 'super-admin'
   },
   {
-    name: 'Admin User Demo',
-    email: 'adminuser@gmail.com',
+    name: 'Operator Demo',
+    email: 'operatoruser@gmail.com',
     password: '12345567890',
-    role: 'admin'
+    role: 'operator'
   }
 ] as const satisfies readonly SeedUser[]
+
+const seedBidangs = [
+  {
+    id: 'DKP_DISTRIBUSI',
+    name: 'DKP_DISTRIBUSI',
+    description: null
+  },
+  {
+    id: 'DKP_KONSUMSI',
+    name: 'DKP_KONSUMSI',
+    description: null
+  },
+  {
+    id: 'DKP_KETERSEDIAAN',
+    name: 'DKP_KETERSEDIAAN',
+    description: null
+  },
+  {
+    id: 'DKP_PROGRAM',
+    name: 'DKP_PROGRAM',
+    description: null
+  }
+] as const satisfies readonly SeedBidang[]
+
+type SeedBidangId = (typeof seedBidangs)[number]['id']
+
+type SeedBidangAssignment = {
+  readonly email: string
+  readonly bidangIds: readonly SeedBidangId[]
+}
+
+const seedBidangAssignments = [
+  {
+    email: 'operatoruser@gmail.com',
+    bidangIds: ['DKP_DISTRIBUSI', 'DKP_KONSUMSI', 'DKP_KETERSEDIAAN', 'DKP_PROGRAM']
+  }
+] as const satisfies readonly SeedBidangAssignment[]
 
 const setRolePermission = { user: ['set-role'] } as const
 
@@ -194,6 +237,137 @@ async function getSeedUsersByEmail(db: PrismaClient) {
   })
 
   return new Map(users.map(user => [normalizeEmail(user.email), user]))
+}
+
+async function seedAuthBidangs(db: PrismaClient) {
+  let createdCount = 0
+  let updatedCount = 0
+  let unchangedCount = 0
+
+  for (const seedBidang of seedBidangs) {
+    const currentBidang = await db.authBidang.findUnique({
+      where: {
+        id: seedBidang.id
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true
+      }
+    })
+
+    if (!currentBidang) {
+      await db.authBidang.create({
+        data: seedBidang
+      })
+
+      createdCount += 1
+      console.info(`[seed] created bidang ${seedBidang.id} (${seedBidang.name})`)
+      continue
+    }
+
+    if (
+      currentBidang.name === seedBidang.name
+      && currentBidang.description === seedBidang.description
+    ) {
+      unchangedCount += 1
+      continue
+    }
+
+    await db.authBidang.update({
+      where: {
+        id: seedBidang.id
+      },
+      data: {
+        name: seedBidang.name,
+        description: seedBidang.description
+      }
+    })
+
+    updatedCount += 1
+    console.info(`[seed] updated bidang ${seedBidang.id} (${seedBidang.name})`)
+  }
+
+  return {
+    createdCount,
+    updatedCount,
+    unchangedCount
+  }
+}
+
+async function reconcileSeedBidangAssignments(
+  db: PrismaClient,
+  usersByEmail: Map<string, SeedDbUser>
+) {
+  let updatedCount = 0
+  let unchangedCount = 0
+
+  for (const seedAssignment of seedBidangAssignments) {
+    const email = normalizeEmail(seedAssignment.email)
+    const user = usersByEmail.get(email)
+
+    if (!user) {
+      throw new Error(`Missing seeded user "${email}" required for AuthUserToBidang seeding.`)
+    }
+
+    const desiredBidangIds = Array.from(new Set(seedAssignment.bidangIds.map(bidangId => bidangId.trim()).filter(Boolean)))
+    const existingAssignments = await db.authUserToBidang.findMany({
+      where: {
+        userId: user.id
+      },
+      orderBy: {
+        bidangId: 'asc'
+      },
+      select: {
+        bidangId: true
+      }
+    })
+    const existingBidangIds = existingAssignments.map(assignment => assignment.bidangId)
+    const existingBidangSet = new Set(existingBidangIds)
+    const desiredBidangSet = new Set(desiredBidangIds)
+    const addedBidangIds = desiredBidangIds.filter(bidangId => !existingBidangSet.has(bidangId))
+    const removedBidangIds = existingBidangIds.filter(bidangId => !desiredBidangSet.has(bidangId))
+
+    if (addedBidangIds.length === 0 && removedBidangIds.length === 0) {
+      unchangedCount += 1
+      continue
+    }
+
+    await db.$transaction(async (tx) => {
+      if (removedBidangIds.length > 0) {
+        await tx.authUserToBidang.deleteMany({
+          where: {
+            userId: user.id,
+            bidangId: {
+              in: removedBidangIds
+            }
+          }
+        })
+      }
+
+      if (addedBidangIds.length > 0) {
+        await Promise.all(addedBidangIds.map((bidangId) => {
+          return tx.authUserToBidang.create({
+            data: {
+              userId: user.id,
+              bidangId
+            }
+          })
+        }))
+      }
+    })
+
+    updatedCount += 1
+    console.info(
+      `[seed] updated bidang assignments for ${email} `
+      + `(${desiredBidangIds.join(', ')})`
+    )
+  }
+
+  return {
+    updatedCount,
+    unchangedCount
+  }
 }
 
 async function createMissingUsers(
@@ -355,14 +529,24 @@ async function main() {
   assertNotProduction()
 
   const db = createDatabaseClient()
-  const auth = createSeedAuth(db)
 
   try {
+    const { createdCount: createdBidangCount, updatedCount: updatedBidangCount, unchangedCount: unchangedBidangCount }
+      = await seedAuthBidangs(db)
+    const auth = createSeedAuth(db)
     const existingUsers = await getSeedUsersByEmail(db)
     const createdCount = await createMissingUsers(auth, existingUsers)
     const currentUsers = await getSeedUsersByEmail(db)
     const { updatedCount, unchangedCount } = await reconcileExistingUserRoles(auth, currentUsers)
+    const { updatedCount: updatedBidangAssignmentCount, unchangedCount: unchangedBidangAssignmentCount }
+      = await reconcileSeedBidangAssignments(db, currentUsers)
 
+    console.info(
+      `[seed] bidang complete: ${createdBidangCount} created, ${updatedBidangCount} updated, ${unchangedBidangCount} unchanged`
+    )
+    console.info(
+      `[seed] bidang assignments complete: ${updatedBidangAssignmentCount} updated, ${unchangedBidangAssignmentCount} unchanged`
+    )
     console.info(
       `[seed] complete: ${createdCount} created, ${updatedCount} role-synced, ${unchangedCount} unchanged`
     )

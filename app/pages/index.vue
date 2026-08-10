@@ -107,7 +107,7 @@ async function updateIndicator(indicator: (typeof indicatorOptions)[number]['key
               :loading="pending"
               @click="refreshIndicator"
             />
-            <NuxtLink to="/settings">
+            <NuxtLink to="/pengaturan">
               <UButton
                 label="Settings"
                 icon="i-lucide-settings-2"

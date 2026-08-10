@@ -1,361 +1,422 @@
 import type {
-  DashboardIndicatorKey,
-  DashboardIndicatorPayload,
-  DashboardOverviewPayload,
-  DashboardProductionPayload,
-  ProductionCommodityKey
+  DashboardKey,
+  DashboardKpiPayload,
+  DashboardPayload,
+  DashboardProduksiPayload,
+  DashboardStatusMapPayload,
+  DashboardStatusMapRecord,
+  DashboardUtamaPayload
 } from '~~/shared/dashboard'
 
-const overviewPayload = (): DashboardOverviewPayload => ({
-  key: 'ringkasan-ketahanan-pangan',
-  kind: 'overview',
-  meta: {
-    eyebrow: 'Monitoring utama',
-    title: 'Ringkasan ketahanan pangan daerah',
-    description: 'Memantau indikator utama, prioritas wilayah, dan tindak lanjut operasional dalam satu kanvas.',
-    sourceLabel: 'Server payload terikat · indikator mockup',
-    databaseBacked: false,
-    updatedAt: new Date().toISOString()
-  },
-  metrics: [{
-    label: 'Indeks Ketahanan Pangan',
-    value: '79,24',
-    period: 'Tahunan 2026',
-    delta: '+2,1 poin',
-    tone: 'emerald',
-    note: 'Naik dibanding 2025, ditopang wilayah sentra padi dan distribusi antar-kecamatan.'
-  }, {
-    label: 'Pola Pangan Harapan',
-    value: '91,08',
-    period: 'Tahunan 2026',
-    delta: '+1,4 poin',
-    tone: 'amber',
-    note: 'Komposisi konsumsi makin seimbang, terutama pada pangan hewani dan hortikultura.'
-  }, {
-    label: 'Ketersediaan Pangan Daerah',
-    value: '162,4 ribu ton',
-    period: 'Tahunan 2026',
-    delta: '+8,7%',
-    tone: 'sky',
-    note: 'Surplus produksi didorong pemulihan luas panen dan stabilitas produksi per kecamatan.'
-  }, {
-    label: 'Cadangan Pangan Pemerintah Daerah',
-    value: '284 ton',
-    period: 'Bulanan Juli 2026',
-    delta: '84% dari target',
-    tone: 'rose',
-    note: 'Perlu pengisian ulang bertahap menjelang akhir triwulan dan periode rawan paceklik.'
-  }],
-  yearlyTrend: [{
-    year: '2022',
-    ikp: 72.8,
-    pph: 86.4,
-    availability: 141.2
-  }, {
-    year: '2023',
-    ikp: 74.1,
-    pph: 87.6,
-    availability: 145.8
-  }, {
-    year: '2024',
-    ikp: 76.2,
-    pph: 88.9,
-    availability: 151.3
-  }, {
-    year: '2025',
-    ikp: 77.4,
-    pph: 89.7,
-    availability: 156.8
-  }, {
-    year: '2026',
-    ikp: 79.24,
-    pph: 91.08,
-    availability: 162.4
-  }],
-  villagePriority: [{
-    label: 'Prioritas 1',
-    count: 4,
-    description: 'Perlu intervensi sangat tinggi',
-    tone: '#c2410c'
-  }, {
-    label: 'Prioritas 2',
-    count: 7,
-    description: 'Risiko tinggi',
-    tone: '#ea580c'
-  }, {
-    label: 'Prioritas 3',
-    count: 11,
-    description: 'Waspada',
-    tone: '#f59e0b'
-  }, {
-    label: 'Prioritas 4',
-    count: 16,
-    description: 'Menengah',
-    tone: '#84cc16'
-  }, {
-    label: 'Prioritas 5',
-    count: 18,
-    description: 'Relatif aman',
-    tone: '#22c55e'
-  }, {
-    label: 'Prioritas 6',
-    count: 8,
-    description: 'Sangat tahan pangan',
-    tone: '#0f766e'
-  }],
-  regionalSnapshots: [{
-    region: 'Taliwang',
-    ikp: 81.4,
-    pph: 92.1,
-    cppd: 46,
-    status: 'Dominan Prioritas 5-6'
-  }, {
-    region: 'Seteluk',
-    ikp: 78.6,
-    pph: 90.8,
-    cppd: 38,
-    status: 'Campuran Prioritas 4-5'
-  }, {
-    region: 'Brang Rea',
-    ikp: 76.3,
-    pph: 89.1,
-    cppd: 35,
-    status: 'Campuran Prioritas 3-4'
-  }, {
-    region: 'Jereweh',
-    ikp: 74.8,
-    pph: 88.6,
-    cppd: 29,
-    status: 'Perlu akselerasi distribusi'
-  }],
-  spotlightPrograms: [{
-    title: 'Stabilisasi CPPD',
-    description: 'Fokus pada penguatan stok beras cadangan di gudang kabupaten dan buffer kecamatan.',
-    badge: 'Bulanan'
-  }, {
-    title: 'Pemetaan Prioritas Desa',
-    description: 'Sinkronkan intervensi pangan dengan desa Prioritas 1-3 pada semester kedua.',
-    badge: 'Tahunan'
-  }, {
-    title: 'Produksi Pangan Strategis',
-    description: 'Koneksikan dashboard ini dengan peta produksi padi, jagung, dan hortikultura.',
-    badge: 'Lintas modul'
-  }]
-})
+import { getDatasetSchemaFields } from '~~/shared/datasets'
+import { db } from '~~/server/utils/db'
 
-const productionCommodities = (): DashboardProductionPayload['commodities'] => {
-  const commodities: Record<ProductionCommodityKey, DashboardProductionPayload['commodities'][ProductionCommodityKey]> = {
-    padi: {
-      key: 'padi',
-      label: 'Padi',
-      unit: 'ton',
-      note: 'Komoditas utama untuk ketahanan pangan daerah.',
-      category: 'Tanaman pangan',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 3620, production: 22740 },
-        { name: 'Seteluk', lat: -8.640, lng: 116.903, harvestArea: 2810, production: 17430 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 3240, production: 21080 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 1960, production: 11870 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 1430, production: 8450 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 1290, production: 7690 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 1120, production: 6480 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 980, production: 5590 }
-      ]
-    },
-    jagung: {
-      key: 'jagung',
-      label: 'Jagung',
-      unit: 'ton',
-      note: 'Sentra produksi tersebar di kawasan lahan kering dan tadah hujan.',
-      category: 'Tanaman pangan',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 1890, production: 10840 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 1740, production: 9530 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 2120, production: 12020 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 1450, production: 7940 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 980, production: 5330 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 1130, production: 6410 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 860, production: 4710 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 790, production: 4310 }
-      ]
-    },
-    kedelai: {
-      key: 'kedelai',
-      label: 'Kedelai',
-      unit: 'ton',
-      note: 'Masih berpotensi tumbuh melalui intensifikasi lahan tanaman pangan.',
-      category: 'Tanaman pangan',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 460, production: 812 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 390, production: 670 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 510, production: 921 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 320, production: 558 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 270, production: 446 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 250, production: 420 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 210, production: 366 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 180, production: 298 }
-      ]
-    },
-    cabai: {
-      key: 'cabai',
-      label: 'Cabai',
-      unit: 'ton',
-      note: 'Komoditas strategis untuk pengendalian inflasi pangan daerah.',
-      category: 'Hortikultura',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 320, production: 2540 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 280, production: 2180 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 350, production: 2790 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 220, production: 1670 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 140, production: 1010 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 180, production: 1280 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 160, production: 1130 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 130, production: 940 }
-      ]
-    },
-    bawangMerah: {
-      key: 'bawangMerah',
-      label: 'Bawang merah',
-      unit: 'ton',
-      note: 'Cocok ditampilkan sebagai klaster sentra produksi hortikultura.',
-      category: 'Hortikultura',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 210, production: 1410 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 180, production: 1205 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 240, production: 1680 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 150, production: 1015 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 120, production: 790 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 110, production: 720 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 105, production: 701 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 88, production: 566 }
-      ]
-    },
-    sayuran: {
-      key: 'sayuran',
-      label: 'Sayuran',
-      unit: 'ton',
-      note: 'Agregasi komoditas sayuran untuk pemantauan ketersediaan pangan segar.',
-      category: 'Hortikultura',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 540, production: 4380 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 470, production: 3810 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 610, production: 4960 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 340, production: 2710 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 230, production: 1760 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 265, production: 2090 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 240, production: 1915 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 210, production: 1640 }
-      ]
-    },
-    buahBuahan: {
-      key: 'buahBuahan',
-      label: 'Buah-buahan',
-      unit: 'ton',
-      note: 'Ringkasan hortikultura tahunan berbasis kecamatan.',
-      category: 'Hortikultura',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 760, production: 5810 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 650, production: 4970 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 810, production: 6230 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 480, production: 3610 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 350, production: 2540 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 390, production: 2860 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 360, production: 2615 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 320, production: 2290 }
-      ]
-    },
-    dagingSapi: {
-      key: 'dagingSapi',
-      label: 'Daging sapi',
-      unit: 'ton',
-      note: 'Mockup agregasi produksi peternakan per kecamatan.',
-      category: 'Peternakan',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 420, production: 920 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 390, production: 810 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 450, production: 1010 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 310, production: 690 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 205, production: 460 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 255, production: 580 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 238, production: 521 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 220, production: 488 }
-      ]
-    },
-    ayam: {
-      key: 'ayam',
-      label: 'Ayam',
-      unit: 'ton',
-      note: 'Mockup produksi unggas sebagai data tahunan lintas kecamatan.',
-      category: 'Peternakan',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 520, production: 1640 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 470, production: 1475 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 610, production: 1930 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 345, production: 1050 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 250, production: 755 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 280, production: 880 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 268, production: 822 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 235, production: 724 }
-      ]
-    },
-    telur: {
-      key: 'telur',
-      label: 'Telur',
-      unit: 'ton',
-      note: 'Produksi telur untuk dukungan protein hewani dan konsumsi rumah tangga.',
-      category: 'Peternakan',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 260, production: 540 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 230, production: 485 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 290, production: 608 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 190, production: 395 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 120, production: 248 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 150, production: 320 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 145, production: 302 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 136, production: 281 }
-      ]
-    },
-    ikan: {
-      key: 'ikan',
-      label: 'Ikan',
-      unit: 'ton',
-      note: 'Produksi perikanan tangkap dan budidaya untuk pelengkap dashboard pangan.',
-      category: 'Perikanan',
-      districts: [
-        { name: 'Taliwang', lat: -8.742, lng: 116.838, harvestArea: 680, production: 4380 },
-        { name: 'Seteluk', lat: -8.64, lng: 116.903, harvestArea: 520, production: 3415 },
-        { name: 'Brang Rea', lat: -8.592, lng: 116.944, harvestArea: 410, production: 2640 },
-        { name: 'Brang Ene', lat: -8.676, lng: 116.889, harvestArea: 360, production: 2280 },
-        { name: 'Poto Tano', lat: -8.451, lng: 116.844, harvestArea: 890, production: 5980 },
-        { name: 'Jereweh', lat: -8.795, lng: 116.539, harvestArea: 930, production: 6320 },
-        { name: 'Maluk', lat: -8.9, lng: 116.725, harvestArea: 980, production: 6710 },
-        { name: 'Sekongkang', lat: -8.962, lng: 116.806, harvestArea: 1040, production: 7150 }
-      ]
-    }
-  }
+const dashboardUtamaDatasetIds = [
+  'IKP_TAHUNAN',
+  'PPH_KETERSEDIAAN_TAHUNAN',
+  'PPH_KONSUMSI_TAHUNAN',
+  'STATUS_KETAHANAN_PANGAN_TAHUNAN'
+] as const
 
-  return commodities
+const dashboardUtamaKpiConfigs = [{
+  key: 'ikp',
+  datasetId: 'IKP_TAHUNAN',
+  title: 'Indeks Ketahanan Pangan',
+  description: 'Nilai tahunan IKP tingkat kabupaten.'
+}, {
+  key: 'pphKetersediaan',
+  datasetId: 'PPH_KETERSEDIAAN_TAHUNAN',
+  title: 'PPH Ketersediaan',
+  description: 'Skor Pola Pangan Harapan berbasis ketersediaan pangan.'
+}, {
+  key: 'pphKonsumsi',
+  datasetId: 'PPH_KONSUMSI_TAHUNAN',
+  title: 'PPH Konsumsi',
+  description: 'Skor Pola Pangan Harapan berbasis konsumsi pangan.'
+}] as const
+
+type DashboardKpiKey = (typeof dashboardUtamaKpiConfigs)[number]['key']
+
+type DashboardDatasetDefinition = {
+  id: string
+  description: string | null
+  dataSchema: unknown
+  updatedAt: Date
 }
 
-const productionPayload = (): DashboardProductionPayload => ({
-  key: 'produksi-pangan',
-  kind: 'production',
-  meta: {
-    eyebrow: 'Monitoring sektoral',
-    title: 'Produksi pangan per kecamatan',
-    description: 'Satu muatan indikator berisi seluruh komoditas strategis agar filter widget tetap berjalan di sisi klien.',
-    sourceLabel: 'Server payload terikat · indikator mockup',
-    databaseBacked: false,
-    updatedAt: new Date().toISOString()
-  },
-  commodities: productionCommodities()
-})
+type DashboardRecord = {
+  datasetId: string
+  regionId: string
+  data: unknown
+  updatedAt: Date
+  region?: {
+    name: string
+    parent: {
+      name: string
+    } | null
+  }
+}
 
-export function getDashboardIndicatorPayload(indicator: DashboardIndicatorKey): DashboardIndicatorPayload {
-  switch (indicator) {
-    case 'ringkasan-ketahanan-pangan':
-      return overviewPayload()
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function toPeriodDate(year: number) {
+  return new Date(`${year}-01-01T00:00:00.000Z`)
+}
+
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function readNumericDataValue(data: unknown, key: string | null) {
+  if (!key || !isJsonObject(data)) {
+    return null
+  }
+
+  const value = data[key]
+  const numericValue = typeof value === 'number' ? value : Number(value)
+
+  return Number.isFinite(numericValue) ? numericValue : null
+}
+
+function readTextDataValue(data: unknown, key: string | null) {
+  if (!key || !isJsonObject(data)) {
+    return null
+  }
+
+  const value = data[key]
+
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim()
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+
+  return null
+}
+
+function getPreferredField(dataSchema: unknown, preferredKey: string) {
+  const fields = getDatasetSchemaFields(dataSchema)
+  return fields.find(field => field.key === preferredKey)
+    ?? fields.find(field => field.type === 'number')
+    ?? fields[0]
+    ?? null
+}
+
+function resolveSelectedYear(requestedYear: string | undefined, availableYears: number[]) {
+  const sortedYears = [...availableYears].sort((left, right) => right - left)
+
+  if (sortedYears.length === 0) {
+    return null
+  }
+
+  const parsedRequestedYear = requestedYear ? Number(requestedYear) : NaN
+
+  return Number.isInteger(parsedRequestedYear) && sortedYears.includes(parsedRequestedYear)
+    ? parsedRequestedYear
+    : (sortedYears[0] ?? null)
+}
+
+function getMaxUpdatedAt(dates: Date[]) {
+  const timestamp = dates.reduce((latest, current) => Math.max(latest, current.getTime()), 0)
+  return timestamp > 0 ? new Date(timestamp) : new Date()
+}
+
+function getTrendDirection(value: number | null, previousValue: number | null): DashboardKpiPayload['trendDirection'] {
+  if (value === null || previousValue === null) {
+    return null
+  }
+
+  if (value > previousValue) {
+    return 'up'
+  }
+
+  if (value < previousValue) {
+    return 'down'
+  }
+
+  return 'flat'
+}
+
+function comparePriorityKeys(left: string, right: string) {
+  const leftNumber = Number(left)
+  const rightNumber = Number(right)
+  const bothNumeric = Number.isFinite(leftNumber) && Number.isFinite(rightNumber)
+
+  if (bothNumeric) {
+    return leftNumber - rightNumber
+  }
+
+  return left.localeCompare(right, 'id-ID', { numeric: true, sensitivity: 'base' })
+}
+
+function buildKpiPayload(
+  definition: DashboardDatasetDefinition | undefined,
+  currentRecord: DashboardRecord | undefined,
+  previousRecord: DashboardRecord | undefined,
+  title: string,
+  description: string,
+  selectedYear: number | null
+): DashboardKpiPayload {
+  const field = getPreferredField(definition?.dataSchema, 'value')
+  const value = readNumericDataValue(currentRecord?.data, field?.key ?? null)
+  const previousValue = readNumericDataValue(previousRecord?.data, field?.key ?? null)
+  const delta = value !== null && previousValue !== null ? value - previousValue : null
+
+  return {
+    datasetId: definition?.id ?? '',
+    title,
+    description: definition?.description || description,
+    year: selectedYear,
+    fieldKey: field?.key ?? null,
+    fieldLabel: field?.label ?? null,
+    unit: field?.unit ?? null,
+    value,
+    previousYear: selectedYear !== null ? selectedYear - 1 : null,
+    previousValue,
+    delta,
+    trendDirection: getTrendDirection(value, previousValue)
+  }
+}
+
+function buildStatusMapPayload(
+  definition: DashboardDatasetDefinition | undefined,
+  records: DashboardRecord[],
+  selectedYear: number | null
+): DashboardStatusMapPayload {
+  const field = getPreferredField(definition?.dataSchema, 'priority')
+  const normalizedRecords: DashboardStatusMapRecord[] = records
+    .map((record) => {
+      const priorityKey = readTextDataValue(record.data, field?.key ?? null)
+
+      return {
+        regionId: record.regionId,
+        regionName: record.region?.name || record.regionId,
+        parentRegionName: record.region?.parent?.name ?? null,
+        priorityKey,
+        priorityLabel: priorityKey ? `Prioritas ${priorityKey}` : null
+      } satisfies DashboardStatusMapRecord
+    })
+    .sort((left, right) => left.regionName.localeCompare(right.regionName, 'id-ID'))
+
+  const counts = new Map<string, number>()
+
+  for (const record of normalizedRecords) {
+    if (!record.priorityKey) {
+      continue
+    }
+
+    counts.set(record.priorityKey, (counts.get(record.priorityKey) ?? 0) + 1)
+  }
+
+  return {
+    datasetId: definition?.id ?? '',
+    title: 'Status Ketahanan Pangan',
+    description: definition?.description || 'Peta prioritas status ketahanan pangan per desa.',
+    year: selectedYear,
+    totalWithData: normalizedRecords.filter(record => !!record.priorityKey).length,
+    countsByPriority: Array.from(counts.entries())
+      .sort(([left], [right]) => comparePriorityKeys(left, right))
+      .map(([key, count]) => ({
+        key,
+        label: `Prioritas ${key}`,
+        count
+      })),
+    records: normalizedRecords
+  }
+}
+
+async function loadDashboardUtamaPayload(requestedYear?: string): Promise<DashboardUtamaPayload> {
+  const datasetDefinitions = await db.dataset.findMany({
+    where: {
+      id: {
+        in: [...dashboardUtamaDatasetIds]
+      }
+    },
+    select: {
+      id: true,
+      description: true,
+      dataSchema: true,
+      updatedAt: true
+    }
+  })
+
+  const datasetMap = new Map(datasetDefinitions.map(dataset => [dataset.id, dataset]))
+  const availableYearRecords = await db.datasetRecord.findMany({
+    where: {
+      datasetId: {
+        in: [...dashboardUtamaDatasetIds]
+      },
+      status: 'PUBLISHED'
+    },
+    select: {
+      periodDate: true
+    }
+  })
+
+  const availableYears = Array.from(new Set(
+    availableYearRecords.map(record => Number(toIsoDate(record.periodDate).slice(0, 4)))
+  ))
+    .filter((year): year is number => Number.isInteger(year))
+    .sort((left, right) => right - left)
+
+  const selectedYear = resolveSelectedYear(requestedYear, availableYears)
+  const currentPeriodDate = selectedYear !== null ? toPeriodDate(selectedYear) : null
+  const previousPeriodDate = selectedYear !== null ? toPeriodDate(selectedYear - 1) : null
+  const currentRecords = currentPeriodDate
+    ? await db.datasetRecord.findMany({
+        where: {
+          datasetId: {
+            in: [...dashboardUtamaDatasetIds]
+          },
+          periodDate: currentPeriodDate,
+          status: 'PUBLISHED'
+        },
+        select: {
+          datasetId: true,
+          regionId: true,
+          data: true,
+          updatedAt: true,
+          region: {
+            select: {
+              name: true,
+              parent: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      })
+    : []
+  const previousKpiRecords = previousPeriodDate
+    ? await db.datasetRecord.findMany({
+        where: {
+          datasetId: {
+            in: dashboardUtamaKpiConfigs.map(config => config.datasetId)
+          },
+          periodDate: previousPeriodDate,
+          status: 'PUBLISHED'
+        },
+        select: {
+          datasetId: true,
+          regionId: true,
+          data: true,
+          updatedAt: true
+        }
+      })
+    : []
+  const previousRecordMap = new Map(
+    previousKpiRecords.map(record => [`${record.datasetId}:${record.regionId}`, record] as const)
+  )
+
+  const kpiPayloads = Object.fromEntries(
+    dashboardUtamaKpiConfigs.map((config) => {
+      const currentRecord = currentRecords.find(record => record.datasetId === config.datasetId)
+      const previousRecord = currentRecord
+        ? previousRecordMap.get(`${config.datasetId}:${currentRecord.regionId}`)
+        : previousKpiRecords.find(record => record.datasetId === config.datasetId)
+
+      return [config.key, buildKpiPayload(
+        datasetMap.get(config.datasetId),
+        currentRecord,
+        previousRecord,
+        config.title,
+        config.description,
+        selectedYear
+      )]
+    })
+  ) as Record<DashboardKpiKey, DashboardKpiPayload>
+
+  const statusPayload = buildStatusMapPayload(
+    datasetMap.get('STATUS_KETAHANAN_PANGAN_TAHUNAN'),
+    currentRecords.filter(record => record.datasetId === 'STATUS_KETAHANAN_PANGAN_TAHUNAN'),
+    selectedYear
+  )
+  const updatedAt = getMaxUpdatedAt([
+    ...datasetDefinitions.map(dataset => dataset.updatedAt),
+    ...currentRecords.map(record => record.updatedAt),
+    ...previousKpiRecords.map(record => record.updatedAt)
+  ])
+
+  return {
+    key: 'utama',
+    kind: 'utama',
+    meta: {
+      eyebrow: 'Monitoring operasional',
+      title: 'Dashboard utama ketahanan pangan',
+      description: 'Ringkasan indikator tahunan kabupaten dan status prioritas ketahanan pangan tingkat desa.',
+      sourceLabel: 'Prisma · datasets / dataset_records / regions',
+      databaseBacked: true,
+      updatedAt: updatedAt.toISOString()
+    },
+    selectedYear,
+    availableYears,
+    ikp: kpiPayloads.ikp,
+    pphKetersediaan: kpiPayloads.pphKetersediaan,
+    pphKonsumsi: kpiPayloads.pphKonsumsi,
+    statusKetahananPangan: statusPayload
+  }
+}
+
+function getDashboardProduksiPayload(): DashboardProduksiPayload {
+  return {
+    key: 'produksi-pangan',
+    kind: 'produksi',
+    meta: {
+      eyebrow: 'Monitoring sektoral',
+      title: 'Dashboard produksi pangan',
+      description: 'Placeholder widget untuk memvalidasi arsitektur multi-dashboard sebelum data produksi dihubungkan ke dataset riil.',
+      sourceLabel: 'Placeholder dashboard',
+      databaseBacked: false,
+      updatedAt: new Date().toISOString()
+    },
+    widgets: [{
+      id: 'produksi-padi',
+      title: 'Produksi Padi',
+      value: 'Menunggu integrasi',
+      note: 'Widget ini disiapkan untuk agregasi produksi padi per periode dan wilayah.',
+      icon: 'i-lucide-wheat',
+      badge: 'Placeholder'
+    }, {
+      id: 'produksi-jagung',
+      title: 'Produksi Jagung',
+      value: 'Menunggu integrasi',
+      note: 'Akan memakai grid widget yang sama ketika dataset produksi tersedia.',
+      icon: 'i-lucide-chart-column',
+      badge: 'Placeholder'
+    }, {
+      id: 'hortikultura',
+      title: 'Produksi Hortikultura',
+      value: 'Struktur siap',
+      note: 'Komponen ini hanya memvalidasi pergantian dashboard tanpa route tambahan.',
+      icon: 'i-lucide-sprout',
+      badge: 'Placeholder'
+    }, {
+      id: 'tren-produksi',
+      title: 'Tren Produksi',
+      value: 'Widget dummy',
+      note: 'Slot lebar disiapkan untuk chart atau peta produksi saat dataset riil ditambahkan.',
+      icon: 'i-lucide-chart-no-axes-combined',
+      badge: 'Placeholder'
+    }]
+  }
+}
+
+export async function getDashboardPayload(
+  dashboard: DashboardKey,
+  options?: {
+    year?: string
+  }
+): Promise<DashboardPayload> {
+  switch (dashboard) {
+    case 'utama':
+      return loadDashboardUtamaPayload(options?.year)
     case 'produksi-pangan':
-      return productionPayload()
+      return getDashboardProduksiPayload()
   }
 }

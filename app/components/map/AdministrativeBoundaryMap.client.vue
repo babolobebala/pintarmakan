@@ -38,16 +38,19 @@ type LeafletGeoJsonLayerInstance = {
   getBounds: () => LeafletBoundsInstance
 }
 
+type LeafletPathStyle = {
+  color?: string
+  weight?: number
+  opacity?: number
+  fillColor?: string
+  fillOpacity?: number
+  dashArray?: string
+}
+
 type LeafletGeoJsonFeatureLayerInstance = {
   bindPopup: (content: string) => LeafletGeoJsonFeatureLayerInstance
   on: (event: string, handler: () => void) => LeafletGeoJsonFeatureLayerInstance
-  setStyle: (style: {
-    color?: string
-    weight?: number
-    opacity?: number
-    fillOpacity?: number
-    dashArray?: string
-  }) => LeafletGeoJsonFeatureLayerInstance
+  setStyle: (style: LeafletPathStyle) => LeafletGeoJsonFeatureLayerInstance
   openPopup: () => LeafletGeoJsonFeatureLayerInstance
 }
 
@@ -76,18 +79,20 @@ type LeafletNamespace = {
     addTo: (target: LeafletMapInstance) => void
   }
   geoJSON: (data: LeafletGeoJsonData, options: {
-    style: {
-      color: string
-      weight: number
-      opacity: number
-      fillOpacity: number
-      dashArray?: string
-    }
+    style: LeafletPathStyle
     onEachFeature?: (
       feature: LeafletGeoJsonFeature,
       layer: LeafletGeoJsonFeatureLayerInstance
     ) => void
   }) => LeafletGeoJsonLayerInstance
+}
+
+type BoundaryDesaValue = {
+  readonly regionId: string
+  readonly label?: string | null
+  readonly parentLabel?: string | null
+  readonly valueKey?: string | null
+  readonly valueLabel?: string | null
 }
 
 const props = withDefaults(defineProps<{
@@ -98,6 +103,11 @@ const props = withDefaults(defineProps<{
   kabupatenGeoJsonPath?: string
   kecamatanGeoJsonPath?: string
   desaGeoJsonPath?: string
+  desaValues?: readonly BoundaryDesaValue[]
+  valueColorMap?: Record<string, string>
+  noDataColor?: string
+  noDataLabel?: string
+  popupYear?: string | number | null
 }>(), {
   title: 'Peta batas administrasi',
   description: 'Layer OSM dengan kabupaten sebagai latar, kecamatan sebagai batas tengah, dan desa sebagai layer klik utama.',
@@ -105,7 +115,12 @@ const props = withDefaults(defineProps<{
   mapHeight: '420px',
   kabupatenGeoJsonPath: '/json/kab.geojson',
   kecamatanGeoJsonPath: '/json/kec.geojson',
-  desaGeoJsonPath: '/json/desa.geojson'
+  desaGeoJsonPath: '/json/desa.geojson',
+  desaValues: () => [],
+  valueColorMap: () => ({}),
+  noDataColor: '#e2e8f0',
+  noDataLabel: 'Data belum tersedia',
+  popupYear: null
 })
 
 const mapEl = useTemplateRef('mapEl')
@@ -119,6 +134,27 @@ let kabupatenDataPromise: Promise<LeafletGeoJsonData> | null = null
 let desaDataPromise: Promise<LeafletGeoJsonData> | null = null
 let kecamatanDataPromise: Promise<LeafletGeoJsonData> | null = null
 let hasFittedBoundary = false
+
+const desaValueMap = computed(() => {
+  return new Map(props.desaValues.map(item => [item.regionId.trim(), item]))
+})
+
+const useDesaValueStyling = computed(() => {
+  return props.desaValues.length > 0
+    || Object.keys(props.valueColorMap).length > 0
+    || props.popupYear !== null
+})
+
+const renderSignature = computed(() => {
+  return JSON.stringify({
+    selectedKecamatan: props.selectedKecamatan,
+    popupYear: props.popupYear,
+    desaValues: props.desaValues,
+    valueColorMap: props.valueColorMap,
+    noDataColor: props.noDataColor,
+    noDataLabel: props.noDataLabel
+  })
+})
 
 useHead({
   link: [{
@@ -137,6 +173,12 @@ function getLeaflet() {
 
 function normalizeName(value: string | null | undefined) {
   return value?.trim().toUpperCase() ?? ''
+}
+
+function normalizeRegionId(value: unknown) {
+  return typeof value === 'string' && value.trim()
+    ? value.trim()
+    : ''
 }
 
 async function ensureLeaflet(): Promise<LeafletNamespace> {
@@ -206,6 +248,10 @@ function getKecamatanName(feature: LeafletGeoJsonFeature) {
     : 'Kecamatan tidak diketahui'
 }
 
+function getFeatureRegionId(feature: LeafletGeoJsonFeature) {
+  return normalizeRegionId(feature.properties?.iddesa)
+}
+
 function filterGeoJsonByKecamatan(data: LeafletGeoJsonData, selectedKecamatan: string | null | undefined) {
   if (!selectedKecamatan || !data.features) {
     return data
@@ -224,6 +270,71 @@ function filterGeoJsonByKecamatan(data: LeafletGeoJsonData, selectedKecamatan: s
   return {
     ...data,
     features: filteredFeatures
+  }
+}
+
+function getDesaStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
+  if (!useDesaValueStyling.value) {
+    return {
+      color: '#111111',
+      weight: 1.1,
+      opacity: 0.7,
+      fillOpacity: 0
+    }
+  }
+
+  const featureRegionId = getFeatureRegionId(feature)
+  const record = desaValueMap.value.get(featureRegionId)
+  const fillColor = record?.valueKey ? props.valueColorMap[record.valueKey] : props.noDataColor
+
+  return {
+    color: record?.valueKey ? '#334155' : '#94a3b8',
+    weight: 1.05,
+    opacity: 0.88,
+    fillColor,
+    fillOpacity: record?.valueKey ? 0.62 : 0.35,
+    dashArray: record?.valueKey ? undefined : '4 4'
+  }
+}
+
+function buildDesaPopupContent(feature: LeafletGeoJsonFeature) {
+  const desaName = getDesaName(feature)
+  const kecamatanName = getKecamatanName(feature)
+
+  if (!useDesaValueStyling.value) {
+    return `
+      <div style="min-width: 160px; font-family: sans-serif;">
+        <strong>${desaName}</strong>
+      </div>
+    `
+  }
+
+  const featureRegionId = getFeatureRegionId(feature)
+  const record = desaValueMap.value.get(featureRegionId)
+  const popupDesaName = record?.label || desaName
+  const popupKecamatanName = record?.parentLabel || kecamatanName
+  const valueLabel = record?.valueLabel || props.noDataLabel
+  const yearLine = props.popupYear ? `<div><strong>Tahun:</strong> ${props.popupYear}</div>` : ''
+
+  return `
+    <div style="min-width: 190px; font-family: sans-serif; line-height: 1.45;">
+      <div><strong>Desa:</strong> ${popupDesaName}</div>
+      <div><strong>Kecamatan:</strong> ${popupKecamatanName}</div>
+      <div><strong>Prioritas:</strong> ${valueLabel}</div>
+      ${yearLine}
+    </div>
+  `
+}
+
+function getHoverStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
+  const baseStyle = getDesaStyle(feature)
+
+  return {
+    ...baseStyle,
+    color: '#0f172a',
+    weight: (baseStyle.weight ?? 1.1) + 0.45,
+    opacity: 1,
+    fillOpacity: Math.min((baseStyle.fillOpacity ?? 0) + 0.08, 0.82)
   }
 }
 
@@ -330,30 +441,17 @@ async function renderMap() {
         fillOpacity: 0
       },
       onEachFeature(feature, layer) {
-        const desaName = getDesaName(feature)
+        const baseStyle = getDesaStyle(feature)
 
-        layer.bindPopup(`
-          <div style="min-width: 160px; font-family: sans-serif;">
-            <strong>${desaName}</strong>
-          </div>
-        `)
+        layer.setStyle(baseStyle)
+        layer.bindPopup(buildDesaPopupContent(feature))
 
         layer.on('mouseover', () => {
-          layer.setStyle({
-            color: '#000000',
-            weight: 1.6,
-            opacity: 1,
-            fillOpacity: 0.06
-          })
+          layer.setStyle(getHoverStyle(feature))
         })
 
         layer.on('mouseout', () => {
-          layer.setStyle({
-            color: '#111111',
-            weight: 1.1,
-            opacity: 0.7,
-            fillOpacity: 0
-          })
+          layer.setStyle(getDesaStyle(feature))
         })
 
         layer.on('click', () => {
@@ -386,7 +484,7 @@ onMounted(async () => {
   await renderMap()
 })
 
-watch(() => props.selectedKecamatan, async () => {
+watch(renderSignature, async () => {
   if (!import.meta.client) {
     return
   }

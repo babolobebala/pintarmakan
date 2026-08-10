@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 
-import type { DashboardIndicatorKey } from '~~/shared/dashboard'
+import type { DashboardKey } from '~~/shared/dashboard'
 
 const props = defineProps<{
-  modelValue: DashboardIndicatorKey
-  options: typeof import('~~/shared/dashboard').dashboardIndicatorOptions
+  modelValue: DashboardKey
+  options: typeof import('~~/shared/dashboard').dashboardOptions
   pending?: boolean
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: DashboardIndicatorKey]
+  'update:modelValue': [value: DashboardKey]
 }>()
 
 const activeOption = computed(() => {
@@ -38,9 +38,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([props.options.map(option =>
     <UButton
       color="neutral"
       variant="subtle"
-      size="lg"
+      size="md"
       :loading="pending"
-      class="w-full justify-between rounded-[calc(var(--radius-panel)+0.1rem)] px-4 py-3 text-left shadow-sm sm:w-72"
+      class="w-full justify-between rounded-[calc(var(--radius-panel)+0.1rem)] px-4 py-3 text-left shadow-sm sm:w-80"
       :ui="{
         base: 'justify-between',
         label: 'truncate'
@@ -52,7 +52,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([props.options.map(option =>
 
       <div class="min-w-0 text-left">
         <p class="cobalt-kicker text-[0.66rem] text-[var(--app-foreground-soft)]">
-          Indikator global
+          Dashboard
         </p>
         <p class="truncate text-sm font-semibold text-[var(--app-foreground)]">
           {{ activeOption.label }}

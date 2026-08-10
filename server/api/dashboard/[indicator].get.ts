@@ -1,19 +1,23 @@
 import { appPermissions } from '~~/auth/permissions'
-import { isDashboardIndicatorKey } from '~~/shared/dashboard'
+import { isDashboardKey } from '~~/shared/dashboard'
 import { requirePermission } from '~~/server/utils/access'
-import { getDashboardIndicatorPayload } from '~~/server/utils/dashboard'
+import { getDashboardPayload } from '~~/server/utils/dashboard'
 
 export default defineEventHandler(async (event) => {
   await requirePermission(event, appPermissions.dashboardRead)
 
-  const indicator = getRouterParam(event, 'indicator')
+  const dashboard = getRouterParam(event, 'indicator')
+  const query = getQuery(event)
+  const requestedYear = typeof query.year === 'string' ? query.year.trim() : undefined
 
-  if (!isDashboardIndicatorKey(indicator)) {
+  if (!isDashboardKey(dashboard)) {
     throw createError({
       statusCode: 404,
-      statusMessage: 'Indicator not found'
+      statusMessage: 'Dashboard not found'
     })
   }
 
-  return getDashboardIndicatorPayload(indicator)
+  return getDashboardPayload(dashboard, {
+    year: requestedYear
+  })
 })

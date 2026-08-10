@@ -1,149 +1,149 @@
 <script setup lang="ts">
+import DashboardSelector from '~/components/dashboard/DashboardSelector.vue'
+import DashboardProduksiGrid from '~/components/dashboard/grids/DashboardProduksiGrid.vue'
+import DashboardUtamaGrid from '~/components/dashboard/grids/DashboardUtamaGrid.vue'
+
 import { appPermissions } from '~~/auth/permissions'
 
 definePageMeta({
   permission: appPermissions.dashboardRead
 })
 
-const { data: currentUser } = await useCurrentUser()
 const {
-  activeIndicator,
+  activeDashboard,
   activeOption,
-  data: indicatorData,
+  data: dashboardData,
   error,
-  indicatorOptions,
+  options,
   pending,
-  refreshIndicator,
-  selectIndicator
-} = useDashboardIndicator()
+  requestedYear,
+  refreshDashboard,
+  selectDashboard,
+  selectYear
+} = useDashboardState()
 
 const refreshedAtLabel = computed(() => {
-  if (!indicatorData.value?.meta.updatedAt) {
+  if (!dashboardData.value?.meta.updatedAt) {
     return '-'
   }
 
-  return new Date(indicatorData.value.meta.updatedAt).toLocaleString('id-ID', {
+  return new Date(dashboardData.value.meta.updatedAt).toLocaleString('id-ID', {
     dateStyle: 'medium',
     timeStyle: 'short'
   })
 })
 
-async function updateIndicator(indicator: (typeof indicatorOptions)[number]['key']) {
-  await selectIndicator(indicator)
+const yearOptions = computed(() => {
+  if (dashboardData.value?.kind !== 'utama') {
+    return []
+  }
+
+  return dashboardData.value.availableYears.map(year => String(year))
+})
+
+const activeYearValue = computed(() => {
+  if (requestedYear.value) {
+    return requestedYear.value
+  }
+
+  if (dashboardData.value?.kind === 'utama' && dashboardData.value.selectedYear) {
+    return String(dashboardData.value.selectedYear)
+  }
+
+  return ''
+})
+
+async function updateDashboard(dashboard: (typeof options)[number]['key']) {
+  await selectDashboard(dashboard)
+}
+
+async function updateYear(year: string | null) {
+  await selectYear(year)
 }
 </script>
 
 <template>
-  <div class="space-y-6">
-    <section class="dashboard-stage rounded-[var(--radius-shell)] border border-[var(--app-border)] px-5 py-5 shadow-sm sm:px-6 lg:px-8 lg:py-7">
-      <div class="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.65fr)] xl:items-end">
-        <div class="space-y-4">
+  <div class="space-y-5">
+    <section class="rounded-[var(--radius-shell)] border border-[var(--app-border)] bg-[var(--app-surface)] px-5 py-5 shadow-sm sm:px-6">
+      <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div class="min-w-0 space-y-3">
           <div class="flex flex-wrap items-center gap-2">
             <UBadge color="neutral" variant="subtle">
+              Monitoring Dashboard
+            </UBadge>
+            <UBadge color="neutral" variant="outline">
               Kabupaten Sumbawa Barat
-            </UBadge>
-            <UBadge color="neutral" variant="outline">
-              Sidebar-free workspace
-            </UBadge>
-            <UBadge color="neutral" variant="outline">
-              {{ activeOption.description }}
             </UBadge>
           </div>
 
           <div class="space-y-2">
             <p class="cobalt-kicker text-[var(--app-foreground-soft)]">
-              Monitoring dashboard
+              {{ dashboardData?.meta.eyebrow || 'Monitoring operasional' }}
             </p>
-            <h1 class="max-w-4xl text-2xl font-semibold tracking-tight text-[var(--app-foreground)] sm:text-3xl lg:text-[2.15rem]">
-              Monitoring pangan tanpa sidebar dengan satu konteks indikator global.
+            <h1 class="text-2xl font-semibold tracking-tight text-[var(--app-foreground)] sm:text-[2rem]">
+              {{ dashboardData?.meta.title || activeOption.label }}
             </h1>
             <p class="max-w-3xl text-sm leading-6 text-[var(--app-foreground-muted)]">
-              Pergantian indikator di kanan memuat payload baru dari server untuk konteks dashboard yang aktif. Filter di dalam widget tetap bekerja di sisi klien terhadap payload yang sudah dimuat.
+              {{ dashboardData?.meta.description || activeOption.description }}
             </p>
           </div>
-
-          <div class="grid gap-3 sm:grid-cols-3">
-            <div class="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-              <p class="text-xs uppercase tracking-[0.16em] text-[var(--app-foreground-soft)]">
-                Pengguna aktif
-              </p>
-              <p class="mt-2 text-lg font-semibold text-[var(--app-foreground)]">
-                {{ currentUser?.user.name || 'Operator' }}
-              </p>
-            </div>
-            <div class="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-              <p class="text-xs uppercase tracking-[0.16em] text-[var(--app-foreground-soft)]">
-                Indikator aktif
-              </p>
-              <p class="mt-2 text-lg font-semibold text-[var(--app-foreground)]">
-                {{ activeOption.label }}
-              </p>
-            </div>
-            <div class="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-              <p class="text-xs uppercase tracking-[0.16em] text-[var(--app-foreground-soft)]">
-                Diperbarui
-              </p>
-              <p class="mt-2 text-lg font-semibold text-[var(--app-foreground)]">
-                {{ refreshedAtLabel }}
-              </p>
-            </div>
-          </div>
         </div>
 
-        <div class="space-y-3 rounded-[calc(var(--radius-shell)-0.35rem)] border border-white/80 bg-white/88 p-4 shadow-sm backdrop-blur">
-          <DashboardIndicatorSelector
-            :model-value="activeIndicator"
-            :options="indicatorOptions"
+        <div class="grid gap-3 sm:grid-cols-[minmax(0,320px)_minmax(0,180px)_auto] sm:items-end">
+          <DashboardSelector
+            :model-value="activeDashboard"
+            :options="options"
             :pending="pending"
-            @update:model-value="updateIndicator"
+            @update:model-value="updateDashboard"
           />
 
-          <div class="flex flex-wrap gap-2">
-            <UButton
-              label="Refresh"
-              icon="i-lucide-refresh-cw"
+          <div
+            v-if="activeDashboard === 'utama'"
+            class="space-y-2 rounded-[calc(var(--radius-panel)+0.1rem)] border border-[var(--app-border)] bg-[var(--app-surface-muted)] px-4 py-3"
+          >
+            <p class="cobalt-kicker text-[0.66rem] text-[var(--app-foreground-soft)]">
+              Tahun
+            </p>
+            <USelectMenu
+              :model-value="activeYearValue"
+              :items="yearOptions"
               color="neutral"
-              variant="outline"
-              :loading="pending"
-              @click="refreshIndicator"
+              variant="ghost"
+              class="min-w-0"
+              :disabled="!yearOptions.length"
+              @update:model-value="updateYear"
             />
-            <NuxtLink to="/pengaturan">
-              <UButton
-                label="Settings"
-                icon="i-lucide-settings-2"
-                color="neutral"
-                variant="ghost"
-              />
-            </NuxtLink>
           </div>
 
-          <p class="text-sm leading-6 text-[var(--app-foreground-muted)]">
-            {{ indicatorData?.meta.description || activeOption.description }}
-          </p>
+          <UButton
+            label="Refresh"
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="outline"
+            size="md"
+            :loading="pending"
+            @click="refreshDashboard"
+          />
         </div>
       </div>
-    </section>
 
-    <UAlert
-      v-if="indicatorData && !indicatorData.meta.databaseBacked"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-database-zap"
-      title="Indicator payload saat ini masih server-served mock data"
-      description="Repositori ini belum memiliki tabel Prisma khusus pangan. Arsitektur global selector dan local widget filters sudah dipisahkan, tetapi muatan indikator saat ini belum mengambil statistik pangan dari database domain."
-    />
+      <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-[var(--app-foreground-muted)]">
+        <span>Sumber: {{ dashboardData?.meta.sourceLabel || '-' }}</span>
+        <span>Diperbarui: {{ refreshedAtLabel }}</span>
+      </div>
+    </section>
 
     <UAlert
       v-if="error"
       color="error"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="Indicator gagal dimuat"
+      title="Dashboard gagal dimuat"
       :description="error.message"
     />
 
     <section
-      v-if="pending && !indicatorData"
+      v-if="pending && !dashboardData"
       class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
     >
       <div
@@ -153,29 +153,20 @@ async function updateIndicator(indicator: (typeof indicatorOptions)[number]['key
       >
         <USkeleton class="h-4 w-32" />
         <USkeleton class="mt-5 h-8 w-24" />
-        <USkeleton class="mt-4 h-16 w-full" />
+        <USkeleton class="mt-4 h-28 w-full" />
       </div>
     </section>
 
-    <OverviewMonitoring
-      v-else-if="indicatorData?.kind === 'overview'"
-      :payload="indicatorData"
+    <DashboardUtamaGrid
+      v-else-if="dashboardData?.kind === 'utama'"
+      :payload="dashboardData"
       :pending="pending"
     />
 
-    <ProductionMonitoring
-      v-else-if="indicatorData?.kind === 'production'"
-      :payload="indicatorData"
+    <DashboardProduksiGrid
+      v-else-if="dashboardData?.kind === 'produksi'"
+      :payload="dashboardData"
       :pending="pending"
     />
   </div>
 </template>
-
-<style scoped>
-.dashboard-stage {
-  background:
-    radial-gradient(circle at top left, rgba(31, 87, 235, 0.08), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(16, 24, 40, 0.05), transparent 28%),
-    linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.98));
-}
-</style>

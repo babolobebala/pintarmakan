@@ -58,7 +58,8 @@ export default defineEventHandler(async (event) => {
         periodDate: new Date(`${payload.periodDate}T00:00:00.000Z`),
         status: payload.status,
         data: payload.data as never,
-        createdBy: session.user.id
+        createdBy: session.user.id,
+        updatedBy: session.user.id
       },
       include: {
         region: {

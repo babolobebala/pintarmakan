@@ -24,6 +24,7 @@ const selectedDataset = ref<DatasetManagementItem | null>(null)
 const deleteModalOpen = ref(false)
 const editModalOpen = ref(false)
 const deleting = ref(false)
+const archiving = ref(false)
 const toast = useToast()
 
 const canCreateDatasets = computed(() =>
@@ -41,52 +42,18 @@ const hasRowActions = computed(
 const isPending = computed(() => status.value === 'pending')
 const isSearching = computed(() => q.value.trim().length > 0)
 const totalDatasetsLabel = computed(
-  () => `${datasets.value.length} dataset${datasets.value.length === 1 ? '' : 's'}`
+  () =>
+    `${datasets.value.length} dataset${datasets.value.length === 1 ? '' : 's'}`
 )
 
-const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
-  dateStyle: 'medium',
-  timeStyle: 'short'
-})
-
 const columns: TableColumn<DatasetManagementItem>[] = [
-  {
-    accessorKey: 'id',
-    header: 'ID',
-    meta: {
-      class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
-      }
-    }
-  },
   {
     accessorKey: 'name',
     header: 'Nama',
     meta: {
       class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
-      }
-    }
-  },
-  {
-    accessorKey: 'ownerBidangName',
-    header: 'Owner Bidang',
-    meta: {
-      class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
-      }
-    }
-  },
-  {
-    accessorKey: 'description',
-    header: 'Deskripsi',
-    meta: {
-      class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
+        th: 'w-full px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'min-w-0 px-4 py-3 align-middle'
       }
     }
   },
@@ -95,38 +62,28 @@ const columns: TableColumn<DatasetManagementItem>[] = [
     header: 'Periodicity',
     meta: {
       class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
+        th: 'w-[140px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
       }
     }
   },
   {
     accessorKey: 'regionLevel',
-    header: 'Region Level',
+    header: 'Region',
     meta: {
       class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
+        th: 'w-[160px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
       }
     }
   },
   {
-    accessorKey: 'createdAt',
-    header: 'Dibuat',
+    accessorKey: 'ownerBidangName',
+    header: 'Owner',
     meta: {
       class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
-      }
-    }
-  },
-  {
-    accessorKey: 'updatedAt',
-    header: 'Diperbarui',
-    meta: {
-      class: {
-        th: 'px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
+        th: 'w-[220px] px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'max-w-[220px] px-4 py-3 align-middle'
       }
     }
   },
@@ -135,8 +92,8 @@ const columns: TableColumn<DatasetManagementItem>[] = [
     header: 'Actions',
     meta: {
       class: {
-        th: 'px-4 py-3 text-right text-xs font-medium uppercase tracking-[0.16em] text-muted',
-        td: 'px-4 py-3 align-middle'
+        th: 'w-[72px] px-4 py-3 text-right text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'w-[72px] px-4 py-3 align-middle'
       }
     }
   }
@@ -163,10 +120,6 @@ const filteredDatasets = computed(() => {
       .includes(search)
   })
 })
-
-function formatDateTime(value: string) {
-  return dateTimeFormatter.format(new Date(value))
-}
 
 function formatRegionLevelLabel(value: string | null) {
   switch (value) {
@@ -216,7 +169,8 @@ async function deleteDataset() {
   } catch (error) {
     toast.add({
       title: 'Gagal menghapus dataset',
-      description: error instanceof Error ? error.message : 'Silakan coba lagi.',
+      description:
+        error instanceof Error ? error.message : 'Silakan coba lagi.',
       color: 'error'
     })
   } finally {
@@ -224,27 +178,75 @@ async function deleteDataset() {
   }
 }
 
+async function setDatasetArchived(
+  dataset: DatasetManagementItem,
+  archived: boolean
+) {
+  archiving.value = true
+
+  try {
+    await $fetch(`/api/datasets/${dataset.id}/archive`, {
+      method: 'PATCH',
+      body: { archived }
+    })
+
+    toast.add({
+      title: archived ? 'Dataset diarsipkan' : 'Dataset diaktifkan kembali',
+      description: `${dataset.id} ${archived ? 'tidak lagi dapat diubah melalui kelola data.' : 'kembali tersedia untuk dikelola.'}`,
+      color: 'success'
+    })
+
+    await refresh()
+  } catch (error) {
+    toast.add({
+      title: archived
+        ? 'Gagal mengarsipkan dataset'
+        : 'Gagal mengaktifkan dataset',
+      description:
+        error instanceof Error ? error.message : 'Silakan coba lagi.',
+      color: 'error'
+    })
+  } finally {
+    archiving.value = false
+  }
+}
+
 function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
-  return [[
-    {
-      label: 'Edit',
-      icon: 'i-lucide-pencil-line',
-      disabled: !canUpdateDatasets.value,
-      onSelect: () => openEditModal(dataset)
-    },
-    {
-      label: 'Delete',
-      icon: 'i-lucide-trash-2',
-      color: 'error',
-      disabled: !canDeleteDatasets.value,
-      onSelect: () => openDeleteModal(dataset)
-    }
-  ]]
+  return [
+    [
+      {
+        label: 'Edit',
+        icon: 'i-lucide-pencil-line',
+        class: 'cursor-pointer',
+        disabled: !canUpdateDatasets.value,
+        onSelect: () => openEditModal(dataset)
+      },
+      {
+        label: dataset.archivedAt ? 'Aktifkan kembali' : 'Arsipkan',
+        icon: dataset.archivedAt
+          ? 'i-lucide-archive-restore'
+          : 'i-lucide-archive',
+        class: 'cursor-pointer',
+        disabled: !canUpdateDatasets.value || archiving.value,
+        onSelect: () => setDatasetArchived(dataset, !dataset.archivedAt)
+      },
+      {
+        label: 'Delete',
+        icon: 'i-lucide-trash-2',
+        class: 'cursor-pointer',
+        color: 'error',
+        disabled: !canDeleteDatasets.value,
+        onSelect: () => openDeleteModal(dataset)
+      }
+    ]
+  ]
 }
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-6 lg:gap-8">
+  <div
+    class="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-6 lg:gap-8"
+  >
     <AppPageIntro
       kicker="Struktur data"
       title="Kelola Dataset"
@@ -252,7 +254,9 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
     />
 
     <div class="space-y-4">
-      <section class="overflow-hidden rounded-2xl border border-default bg-default">
+      <section
+        class="overflow-hidden rounded-2xl border border-default bg-default"
+      >
         <div
           class="flex flex-col gap-4 border-b border-default px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
         >
@@ -266,7 +270,8 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
               </UBadge>
             </div>
             <p class="text-sm text-muted">
-              Hanya Super Admin yang dapat membuat, mengubah, dan menghapus definisi dataset.
+              Hanya Super Admin yang dapat membuat, mengubah, dan menghapus
+              definisi dataset.
             </p>
           </div>
 
@@ -274,53 +279,36 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             <UInput
               v-model="q"
               icon="i-lucide-search"
-              placeholder="Cari ID, owner bidang, nama, deskripsi, atau periodicity..."
-              class="w-full sm:w-72"
+              placeholder="Cari nama atau owner bidang..."
+              class="w-full cursor-pointer sm:w-72"
             />
-            <DatasetsFormModal
-              v-if="canCreateDatasets"
-              @created="refresh()"
-            />
+            <DatasetsFormModal v-if="canCreateDatasets" @created="refresh()" />
           </div>
         </div>
 
         <div v-if="isPending && !datasets.length" class="px-4 py-3">
-          <div class="min-w-[1120px] divide-y divide-default">
+          <div class="min-w-[680px] divide-y divide-default">
             <div
-              class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,1.4fr)_minmax(0,1.7fr)_120px_180px_180px_96px] gap-4 px-4 py-3"
+              class="grid grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_72px] gap-4 px-4 py-3"
             >
               <div class="h-3 w-20 rounded bg-elevated" />
               <div class="h-3 w-24 rounded bg-elevated" />
               <div class="h-3 w-28 rounded bg-elevated/80" />
-              <div class="h-3 w-24 rounded bg-elevated" />
-              <div class="h-3 w-24 rounded bg-elevated" />
-              <div class="h-3 w-20 rounded bg-elevated" />
-              <div class="h-3 w-24 rounded bg-elevated/80" />
               <div class="h-3 w-24 rounded bg-elevated" />
               <div class="ms-auto h-3 w-16 rounded bg-elevated" />
             </div>
             <div
               v-for="row in 5"
               :key="row"
-              class="grid min-w-[1240px] grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1.4fr)_120px_140px_minmax(0,1.7fr)_180px_180px_96px] gap-4 px-4 py-4"
+              class="grid min-w-[680px] grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_72px] gap-4 px-4 py-4"
             >
-              <div class="h-6 w-40 rounded-full bg-elevated/80" />
               <div class="space-y-2">
-                <div class="h-3 w-40 rounded bg-elevated" />
-                <div class="h-3 w-28 rounded bg-elevated/80" />
-              </div>
-              <div class="space-y-2">
-                <div class="h-3 w-36 rounded bg-elevated" />
-                <div class="h-3 w-24 rounded bg-elevated/80" />
+                <div class="h-3 w-48 rounded bg-elevated" />
+                <div class="h-3 w-32 rounded bg-elevated/80" />
               </div>
               <div class="h-6 w-24 rounded-full bg-elevated/80" />
-              <div class="space-y-2">
-                <div class="h-3 w-full rounded bg-elevated" />
-                <div class="h-3 w-3/4 rounded bg-elevated/80" />
-              </div>
               <div class="h-6 w-20 rounded-full bg-elevated/80" />
-              <div class="h-3 w-28 self-center rounded bg-elevated" />
-              <div class="h-3 w-28 self-center rounded bg-elevated/80" />
+              <div class="h-3 w-36 self-center rounded bg-elevated" />
               <div class="ms-auto h-8 w-8 rounded-lg bg-elevated" />
             </div>
           </div>
@@ -329,12 +317,14 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
         <div v-else-if="error" class="px-4 py-10">
           <UEmpty
             icon="i-lucide-database-zap"
+            class="cursor-pointer"
             title="Unable to load datasets"
             description="Please refresh the list and try again."
             :actions="[
               {
                 label: 'Retry',
                 icon: 'i-lucide-refresh-cw',
+                class: 'cursor-pointer',
                 color: 'neutral',
                 variant: 'subtle',
                 onClick: () => refresh()
@@ -349,7 +339,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             :columns="columns"
             :loading="isPending && datasets.length > 0"
             :ui="{
-              root: 'min-w-[1240px]',
+              root: 'min-w-[680px]',
               thead: 'bg-elevated/35',
               tr: 'border-b border-default last:border-b-0',
               td: 'border-b-0',
@@ -357,34 +347,27 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             }"
             :get-row-id="(row) => row.id"
           >
-            <template #id-cell="{ row }">
-              <UBadge color="neutral" variant="subtle" size="sm">
-                {{ row.original.id }}
-              </UBadge>
-            </template>
-
             <template #name-cell="{ row }">
               <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-highlighted">
-                  {{ row.original.name }}
-                </p>
+                <div class="flex items-center gap-2">
+                  <p class="truncate text-sm font-medium text-highlighted">
+                    {{ row.original.name }}
+                  </p>
+                  <UBadge
+                    v-if="row.original.archivedAt"
+                    color="warning"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    Diarsipkan
+                  </UBadge>
+                </div>
               </div>
             </template>
 
             <template #ownerBidangName-cell="{ row }">
-              <div class="min-w-0">
-                <p class="truncate text-sm text-highlighted">
-                  {{ row.original.ownerBidangName }}
-                </p>
-                <p class="truncate text-xs text-muted">
-                  {{ row.original.ownerBidangId }}
-                </p>
-              </div>
-            </template>
-
-            <template #description-cell="{ row }">
-              <p class="max-w-md text-sm text-muted">
-                {{ row.original.description || '—' }}
+              <p class="truncate text-sm text-highlighted">
+                {{ row.original.ownerBidangName }}
               </p>
             </template>
 
@@ -412,18 +395,6 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
               <span v-else class="text-sm text-muted">—</span>
             </template>
 
-            <template #createdAt-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatDateTime(row.original.createdAt) }}
-              </span>
-            </template>
-
-            <template #updatedAt-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatDateTime(row.original.updatedAt) }}
-              </span>
-            </template>
-
             <template #actions-cell="{ row }">
               <div class="flex justify-end">
                 <UDropdownMenu
@@ -434,6 +405,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
                 >
                   <UButton
                     icon="i-lucide-ellipsis"
+                    class="cursor-pointer"
                     color="neutral"
                     variant="ghost"
                     size="sm"
@@ -448,6 +420,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
               <div class="px-4 py-12">
                 <UEmpty
                   icon="i-lucide-database"
+                  class="cursor-pointer"
                   :title="
                     isSearching
                       ? 'No datasets match your search.'
@@ -455,7 +428,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
                   "
                   :description="
                     isSearching
-                      ? 'Try a different ID, owner bidang, or dataset name.'
+                      ? 'Try a different dataset name or owner bidang.'
                       : 'Create a dataset to start managing technical definitions.'
                   "
                   variant="naked"

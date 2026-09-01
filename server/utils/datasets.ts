@@ -13,6 +13,7 @@ type DatasetLike = {
   description: string | null
   dataSchema: unknown
   dataConfig: unknown
+  archivedAt: Date | null
   createdAt: Date
   updatedAt: Date
   ownerBidang?: {
@@ -45,6 +46,7 @@ export function serializeDataset(dataset: DatasetLike) {
     dataConfig: dataset.dataConfig as Record<string, unknown>,
     periodicity: getDatasetPeriodicity(dataset.dataConfig),
     regionLevel: getDatasetRegionLevel(dataset.dataConfig),
+    archivedAt: dataset.archivedAt?.toISOString() ?? null,
     createdAt: dataset.createdAt.toISOString(),
     updatedAt: dataset.updatedAt.toISOString()
   }
@@ -87,15 +89,4 @@ export function getDatasetChangedFields(
   }
 
   return changedFields
-}
-
-export function buildDatasetOwnerPermissionWriteInput() {
-  return {
-    canRead: true,
-    canCreate: true,
-    canUpdate: true,
-    canDelete: true,
-    canImport: true,
-    canExport: true
-  }
 }

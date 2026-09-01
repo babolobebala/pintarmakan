@@ -3,7 +3,6 @@ import { z } from 'zod'
 
 import { db } from '#server/utils/db'
 import {
-  buildDatasetOwnerPermissionWriteInput,
   buildDatasetWriteInput,
   getDatasetChangedFields,
   serializeDataset
@@ -110,23 +109,6 @@ export default defineEventHandler(async (event) => {
         }
       }
     })
-
-    if (existingDataset.ownerBidangId !== updatedDataset.ownerBidangId) {
-      await tx.authBidangDatasetPermission.upsert({
-        where: {
-          bidangId_datasetId: {
-            bidangId: updatedDataset.ownerBidangId,
-            datasetId: updatedDataset.id
-          }
-        },
-        create: {
-          bidangId: updatedDataset.ownerBidangId,
-          datasetId: updatedDataset.id,
-          ...buildDatasetOwnerPermissionWriteInput()
-        },
-        update: buildDatasetOwnerPermissionWriteInput()
-      })
-    }
 
     await tx.auditLog.create({
       data: {

@@ -21,11 +21,24 @@ This document is the canonical contract for all future work involving:
 The application uses:
 
 - `datasets` as the definition/template of a business dataset.
-- `dataset_records` as the actual data snapshots produced from a dataset definition.
+- `dataset_records` as the current canonical data snapshot produced from a dataset definition.
+- `dataset_record_history` as immutable previous DatasetRecord snapshots.
 
 Relationship:
 
 `datasets` 1:N `dataset_records`
+
+DatasetRecord history is retained separately. A real UPDATE snapshots the old
+current state before mutation, and a DELETE snapshots the old current state
+before hard deletion. History survives deletion of the current row; it is not
+a version-number system and it does not replace `audit_logs`. History owns
+previous business state, while audit logs retain concise actor/action metadata.
+
+Dataset lifecycle is represented by `datasets.archivedAt`: `null` means active
+and a non-null value means archived. Archiving retains Dataset definitions,
+records, and history, but prevents DatasetRecord create/update/delete. Datasets
+with current records or history cannot be hard-deleted; a never-used Dataset
+may still be hard-deleted.
 
 One `dataset_record` represents:
 
@@ -81,10 +94,13 @@ Ownership is inherited through:
 Keep this distinction strict:
 
 - `datasets.ownerBidangId` = structural ownership / responsible bidang
-- `auth_bidang_dataset_permissions` = authorization / allowed actions against the dataset
+- `auth_user_to_bidang` = Operator Bidang scope for owner DatasetRecord access
+- Better Auth = capability / allowed actions
 - `dataset_records` = actual business snapshots
 
-Do not merge ownership and permissions.
+Owner DatasetRecord access is authorized by matching `datasets.ownerBidangId`
+against the authenticated Operator's assigned Bidang plus the required Better
+Auth capability. Admin and Super Admin have global Bidang scope.
 
 Do not introduce multiple dataset owners.
 
@@ -575,32 +591,31 @@ One dataset record continues to represent:
 
 ## 13. Authorization
 
-Dataset authorization uses the existing application architecture:
+DatasetRecord authorization uses the existing application architecture:
 
 `user.role`  
 `-> auth_user_to_bidang`  
 `-> auth_bidang`  
-`-> auth_bidang_dataset_permissions`  
 `-> datasets`  
 `-> dataset_records`
 
-`auth_bidang_dataset_permissions` defines dataset-level permissions:
+For DatasetRecord operations, Better Auth answers what the user may do and
+`datasets.ownerBidangId` answers where the operation may happen.
 
-- `canRead`
-- `canCreate`
-- `canUpdate`
-- `canDelete`
-- `canImport`
-- `canExport`
+An Operator may act on DatasetRecords only when:
 
-All permission flags follow deny-by-default behavior and default to `false`.
+- their Better Auth role has the required `businessData` capability; and
+- they are assigned to the Dataset's `ownerBidangId`.
+
+Admin and Super Admin keep global Bidang scope. Cross-Bidang delegated
+DatasetRecord access is not supported.
 
 Keep these concepts separate:
 
 - Better Auth = global role or access
 - `auth_user_to_bidang` = user bidang assignment
 - `datasets.ownerBidangId` = canonical structural owner of the dataset
-- `auth_bidang_dataset_permissions` = which actions a bidang may perform against a dataset
+- owner match + Better Auth capability = DatasetRecord authorization
 - `dataset_records` = business snapshots only and do not store ownership directly
 
 Do not store authorization inside:
@@ -630,7 +645,7 @@ When creating or updating `dataset_records`, server-side code must:
 13. validate and normalize `periodDate` according to periodicity;
 14. validate `regionId` and `regionLevel`;
 15. enforce `UNIQUE(datasetId, regionId, periodDate)`;
-16. enforce existing bidang and dataset permissions; and
+16. enforce Better Auth capability and Dataset owner Bidang scope; and
 17. derive `createdBy` from the authenticated user instead of trusting client input.
 
 Frontend validation is UX only and must never replace server-side validation.

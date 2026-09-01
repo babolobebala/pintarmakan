@@ -1,8 +1,11 @@
 import { createError } from 'h3'
 
 import {
+  appPermissions,
   getHighestEffectiveRole,
+  hasAccessForRole,
   hasRoleAtLeast,
+  type AppAccessRequest,
   type AppRoleSlug
 } from '~~/auth/permissions'
 import {
@@ -13,10 +16,10 @@ import {
   validateDatasetRecordData
 } from '~~/shared/datasets'
 import { getAssignedBidangIdsForUser, listBidangOptions } from '#server/utils/bidang'
-import { db, type Prisma } from '#server/utils/db'
+import { db } from '#server/utils/db'
 import { serializeDataset } from '#server/utils/datasets'
 
-type DatasetPermissionAction = 'read' | 'create' | 'update' | 'delete' | 'import' | 'export'
+type DatasetPermissionAction = 'read' | 'create' | 'update' | 'delete'
 
 type ScopedUser = {
   readonly id: string
@@ -30,78 +33,39 @@ type UserDataScope = {
   readonly bidangIdSet: ReadonlySet<string>
 }
 
-type PermissionRow = Prisma.AuthBidangDatasetPermissionGetPayload<{
-  select: {
-    bidangId: true
-    datasetId: true
-    canRead: true
-    canCreate: true
-    canUpdate: true
-    canDelete: true
-    canImport: true
-    canExport: true
-    bidang: {
-      select: {
-        id: true
-        name: true
-        description: true
-      }
-    }
+type OwnedDatasetRow = {
+  readonly id: string
+  readonly ownerBidangId: string
+  readonly name: string
+  readonly description: string | null
+  readonly dataSchema: unknown
+  readonly dataConfig: unknown
+  readonly archivedAt: Date | null
+  readonly createdAt: Date
+  readonly updatedAt: Date
+  readonly ownerBidang: {
+    readonly id: string
+    readonly name: string
+    readonly description: string | null
   }
-}>
-
-type OwnedDatasetRow = Prisma.DatasetGetPayload<{
-  include: {
-    ownerBidang: {
-      select: {
-        id: true
-        name: true
-        description: true
-      }
-    }
-    bidangPermissions: {
-      select: {
-        bidangId: true
-        datasetId: true
-        canRead: true
-        canCreate: true
-        canUpdate: true
-        canDelete: true
-        canImport: true
-        canExport: true
-        bidang: {
-          select: {
-            id: true
-            name: true
-            description: true
-          }
-        }
-      }
-    }
-  }
-}>
+}
 
 type DatasetPermissionContext = {
   readonly scope: UserDataScope
-  readonly row: PermissionRow | null
   readonly dataset: ReturnType<typeof serializeOwnedDataset>
 }
 
-function getDatasetPermissionField(action: DatasetPermissionAction) {
+function getDatasetActionPermission(action: DatasetPermissionAction): AppAccessRequest {
   switch (action) {
     case 'create':
-      return 'canCreate'
+      return appPermissions.businessDataCreate
     case 'update':
-      return 'canUpdate'
+      return appPermissions.businessDataUpdate
     case 'delete':
-      return 'canDelete'
-    case 'import':
-      return 'canImport'
-    case 'export':
-      return 'canExport'
+      return appPermissions.businessDataDelete
     case 'read':
     default:
-      return 'canRead'
+      return appPermissions.businessDataRead
   }
 }
 
@@ -119,31 +83,26 @@ function getDataManagementAccessError() {
   })
 }
 
-function getPermissionFlags(permissionRow: PermissionRow | null, isSuperAdmin: boolean) {
-  if (isSuperAdmin) {
-    return {
-      canRead: true,
-      canCreate: true,
-      canUpdate: true,
-      canDelete: true,
-      canImport: true,
-      canExport: true
-    }
-  }
-
-  return {
-    canRead: permissionRow?.canRead ?? false,
-    canCreate: permissionRow?.canCreate ?? false,
-    canUpdate: permissionRow?.canUpdate ?? false,
-    canDelete: permissionRow?.canDelete ?? false,
-    canImport: permissionRow?.canImport ?? false,
-    canExport: permissionRow?.canExport ?? false
+function assertDatasetActionCapability(user: ScopedUser, action: DatasetPermissionAction) {
+  if (!hasAccessForRole(user.role, getDatasetActionPermission(action))) {
+    throw getForbiddenError()
   }
 }
 
-function serializeOwnedDataset(dataset: OwnedDatasetRow, permissionRow: PermissionRow | null, isSuperAdmin: boolean) {
+function getPermissionFlags(user: ScopedUser, archivedAt?: Date | null) {
+  const isArchived = !!archivedAt
+
+  return {
+    canRead: hasAccessForRole(user.role, getDatasetActionPermission('read')),
+    canCreate: !isArchived && hasAccessForRole(user.role, getDatasetActionPermission('create')),
+    canUpdate: !isArchived && hasAccessForRole(user.role, getDatasetActionPermission('update')),
+    canDelete: !isArchived && hasAccessForRole(user.role, getDatasetActionPermission('delete'))
+  }
+}
+
+function serializeOwnedDataset(dataset: OwnedDatasetRow, user: ScopedUser, isSuperAdmin: boolean) {
   const serializedDataset = serializeDataset(dataset)
-  const permissions = getPermissionFlags(permissionRow, isSuperAdmin)
+  const permissions = getPermissionFlags(user, dataset.archivedAt)
 
   return {
     ...serializedDataset,
@@ -261,41 +220,13 @@ export async function listDataManagementOptionsForUser(user: ScopedUser) {
           name: true,
           description: true
         }
-      },
-      bidangPermissions: {
-        where: {
-          bidangId: {
-            in: bidangIds
-          }
-        },
-        select: {
-          bidangId: true,
-          datasetId: true,
-          canRead: true,
-          canCreate: true,
-          canUpdate: true,
-          canDelete: true,
-          canImport: true,
-          canExport: true,
-          bidang: {
-            select: {
-              id: true,
-              name: true,
-              description: true
-            }
-          }
-        }
       }
     }
-  }) as OwnedDatasetRow[]
+  })
 
   for (const dataset of ownedDatasets) {
-    const ownerPermissionRow = dataset.bidangPermissions.find((row) => {
-      return row.bidangId === dataset.ownerBidangId
-    }) ?? null
-
     datasetsByBidang[dataset.ownerBidangId]?.push(
-      serializeOwnedDataset(dataset, ownerPermissionRow, scope.isSuperAdmin)
+      serializeOwnedDataset(dataset, user, scope.isSuperAdmin)
     )
   }
 
@@ -322,31 +253,9 @@ export async function getDatasetPermissionContextForUser(user: ScopedUser, optio
           name: true,
           description: true
         }
-      },
-      bidangPermissions: {
-        where: {
-          bidangId: options.bidangId?.trim() || undefined
-        },
-        select: {
-          bidangId: true,
-          datasetId: true,
-          canRead: true,
-          canCreate: true,
-          canUpdate: true,
-          canDelete: true,
-          canImport: true,
-          canExport: true,
-          bidang: {
-            select: {
-              id: true,
-              name: true,
-              description: true
-            }
-          }
-        }
       }
     }
-  }) as OwnedDatasetRow | null
+  })
 
   if (!dataset) {
     throw createError({
@@ -354,6 +263,8 @@ export async function getDatasetPermissionContextForUser(user: ScopedUser, optio
       statusMessage: 'Dataset not found.'
     })
   }
+
+  assertDatasetActionCapability(user, options.action)
 
   const ownerBidangId = dataset.ownerBidangId.trim()
 
@@ -365,20 +276,16 @@ export async function getDatasetPermissionContextForUser(user: ScopedUser, optio
     throw getForbiddenError()
   }
 
-  const permissionRow = dataset.bidangPermissions.find((row) => {
-    return row.bidangId === ownerBidangId
-  }) ?? null
-
-  if (!scope.isSuperAdmin) {
-    if (!permissionRow || !permissionRow[getDatasetPermissionField(options.action)]) {
-      throw getForbiddenError()
-    }
+  if (options.action !== 'read' && dataset.archivedAt) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Dataset is archived and read-only.'
+    })
   }
 
   return {
     scope,
-    row: permissionRow,
-    dataset: serializeOwnedDataset(dataset, permissionRow, scope.isSuperAdmin)
+    dataset: serializeOwnedDataset(dataset, user, scope.isSuperAdmin)
   } satisfies DatasetPermissionContext
 }
 

@@ -52,6 +52,7 @@ export interface DatasetManagementItem {
   dataConfig: Record<string, unknown>
   periodicity: string | null
   regionLevel: string | null
+  archivedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -68,8 +69,6 @@ export interface DatasetRecordActionPermissions {
   canCreate: boolean
   canUpdate: boolean
   canDelete: boolean
-  canImport: boolean
-  canExport: boolean
   isSuperAdmin: boolean
 }
 
@@ -100,4 +99,60 @@ export interface DatasetRecordListItem {
     canUpdate: boolean
     canDelete: boolean
   }
+}
+
+export interface DatasetRecordHistoryItem {
+  id: string
+  sourceRecordId: string
+  changeType: string
+  changedAt: string
+  changedByName: string | null
+  status: string
+  data: Record<string, unknown>
+}
+
+export interface DatasetRecordHistoryContext {
+  id: string
+  datasetId: string
+  regionName: string
+  periodLabel: string
+}
+
+export interface DeletedDatasetRecordListItem extends DatasetRecordHistoryContext {
+  regionId: string
+  regionLevel: string
+  periodDate: string
+  status: string
+  data: Record<string, unknown>
+  deletedAt: string
+  deletedByName: string | null
+}
+
+export type DatasetRecordImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | null
+
+export interface DatasetRecordImportPreviewRow {
+  rowNumber: number
+  regionId: string
+  periodValue: string
+  periodDate: string | null
+  status: string
+  data: Record<string, unknown>
+  action: DatasetRecordImportAction
+  errors: string[]
+}
+
+export interface DatasetRecordImportPreview {
+  totalRows: number
+  validRows: number
+  invalidRows: number
+  createRows: number
+  updateRows: number
+  unchangedRows: number
+  rows: DatasetRecordImportPreviewRow[]
+}
+
+export interface DatasetRecordImportResult extends DatasetRecordImportPreview {
+  created: number
+  updated: number
+  unchanged: number
 }

@@ -5,7 +5,7 @@ import { appPermissions } from '~~/auth/permissions'
 import { getDatasetPeriodicity } from '~~/shared/datasets'
 import { requirePermission } from '~~/server/utils/access'
 
-const deleteBlockedMessage = 'Dataset cannot be deleted because it is already used by existing records or permissions.'
+const deleteBlockedMessage = 'Dataset cannot be deleted because it already has dataset records or record history.'
 
 export default defineEventHandler(async (event) => {
   const session = await requirePermission(event, appPermissions.datasetsDelete)
@@ -31,20 +31,20 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const [recordCount, permissionCount] = await db.$transaction([
+  const [recordCount, historyCount] = await Promise.all([
     db.datasetRecord.count({
       where: {
         datasetId
       }
     }),
-    db.authBidangDatasetPermission.count({
+    db.datasetRecordHistory.count({
       where: {
         datasetId
       }
     })
   ])
 
-  if (recordCount > 0 || permissionCount > 0) {
+  if (recordCount > 0 || historyCount > 0) {
     throw createError({
       statusCode: 409,
       statusMessage: deleteBlockedMessage
@@ -52,13 +52,29 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    await db.dataset.delete({
-      where: {
-        id: datasetId
-      }
+    await db.$transaction(async (tx) => {
+      await tx.dataset.delete({
+        where: {
+          id: datasetId
+        }
+      })
+
+      await tx.auditLog.create({
+        data: {
+          actorId: session.user.id,
+          action: 'dataset.delete',
+          entityType: 'dataset',
+          entityId: datasetId,
+          metadata: {
+            datasetId,
+            name: existingDataset.name,
+            periodicity: getDatasetPeriodicity(existingDataset.dataConfig)
+          }
+        }
+      })
     })
   } catch (error) {
-    if (typeof error === 'object' && error && 'code' in error && error.code === 'P2003') {
+    if (typeof error === 'object' && error && 'code' in error && (error.code === 'P2003' || error.code === 'P2014')) {
       throw createError({
         statusCode: 409,
         statusMessage: deleteBlockedMessage
@@ -67,20 +83,6 @@ export default defineEventHandler(async (event) => {
 
     throw error
   }
-
-  await db.auditLog.create({
-    data: {
-      actorId: session.user.id,
-      action: 'dataset.delete',
-      entityType: 'dataset',
-      entityId: datasetId,
-      metadata: {
-        datasetId,
-        name: existingDataset.name,
-        periodicity: getDatasetPeriodicity(existingDataset.dataConfig)
-      }
-    }
-  })
 
   return {
     success: true

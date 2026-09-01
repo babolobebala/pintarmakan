@@ -15,8 +15,8 @@ Stack:
 - `@vite-pwa/nuxt`
 - pnpm
 
-The global OpenCode `AGENTS.md` already defines general agent workflow,
-exploration, Git, MCP usage, context efficiency, and verification policy.
+Global agent rules already define general workflow, exploration discipline,
+Git policy, MCP usage, context efficiency, and verification behavior.
 
 This file contains only project-specific architecture and domain contracts.
 
@@ -279,10 +279,14 @@ Do not read it for unrelated tasks.
 Core invariants:
 
 - `datasets` 1:N `dataset_records`.
+- `dataset_records` stores current state; `dataset_record_history` stores immutable previous state from DatasetRecord updates and deletes.
+- Keep DatasetRecord history separate from `audit_logs`: history owns previous business state, while audit logs own concise actor/action metadata.
+- Dataset archive retains the Dataset definition, records, and history; it is not a delete operation and archived Datasets are read-only for DatasetRecord mutations.
 - Every Dataset has exactly one canonical owner through
   `datasets.ownerBidangId`.
 - `datasets.ownerBidangId` represents ownership.
-- `auth_bidang_dataset_permissions` represents Dataset authorization.
+- DatasetRecord authorization is Better Auth capability plus
+  `datasets.ownerBidangId` scope.
 - `dataset_records` do not duplicate ownership.
 - One Dataset Record represents:
   Dataset + Region + normalized Period.

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type {
   DataManagementOptionsResponse,
+  DatasetRecordHistoryContext,
   DatasetRecordDatasetOption,
   DatasetRecordListItem,
+  DeletedDatasetRecordListItem,
   RegionItem
 } from '~/types'
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 
 import AppPageIntro from '~/components/AppPageIntro.vue'
 import { appPermissions } from '~~/auth/permissions'
@@ -44,32 +46,39 @@ const {
   default: () => []
 })
 
-const selectedBidangId = ref('')
+const allBidangsValue = '__all_bidangs__'
+const selectedBidangId = ref(allBidangsValue)
 const selectedDatasetId = ref('')
 const periodValue = ref('')
 const selectedRegionFilter = ref('')
 const selectedStatusFilter = ref('')
 const search = ref('')
+const dataView = ref<'active' | 'deleted'>('active')
 const selectedRecord = ref<DatasetRecordListItem | null>(null)
+const historyRecord = ref<DatasetRecordHistoryContext | null>(null)
 const editModalOpen = ref(false)
 const deleteModalOpen = ref(false)
+const historyModalOpen = ref(false)
 const deleting = ref(false)
 
 const bidangs = computed(() => optionsResponse.value.bidangs)
-const selectedBidang = computed(() => {
-  return bidangs.value.find(bidang => bidang.id === selectedBidangId.value) ?? null
-})
 const bidangSelectItems = computed(() => {
-  return bidangs.value.map(bidang => ({
-    id: bidang.id,
-    name: bidang.name,
-    description: bidang.description ?? undefined
-  }))
+  return [
+    { id: allBidangsValue, name: 'Semua Bidang' },
+    ...bidangs.value.map(bidang => ({
+      id: bidang.id,
+      name: bidang.name,
+      description: bidang.description ?? undefined
+    }))
+  ]
 })
+const allDatasets = computed(() => Object.values(optionsResponse.value.datasetsByBidang).flat())
 const datasets = computed(() => {
-  return selectedBidangId.value
-    ? optionsResponse.value.datasetsByBidang[selectedBidangId.value] ?? []
-    : []
+  if (selectedBidangId.value === allBidangsValue) {
+    return allDatasets.value
+  }
+
+  return optionsResponse.value.datasetsByBidang[selectedBidangId.value] ?? []
 })
 const selectedDataset = computed(() => {
   return datasets.value.find(dataset => dataset.id === selectedDatasetId.value) ?? null
@@ -90,11 +99,67 @@ const datasetCountLabel = computed(() => {
 })
 const selectedDatasetPermissions = computed(() => selectedDataset.value?.permissions ?? null)
 
+const datasetColumns: TableColumn<DatasetRecordDatasetOption>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Nama',
+    meta: {
+      class: {
+        th: 'w-full px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'min-w-0 px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'periodicity',
+    header: 'Periodicity',
+    meta: {
+      class: {
+        th: 'w-[140px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'regionLevel',
+    header: 'Region',
+    meta: {
+      class: {
+        th: 'w-[160px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'ownerBidangName',
+    header: 'Owner',
+    meta: {
+      class: {
+        th: 'w-[220px] px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'max-w-[220px] px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    id: 'actions',
+    header: 'Actions',
+    meta: {
+      class: {
+        th: 'w-[96px] px-4 py-3 text-right text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'w-[96px] px-4 py-3 align-middle'
+      }
+    }
+  }
+]
+
 watch(
   bidangs,
   (items) => {
-    if (!items.some(item => item.id === selectedBidangId.value)) {
-      selectedBidangId.value = items[0]?.id ?? ''
+    if (
+      selectedBidangId.value !== allBidangsValue
+      && !items.some(item => item.id === selectedBidangId.value)
+    ) {
+      selectedBidangId.value = allBidangsValue
     }
   },
   { immediate: true }
@@ -103,8 +168,10 @@ watch(
 watch(selectedBidangId, () => {
   selectedDatasetId.value = ''
   selectedRecord.value = null
+  historyRecord.value = null
   editModalOpen.value = false
   deleteModalOpen.value = false
+  historyModalOpen.value = false
   periodValue.value = ''
   selectedRegionFilter.value = ''
   selectedStatusFilter.value = ''
@@ -125,8 +192,10 @@ watch(
   selectedDataset,
   (dataset) => {
     selectedRecord.value = null
+    historyRecord.value = null
     editModalOpen.value = false
     deleteModalOpen.value = false
+    historyModalOpen.value = false
     selectedRegionFilter.value = ''
     selectedStatusFilter.value = ''
     search.value = ''
@@ -150,11 +219,7 @@ const {
 } = await useAsyncData<DatasetRecordListItem[]>(
   'dataset-records',
   async () => {
-    if (
-      !selectedBidangId.value
-      || !selectedDataset.value
-      || !periodValue.value.trim()
-    ) {
+    if (!selectedDataset.value || !periodValue.value.trim()) {
       return []
     }
 
@@ -167,7 +232,35 @@ const {
   },
   {
     default: () => [],
-    watch: [selectedBidangId, selectedDatasetId, periodValue]
+    watch: [selectedDatasetId, periodValue]
+  }
+)
+const {
+  data: deletedRecords,
+  error: deletedRecordsError,
+  refresh: refreshDeletedRecords,
+  status: deletedRecordsStatus
+} = await useAsyncData<DeletedDatasetRecordListItem[]>(
+  'deleted-dataset-records',
+  async () => {
+    if (
+      dataView.value !== 'deleted'
+      || !selectedDataset.value
+      || !periodValue.value.trim()
+    ) {
+      return []
+    }
+
+    return $fetch('/api/dataset-records/deleted', {
+      query: {
+        datasetId: selectedDataset.value.id,
+        periodValue: periodValue.value.trim()
+      }
+    })
+  },
+  {
+    default: () => [],
+    watch: [dataView, selectedDatasetId, periodValue]
   }
 )
 
@@ -247,14 +340,6 @@ function getPermissionBadges(dataset: DatasetRecordDatasetOption) {
     badges.push({ label: 'Delete', color: 'warning' })
   }
 
-  if (dataset.permissions.canImport) {
-    badges.push({ label: 'Import', color: 'neutral' })
-  }
-
-  if (dataset.permissions.canExport) {
-    badges.push({ label: 'Export', color: 'neutral' })
-  }
-
   return badges
 }
 
@@ -274,7 +359,9 @@ const regionFilterOptions = computed(() => {
 })
 
 const statusOptions = computed(() => {
-  return Array.from(new Set(records.value.map(record => record.status)))
+  const tableRecords = dataView.value === 'deleted' ? deletedRecords.value : records.value
+
+  return Array.from(new Set(tableRecords.map(record => record.status)))
     .filter(Boolean)
     .sort((left, right) => left.localeCompare(right))
 })
@@ -314,14 +401,43 @@ const filteredRecords = computed(() => {
   })
 })
 
+const filteredDeletedRecords = computed(() => {
+  const regionFilter = selectedRegionFilter.value.trim()
+  const statusFilter = selectedStatusFilter.value.trim()
+  const q = search.value.trim().toLowerCase()
+
+  return deletedRecords.value.filter((record) => {
+    if (regionFilter && record.regionId !== regionFilter) {
+      return false
+    }
+
+    if (statusFilter && record.status !== statusFilter) {
+      return false
+    }
+
+    if (!q) {
+      return true
+    }
+
+    const dynamicValues = visibleFields.value.map((field) => {
+      const value = record.data[field.key]
+      return value === undefined || value === null ? '' : String(value)
+    })
+
+    return [
+      record.regionName,
+      record.status,
+      record.periodLabel,
+      ...dynamicValues
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(q)
+  })
+})
+
 const canCreate = computed(
   () => selectedDatasetPermissions.value?.canCreate ?? false
-)
-const canImport = computed(
-  () => selectedDatasetPermissions.value?.canImport ?? false
-)
-const canExport = computed(
-  () => selectedDatasetPermissions.value?.canExport ?? false
 )
 
 function selectDataset(datasetId: string) {
@@ -336,7 +452,7 @@ function formatDateTime(value: string) {
   return dateTimeFormatter.format(new Date(value))
 }
 
-function formatFieldValue(record: DatasetRecordListItem, fieldKey: string) {
+function formatFieldValue(record: { data: Record<string, unknown> }, fieldKey: string) {
   const value = record.data[fieldKey]
 
   if (typeof value === 'boolean') {
@@ -358,16 +474,13 @@ function openDeleteModal(record: DatasetRecordListItem) {
   deleteModalOpen.value = true
 }
 
-function showImportUnavailable() {
-  toast.add({
-    title: 'Import belum tersedia',
-    description: 'Belum ada infrastruktur CSV/Excel reusable di project ini, jadi aksi import belum diaktifkan.',
-    color: 'neutral'
-  })
+function openHistoryModal(record: DatasetRecordHistoryContext) {
+  historyRecord.value = record
+  historyModalOpen.value = true
 }
 
 async function refreshAllData() {
-  await Promise.all([refreshOptions(), refreshRegions(), refreshRecords()])
+  await Promise.all([refreshOptions(), refreshRegions(), refreshRecords(), refreshDeletedRecords()])
 }
 
 function exportRecords() {
@@ -406,7 +519,7 @@ function exportRecords() {
   const link = document.createElement('a')
 
   link.href = url
-  link.download = `${selectedBidangId.value}_${selectedDataset.value.id}_${periodValue.value || 'export'}.csv`
+  link.download = `${selectedDataset.value.ownerBidangId}_${selectedDataset.value.id}_${periodValue.value || 'export'}.csv`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -453,7 +566,11 @@ async function deleteRecord() {
 }
 
 function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
-  const actions: DropdownMenuItem[] = []
+  const actions: DropdownMenuItem[] = [{
+    label: 'Lihat Riwayat',
+    icon: 'i-lucide-history',
+    onSelect: () => openHistoryModal(record)
+  }]
 
   if (record.permissions.canUpdate) {
     actions.push({
@@ -474,6 +591,14 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
 
   return actions.length > 0 ? [actions] : []
 }
+
+function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMenuItem[][] {
+  return [[{
+    label: 'Lihat Riwayat',
+    icon: 'i-lucide-history',
+    onSelect: () => openHistoryModal(record)
+  }]]
+}
 </script>
 
 <template>
@@ -481,34 +606,55 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
     <AppPageIntro
       kicker="Data operasional"
       title="Kelola Data"
-      description="Kelola data operasional melalui konteks Bidang, lalu pilih Dataset yang tersedia sebelum membuka tabel record."
+      description="Kelola data operasional melalui Dataset yang tersedia dalam scope Anda."
     />
 
     <section class="overflow-hidden rounded-2xl border border-default bg-default">
-      <div class="flex flex-col gap-4 border-b border-default px-4 py-4">
-        <div class="space-y-1">
+      <div class="flex flex-col gap-4 border-b border-default px-4 py-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="flex flex-wrap items-center gap-2">
           <h2 class="text-lg font-semibold text-highlighted">
-            Pilih Bidang
+            Dataset
           </h2>
-          <p class="text-sm text-muted">
-            Bidang menjadi konteks navigasi dataset dan otorisasi aksi untuk dataset yang dimiliki bidang tersebut.
-          </p>
+          <UBadge color="neutral" variant="subtle" size="sm">
+            {{ datasetCountLabel }}
+          </UBadge>
         </div>
 
-        <USelectMenu
-          v-model="selectedBidangId"
-          :items="bidangSelectItems"
-          value-key="id"
-          label-key="name"
-          placeholder="Pilih bidang"
-          class="w-full max-w-2xl"
-        />
+        <div v-if="!isPending && !hasOptionsError && bidangs.length > 0" class="w-full lg:w-56">
+          <USelectMenu
+            v-model="selectedBidangId"
+            :items="bidangSelectItems"
+            value-key="id"
+            label-key="name"
+            placeholder="Filter bidang"
+            class="w-full"
+          />
+        </div>
       </div>
 
-      <div v-if="isPending" class="px-4 py-10">
-        <div class="space-y-3">
-          <div class="h-10 w-full max-w-2xl rounded-xl bg-elevated/80" />
-          <div class="h-20 w-full rounded-2xl bg-elevated/50" />
+      <div v-if="isPending" class="overflow-x-auto px-4 py-3">
+        <div class="min-w-[680px] divide-y divide-default">
+          <div class="grid grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_96px] gap-4 px-4 py-3">
+            <div class="h-3 w-20 rounded bg-elevated" />
+            <div class="h-3 w-24 rounded bg-elevated" />
+            <div class="h-3 w-28 rounded bg-elevated/80" />
+            <div class="h-3 w-24 rounded bg-elevated" />
+            <div class="ms-auto h-3 w-16 rounded bg-elevated" />
+          </div>
+          <div
+            v-for="row in 5"
+            :key="row"
+            class="grid min-w-[680px] grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_96px] gap-4 px-4 py-4"
+          >
+            <div class="space-y-2">
+              <div class="h-3 w-48 rounded bg-elevated" />
+              <div class="h-3 w-32 rounded bg-elevated/80" />
+            </div>
+            <div class="h-6 w-24 rounded-full bg-elevated/80" />
+            <div class="h-6 w-20 rounded-full bg-elevated/80" />
+            <div class="h-3 w-36 self-center rounded bg-elevated" />
+            <div class="ms-auto h-8 w-8 rounded-lg bg-elevated" />
+          </div>
         </div>
       </div>
 
@@ -537,113 +683,81 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
         />
       </div>
 
-      <div v-else class="px-4 py-6">
-        <div class="rounded-2xl border border-default/70 bg-elevated/20 p-4">
-          <p class="text-xs font-medium tracking-[0.16em] text-muted uppercase">
-            Bidang Aktif
-          </p>
-          <p class="mt-2 text-lg font-semibold text-highlighted">
-            {{ selectedBidang?.name || 'Pilih bidang terlebih dahulu' }}
-          </p>
-          <p v-if="selectedBidang?.description" class="mt-1 text-sm text-muted">
-            {{ selectedBidang.description }}
-          </p>
-          <p v-if="selectedBidang" class="mt-2 text-xs text-muted">
-            {{ selectedBidang.id }}
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section
-      v-if="!isPending && !hasOptionsError && bidangs.length > 0"
-      class="overflow-hidden rounded-2xl border border-default bg-default"
-    >
-      <div class="flex flex-col gap-3 border-b border-default px-4 py-4">
-        <div class="flex flex-wrap items-center gap-2">
-          <h2 class="text-lg font-semibold text-highlighted">
-            Dataset untuk {{ selectedBidang?.name || 'Bidang' }}
-          </h2>
-          <UBadge color="neutral" variant="subtle" size="sm">
-            {{ datasetCountLabel }}
-          </UBadge>
-        </div>
-        <p class="text-sm text-muted">
-          Pilih satu dataset milik bidang aktif untuk membuka pengelolaan record. Hak aksi tetap dihitung dari permission dataset untuk bidang pemilik tersebut.
-        </p>
-      </div>
-
-      <div v-if="!selectedBidang" class="px-4 py-10">
-        <UEmpty
-          icon="i-lucide-briefcase-business"
-          title="Pilih bidang terlebih dahulu"
-          description="Daftar dataset akan muncul setelah bidang aktif dipilih."
-        />
-      </div>
-
       <div v-else-if="datasets.length === 0" class="px-4 py-10">
         <UEmpty
           icon="i-lucide-folder-lock"
-          title="Belum ada dataset yang dinaungi bidang ini."
-          description="Tambahkan dataset baru dengan owner bidang ini di Kelola Dataset untuk mulai mengelola record."
+          title="Belum ada dataset yang bisa dikelola."
+          description="Tambahkan dataset baru dengan owner bidang yang sesuai di Kelola Dataset untuk mulai mengelola record."
         />
       </div>
 
-      <div v-else class="px-4 py-6">
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <button
-            v-for="dataset in datasets"
-            :key="`${selectedBidangId}:${dataset.id}`"
-            type="button"
-            :aria-pressed="dataset.id === selectedDatasetId"
-            class="group rounded-2xl border p-4 text-left transition-colors duration-200"
-            :class="dataset.id === selectedDatasetId
-              ? 'border-primary bg-primary/5'
-              : 'border-default bg-default hover:border-primary/40 hover:bg-elevated/30'"
-            @click="selectDataset(dataset.id)"
-          >
-            <div class="space-y-3">
-              <div class="space-y-1">
-                <p class="text-base font-semibold text-highlighted">
-                  {{ dataset.name }}
+      <div v-else class="overflow-x-auto">
+        <UTable
+          :data="datasets"
+          :columns="datasetColumns"
+          :ui="{
+            root: 'min-w-[680px]',
+            thead: 'bg-elevated/35',
+            tr: 'border-b border-default last:border-b-0',
+            td: 'border-b-0',
+            th: 'border-b border-default'
+          }"
+          :get-row-id="(row) => row.id"
+        >
+          <template #name-cell="{ row }">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="truncate text-sm font-medium text-highlighted">
+                  {{ row.original.name }}
                 </p>
-                <p class="text-xs tracking-[0.14em] text-muted uppercase">
-                  {{ dataset.id }}
-                </p>
-              </div>
-
-              <p v-if="dataset.description" class="text-sm text-muted">
-                {{ dataset.description }}
-              </p>
-
-              <div class="flex flex-wrap gap-2 text-xs text-muted">
-                <UBadge color="neutral" variant="subtle" size="sm">
-                  {{ formatPeriodicityLabel(dataset.periodicity) }}
-                </UBadge>
-                <UBadge color="neutral" variant="outline" size="sm">
-                  {{ formatRegionLevelLabel(dataset.regionLevel) }}
-                </UBadge>
-              </div>
-
-              <div class="flex flex-wrap gap-2">
                 <UBadge
-                  v-for="badge in getPermissionBadges(dataset)"
-                  :key="`${dataset.id}:${badge.label}`"
-                  :color="badge.color"
+                  v-if="row.original.archivedAt"
+                  color="warning"
                   variant="subtle"
                   size="sm"
                 >
-                  {{ badge.label }}
+                  Diarsipkan
                 </UBadge>
               </div>
             </div>
-          </button>
-        </div>
+          </template>
+
+          <template #periodicity-cell="{ row }">
+            <UBadge color="neutral" variant="subtle" size="sm">
+              {{ formatPeriodicityLabel(row.original.periodicity) }}
+            </UBadge>
+          </template>
+
+          <template #regionLevel-cell="{ row }">
+            <UBadge color="neutral" variant="outline" size="sm">
+              {{ formatRegionLevelLabel(row.original.regionLevel) }}
+            </UBadge>
+          </template>
+
+          <template #ownerBidangName-cell="{ row }">
+            <p class="truncate text-sm text-highlighted">
+              {{ row.original.ownerBidangName }}
+            </p>
+          </template>
+
+          <template #actions-cell="{ row }">
+            <div class="flex justify-end">
+              <UButton
+                label="Buka"
+                icon="i-lucide-arrow-up-right"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="selectDataset(row.original.id)"
+              />
+            </div>
+          </template>
+        </UTable>
       </div>
     </section>
 
     <section
-      v-if="selectedDataset && selectedBidang"
+      v-if="selectedDataset"
       class="overflow-hidden rounded-2xl border border-default bg-default"
     >
       <div class="flex flex-col gap-4 border-b border-default px-4 py-4">
@@ -655,10 +769,10 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
                   Bidang
                 </p>
                 <p class="mt-2 text-lg font-semibold text-highlighted">
-                  {{ selectedBidang.name }}
+                  {{ selectedDataset.ownerBidangName }}
                 </p>
                 <p class="mt-1 text-xs text-muted">
-                  {{ selectedBidang.id }}
+                  {{ selectedDataset.ownerBidangId }}
                 </p>
               </div>
 
@@ -695,6 +809,22 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
           </div>
 
           <div class="flex flex-wrap gap-2">
+            <div class="flex rounded-lg border border-default p-1">
+              <UButton
+                label="Data Aktif"
+                size="sm"
+                :color="dataView === 'active' ? 'primary' : 'neutral'"
+                :variant="dataView === 'active' ? 'solid' : 'ghost'"
+                @click="dataView = 'active'"
+              />
+              <UButton
+                label="Data Terhapus"
+                size="sm"
+                :color="dataView === 'deleted' ? 'primary' : 'neutral'"
+                :variant="dataView === 'deleted' ? 'solid' : 'ghost'"
+                @click="dataView = 'deleted'"
+              />
+            </div>
             <UButton
               label="Ganti Dataset"
               icon="i-lucide-layout-grid"
@@ -703,21 +833,18 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
               @click="clearSelectedDataset"
             />
             <DataRecordsFormModal
-              v-if="canCreate"
+              v-if="dataView === 'active' && canCreate"
               :dataset="selectedDataset"
               :regions="regions"
               @created="refreshRecords()"
             />
-            <UButton
-              v-if="canImport"
-              label="Import"
-              icon="i-lucide-upload"
-              color="neutral"
-              variant="outline"
-              @click="showImportUnavailable"
+            <DataRecordsImportModal
+              v-if="dataView === 'active' && selectedDataset.permissions.canCreate && selectedDataset.permissions.canUpdate"
+              :dataset="selectedDataset"
+              @imported="refreshRecords()"
             />
             <UButton
-              v-if="canExport"
+              v-if="dataView === 'active'"
               label="Export CSV"
               icon="i-lucide-download"
               color="neutral"
@@ -780,7 +907,7 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
         </div>
       </div>
 
-      <div v-if="recordsError" class="px-4 py-10">
+      <div v-if="dataView === 'active' && recordsError" class="px-4 py-10">
         <UEmpty
           icon="i-lucide-folder-search"
           title="Unable to load dataset records"
@@ -799,7 +926,26 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
         />
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <div v-else-if="dataView === 'deleted' && deletedRecordsError" class="px-4 py-10">
+        <UEmpty
+          icon="i-lucide-folder-search"
+          title="Data terhapus tidak dapat dimuat"
+          description="Refresh konteks dataset saat ini dan coba lagi."
+          :actions="[
+            {
+              label: 'Retry',
+              icon: 'i-lucide-refresh-cw',
+              color: 'neutral',
+              variant: 'subtle',
+              onClick: () => {
+                refreshDeletedRecords()
+              }
+            }
+          ]"
+        />
+      </div>
+
+      <div v-else-if="dataView === 'active'" class="overflow-x-auto">
         <table class="w-full min-w-[1180px] divide-y divide-default text-sm">
           <thead class="bg-elevated/35">
             <tr>
@@ -902,7 +1048,7 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
               <td class="px-4 py-3 align-top">
                 <div class="flex justify-end">
                   <UDropdownMenu
-                    v-if="record.permissions.canUpdate || record.permissions.canDelete"
+                    v-if="getRowActions(record).length > 0"
                     :items="getRowActions(record)"
                     :content="{ align: 'end', sideOffset: 8 }"
                     :ui="{ content: 'w-36' }"
@@ -922,16 +1068,146 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
           </tbody>
         </table>
       </div>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[1180px] divide-y divide-default text-sm">
+          <thead class="bg-elevated/35">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+                Period
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+                Region
+              </th>
+              <th
+                v-for="field in visibleFields"
+                :key="field.key"
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
+                {{ field.label }}
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+                Status
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+                Dihapus
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-medium tracking-[0.16em] text-muted uppercase">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-default bg-default">
+            <tr v-if="deletedRecordsStatus === 'pending'">
+              <td :colspan="visibleFields.length + 5" class="px-4 py-10">
+                <div class="space-y-3">
+                  <div class="h-3 w-1/3 rounded bg-elevated" />
+                  <div class="h-3 w-2/3 rounded bg-elevated/80" />
+                </div>
+              </td>
+            </tr>
+
+            <tr v-else-if="filteredDeletedRecords.length === 0">
+              <td :colspan="visibleFields.length + 5" class="px-4 py-10">
+                <UEmpty
+                  icon="i-lucide-database-backup"
+                  :title="
+                    search || selectedRegionFilter || selectedStatusFilter
+                      ? 'Tidak ada data terhapus yang cocok dengan filter aktif.'
+                      : 'Belum ada data yang dihapus.'
+                  "
+                  :description="
+                    search || selectedRegionFilter || selectedStatusFilter
+                      ? 'Ubah filter wilayah, status, atau pencarian untuk melihat hasil lain.'
+                      : 'Data yang dihapus akan tetap tersedia di sini sebagai riwayat baca-saja.'
+                  "
+                  variant="naked"
+                />
+              </td>
+            </tr>
+
+            <tr
+              v-for="record in filteredDeletedRecords"
+              :key="record.id"
+              class="border-b border-default last:border-b-0"
+            >
+              <td class="px-4 py-3 align-top text-muted">
+                {{ record.periodLabel }}
+              </td>
+              <td class="px-4 py-3 align-top">
+                <div class="space-y-1">
+                  <p class="font-medium text-highlighted">
+                    {{ record.regionName }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    {{ record.regionLevel }}
+                  </p>
+                </div>
+              </td>
+              <td
+                v-for="field in visibleFields"
+                :key="`${record.id}:${field.key}`"
+                class="px-4 py-3 align-top text-muted"
+              >
+                {{ formatFieldValue(record, field.key) }}
+              </td>
+              <td class="px-4 py-3 align-top">
+                <div class="space-y-1">
+                  <UBadge color="neutral" variant="subtle" size="sm">
+                    {{ record.status }}
+                  </UBadge>
+                  <UBadge color="warning" variant="subtle" size="sm">
+                    Dihapus
+                  </UBadge>
+                </div>
+              </td>
+              <td class="px-4 py-3 align-top text-muted">
+                <div class="space-y-1">
+                  <p>{{ formatDateTime(record.deletedAt) }}</p>
+                  <p class="text-xs">
+                    oleh {{ record.deletedByName ?? 'Pengguna tidak tersedia' }}
+                  </p>
+                </div>
+              </td>
+              <td class="px-4 py-3 align-top">
+                <div class="flex justify-end">
+                  <UDropdownMenu
+                    :items="getDeletedRowActions(record)"
+                    :content="{ align: 'end', sideOffset: 8 }"
+                    :ui="{ content: 'w-36' }"
+                  >
+                    <UButton
+                      icon="i-lucide-ellipsis"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      square
+                    />
+                  </UDropdownMenu>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <DataRecordsFormModal
-      v-if="selectedDataset && selectedBidang"
+      v-if="selectedDataset"
       v-model:open="editModalOpen"
       :dataset="selectedDataset"
       :regions="regions"
       :record="selectedRecord"
       :show-trigger="false"
       @updated="refreshRecords()"
+    />
+
+    <DataRecordsHistoryModal
+      v-if="historyRecord && selectedDataset"
+      v-model:open="historyModalOpen"
+      :record="historyRecord"
+      :data-schema="selectedDataset.dataSchema"
+      @update:open="(isOpen) => { if (!isOpen) historyRecord = null }"
     />
 
     <UModal

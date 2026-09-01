@@ -126,44 +126,66 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const record = await db.datasetRecord.update({
-    where: {
-      id: recordId
-    },
-    data: {
-      status: payload.status,
-      data: payload.data as never
-    },
-    include: {
-      region: {
-        select: {
-          id: true,
-          name: true,
-          level: true
-        }
-      },
-      creator: {
-        select: {
-          id: true,
-          name: true
-        }
+  const { record } = await db.$transaction(async (tx) => {
+    const history = await tx.datasetRecordHistory.create({
+      data: {
+        sourceRecordId: existingRecord.id,
+        datasetId: existingRecord.datasetId,
+        regionId: existingRecord.regionId,
+        periodDate: existingRecord.periodDate,
+        data: existingRecord.data as never,
+        status: existingRecord.status,
+        createdBy: existingRecord.createdBy,
+        createdAt: existingRecord.createdAt,
+        updatedAt: existingRecord.updatedAt,
+        changeType: 'UPDATE',
+        changedBy: session.user.id
       }
-    }
-  })
+    })
 
-  await db.auditLog.create({
-    data: {
-      actorId: session.user.id,
-      action: 'dataset_record.update',
-      entityType: 'dataset_record',
-      entityId: record.id,
-      metadata: {
-        datasetId: record.datasetId,
-        regionId: record.regionId,
-        periodDate: existingPeriodDate,
-        changedFields
+    const record = await tx.datasetRecord.update({
+      where: {
+        id: recordId
+      },
+      data: {
+        status: payload.status,
+        data: payload.data as never,
+        updatedBy: session.user.id
+      },
+      include: {
+        region: {
+          select: {
+            id: true,
+            name: true,
+            level: true
+          }
+        },
+        creator: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       }
-    }
+    })
+
+    await tx.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        action: 'dataset_record.update',
+        entityType: 'dataset_record',
+        entityId: record.id,
+        metadata: {
+          datasetId: record.datasetId,
+          regionId: record.regionId,
+          periodDate: existingPeriodDate,
+          changedFields,
+          historyRecordId: history.id
+        }
+      }
+    })
+
+    return { record }
   })
 
   return serializeDatasetRecord(record, {

@@ -217,19 +217,6 @@ const seedDatasetRecords = [
   { datasetId: 'STATUS_KETAHANAN_PANGAN_TAHUNAN', regionId: '52.07.06.2006', periodDate: foodSecurityStatusPeriodDate, data: { priority: 4 }, status: 'PUBLISHED' }
 ] as const satisfies readonly SeedDatasetRecord[]
 
-function buildOwnerPermissionData(bidangId: string, datasetId: string) {
-  return {
-    bidangId,
-    datasetId,
-    canRead: true,
-    canCreate: true,
-    canUpdate: true,
-    canDelete: true,
-    canImport: true,
-    canExport: true
-  }
-}
-
 async function resolveSeedSuperAdminUserId(db: SeedDbClient) {
   const user = await db.user.findUnique({
     where: {
@@ -301,17 +288,6 @@ export async function runDatasetSeed(db: SeedDbClient) {
       })
       updatedDatasetCount += 1
     }
-
-    await db.authBidangDatasetPermission.upsert({
-      where: {
-        bidangId_datasetId: {
-          bidangId: seedDataset.ownerBidangId,
-          datasetId: seedDataset.id
-        }
-      },
-      update: buildOwnerPermissionData(seedDataset.ownerBidangId, seedDataset.id),
-      create: buildOwnerPermissionData(seedDataset.ownerBidangId, seedDataset.id)
-    })
   }
 
   for (const seedRecord of seedDatasetRecords) {

@@ -191,6 +191,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       v-if="showTrigger"
       label="Tambah dataset"
       icon="i-lucide-database"
+      class="cursor-pointer"
     />
 
     <template #body>

@@ -25,7 +25,11 @@ export default defineEventHandler(async (event) => {
       datasetId: true,
       regionId: true,
       periodDate: true,
-      status: true
+      data: true,
+      status: true,
+      createdBy: true,
+      createdAt: true,
+      updatedAt: true
     }
   })
 
@@ -41,25 +45,44 @@ export default defineEventHandler(async (event) => {
     action: 'delete'
   })
 
-  await db.datasetRecord.delete({
-    where: {
-      id: recordId
-    }
-  })
-
-  await db.auditLog.create({
-    data: {
-      actorId: session.user.id,
-      action: 'dataset_record.delete',
-      entityType: 'dataset_record',
-      entityId: recordId,
-      metadata: {
+  await db.$transaction(async (tx) => {
+    const history = await tx.datasetRecordHistory.create({
+      data: {
+        sourceRecordId: record.id,
         datasetId: record.datasetId,
         regionId: record.regionId,
-        periodDate: record.periodDate.toISOString().slice(0, 10),
-        status: record.status
+        periodDate: record.periodDate,
+        data: record.data as never,
+        status: record.status,
+        createdBy: record.createdBy,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        changeType: 'DELETE',
+        changedBy: session.user.id
       }
-    }
+    })
+
+    await tx.datasetRecord.delete({
+      where: {
+        id: recordId
+      }
+    })
+
+    await tx.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        action: 'dataset_record.delete',
+        entityType: 'dataset_record',
+        entityId: recordId,
+        metadata: {
+          datasetId: record.datasetId,
+          regionId: record.regionId,
+          periodDate: record.periodDate.toISOString().slice(0, 10),
+          status: record.status,
+          historyRecordId: history.id
+        }
+      }
+    })
   })
 
   return {

@@ -12,6 +12,7 @@ import {
   formatDatasetPeriod,
   getDatasetPeriodicity,
   getDatasetRegionLevel,
+  getDatasetRecordPeriodRangeError,
   normalizeDatasetPeriodInput,
   validateDatasetRecordData
 } from '~~/shared/datasets'
@@ -339,10 +340,18 @@ export function buildDatasetRecordPayload(dataset: {
   readonly status?: string | null
   readonly data: unknown
 }) {
-  const periodDate = normalizeDatasetPeriodInput(
-    getDatasetPeriodicity(dataset.dataConfig),
-    input.periodValue
-  )
+  const periodicity = getDatasetPeriodicity(dataset.dataConfig)
+
+  const periodDate = normalizeDatasetPeriodInput(periodicity, input.periodValue)
+  const periodRangeError = getDatasetRecordPeriodRangeError(dataset.dataConfig, periodDate)
+
+  if (periodRangeError) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: periodRangeError
+    })
+  }
+
   const { data, issues } = validateDatasetRecordData(dataset.dataSchema, input.data)
 
   if (issues.length > 0) {

@@ -2,8 +2,12 @@ import type { Prisma } from '#server/utils/db'
 
 import {
   getDatasetPeriodicity,
+  getDatasetEndPeriod,
   getDatasetRegionLevel,
-  parseDatasetJsonInput
+  getDatasetStartPeriod,
+  parseDatasetJsonInput,
+  validateDatasetConfigDefinition,
+  validateDatasetSchemaDefinition
 } from '~~/shared/datasets'
 
 type DatasetLike = {
@@ -46,6 +50,8 @@ export function serializeDataset(dataset: DatasetLike) {
     dataConfig: dataset.dataConfig as Record<string, unknown>,
     periodicity: getDatasetPeriodicity(dataset.dataConfig),
     regionLevel: getDatasetRegionLevel(dataset.dataConfig),
+    startPeriod: getDatasetStartPeriod(dataset.dataConfig),
+    endPeriod: getDatasetEndPeriod(dataset.dataConfig),
     archivedAt: dataset.archivedAt?.toISOString() ?? null,
     createdAt: dataset.createdAt.toISOString(),
     updatedAt: dataset.updatedAt.toISOString()
@@ -57,8 +63,12 @@ export function buildDatasetWriteInput(input: DatasetMutationInput) {
     ownerBidangId: input.ownerBidangId.trim(),
     name: input.name.trim(),
     description: normalizeDescription(input.description),
-    dataSchema: parseDatasetJsonInput(input.dataSchema, 'Data schema') as Prisma.InputJsonObject,
-    dataConfig: parseDatasetJsonInput(input.dataConfig, 'Data config') as Prisma.InputJsonObject
+    dataSchema: validateDatasetSchemaDefinition(
+      parseDatasetJsonInput(input.dataSchema, 'Data schema')
+    ) as Prisma.InputJsonObject,
+    dataConfig: validateDatasetConfigDefinition(
+      parseDatasetJsonInput(input.dataConfig, 'Data config')
+    ) as Prisma.InputJsonObject
   }
 }
 

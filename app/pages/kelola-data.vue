@@ -60,6 +60,7 @@ const editModalOpen = ref(false)
 const deleteModalOpen = ref(false)
 const historyModalOpen = ref(false)
 const deleting = ref(false)
+const recordsWorkspace = ref<HTMLElement | null>(null)
 
 const bidangs = computed(() => optionsResponse.value.bidangs)
 const bidangSelectItems = computed(() => {
@@ -72,7 +73,9 @@ const bidangSelectItems = computed(() => {
     }))
   ]
 })
-const allDatasets = computed(() => Object.values(optionsResponse.value.datasetsByBidang).flat())
+const allDatasets = computed(() =>
+  Object.values(optionsResponse.value.datasetsByBidang).flat()
+)
 const datasets = computed(() => {
   if (selectedBidangId.value === allBidangsValue) {
     return allDatasets.value
@@ -81,7 +84,10 @@ const datasets = computed(() => {
   return optionsResponse.value.datasetsByBidang[selectedBidangId.value] ?? []
 })
 const selectedDataset = computed(() => {
-  return datasets.value.find(dataset => dataset.id === selectedDatasetId.value) ?? null
+  return (
+    datasets.value.find(dataset => dataset.id === selectedDatasetId.value)
+    ?? null
+  )
 })
 const fields = computed(() => {
   return selectedDataset.value
@@ -89,15 +95,21 @@ const fields = computed(() => {
     : []
 })
 const visibleFields = computed(() => fields.value.slice(0, 4))
-const hasMoreFields = computed(() => fields.value.length > visibleFields.value.length)
+const hasMoreFields = computed(
+  () => fields.value.length > visibleFields.value.length
+)
 const isPending = computed(
   () => optionsStatus.value === 'pending' || regionsStatus.value === 'pending'
 )
-const hasOptionsError = computed(() => !!optionsError.value || !!regionsError.value)
+const hasOptionsError = computed(
+  () => !!optionsError.value || !!regionsError.value
+)
 const datasetCountLabel = computed(() => {
   return `${datasets.value.length} dataset${datasets.value.length === 1 ? '' : 's'}`
 })
-const selectedDatasetPermissions = computed(() => selectedDataset.value?.permissions ?? null)
+const selectedDatasetPermissions = computed(
+  () => selectedDataset.value?.permissions ?? null
+)
 
 const datasetColumns: TableColumn<DatasetRecordDatasetOption>[] = [
   {
@@ -188,28 +200,25 @@ watch(
   { immediate: true }
 )
 
-watch(
-  selectedDataset,
-  (dataset) => {
-    selectedRecord.value = null
-    historyRecord.value = null
-    editModalOpen.value = false
-    deleteModalOpen.value = false
-    historyModalOpen.value = false
-    selectedRegionFilter.value = ''
-    selectedStatusFilter.value = ''
-    search.value = ''
+watch(selectedDataset, (dataset) => {
+  selectedRecord.value = null
+  historyRecord.value = null
+  editModalOpen.value = false
+  deleteModalOpen.value = false
+  historyModalOpen.value = false
+  selectedRegionFilter.value = ''
+  selectedStatusFilter.value = ''
+  search.value = ''
 
-    if (!dataset) {
-      periodValue.value = ''
-      return
-    }
-
-    periodValue.value = getDefaultPeriodInput(
-      getDatasetPeriodicity(dataset.dataConfig)
-    )
+  if (!dataset) {
+    periodValue.value = ''
+    return
   }
-)
+
+  periodValue.value = getDefaultPeriodInput(
+    getDatasetPeriodicity(dataset.dataConfig)
+  )
+})
 
 const {
   data: records,
@@ -223,7 +232,7 @@ const {
       return []
     }
 
-    return $fetch('/api/dataset-records', {
+    return $fetch<DatasetRecordListItem[]>('/api/dataset-records', {
       query: {
         datasetId: selectedDataset.value.id,
         periodValue: periodValue.value.trim()
@@ -251,12 +260,15 @@ const {
       return []
     }
 
-    return $fetch('/api/dataset-records/deleted', {
-      query: {
-        datasetId: selectedDataset.value.id,
-        periodValue: periodValue.value.trim()
+    return $fetch<DeletedDatasetRecordListItem[]>(
+      '/api/dataset-records/deleted',
+      {
+        query: {
+          datasetId: selectedDataset.value.id,
+          periodValue: periodValue.value.trim()
+        }
       }
-    })
+    )
   },
   {
     default: () => [],
@@ -295,8 +307,6 @@ function formatPeriodicityLabel(value: string | null) {
   switch (value) {
     case 'HARIAN':
       return 'Harian'
-    case 'MINGGUAN':
-      return 'Mingguan'
     case 'BULANAN':
       return 'Bulanan'
     case 'TRIWULANAN':
@@ -321,28 +331,6 @@ function formatRegionLevelLabel(value: string | null) {
   }
 }
 
-function getPermissionBadges(dataset: DatasetRecordDatasetOption) {
-  const badges: Array<{ label: string, color: 'neutral' | 'success' | 'info' | 'warning' }> = []
-
-  if (dataset.permissions.canRead) {
-    badges.push({ label: 'Read', color: 'neutral' })
-  }
-
-  if (dataset.permissions.canCreate) {
-    badges.push({ label: 'Create', color: 'success' })
-  }
-
-  if (dataset.permissions.canUpdate) {
-    badges.push({ label: 'Update', color: 'info' })
-  }
-
-  if (dataset.permissions.canDelete) {
-    badges.push({ label: 'Delete', color: 'warning' })
-  }
-
-  return badges
-}
-
 const regionFilterOptions = computed(() => {
   const regionLevel = selectedDataset.value
     ? getDatasetRegionLevel(selectedDataset.value.dataConfig)
@@ -359,7 +347,8 @@ const regionFilterOptions = computed(() => {
 })
 
 const statusOptions = computed(() => {
-  const tableRecords = dataView.value === 'deleted' ? deletedRecords.value : records.value
+  const tableRecords
+    = dataView.value === 'deleted' ? deletedRecords.value : records.value
 
   return Array.from(new Set(tableRecords.map(record => record.status)))
     .filter(Boolean)
@@ -440,19 +429,24 @@ const canCreate = computed(
   () => selectedDatasetPermissions.value?.canCreate ?? false
 )
 
-function selectDataset(datasetId: string) {
+async function selectDataset(datasetId: string) {
   selectedDatasetId.value = datasetId
-}
 
-function clearSelectedDataset() {
-  selectedDatasetId.value = ''
+  await nextTick()
+  recordsWorkspace.value?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  })
 }
 
 function formatDateTime(value: string) {
   return dateTimeFormatter.format(new Date(value))
 }
 
-function formatFieldValue(record: { data: Record<string, unknown> }, fieldKey: string) {
+function formatFieldValue(
+  record: { data: Record<string, unknown> },
+  fieldKey: string
+) {
   const value = record.data[fieldKey]
 
   if (typeof value === 'boolean') {
@@ -480,7 +474,12 @@ function openHistoryModal(record: DatasetRecordHistoryContext) {
 }
 
 async function refreshAllData() {
-  await Promise.all([refreshOptions(), refreshRegions(), refreshRecords(), refreshDeletedRecords()])
+  await Promise.all([
+    refreshOptions(),
+    refreshRegions(),
+    refreshRecords(),
+    refreshDeletedRecords()
+  ])
 }
 
 function exportRecords() {
@@ -512,7 +511,9 @@ function exportRecords() {
   })
 
   const csv = [headers, ...rows]
-    .map(row => row.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(','))
+    .map(row =>
+      row.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(',')
+    )
     .join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
@@ -557,7 +558,8 @@ async function deleteRecord() {
   } catch (error) {
     toast.add({
       title: 'Gagal menghapus data',
-      description: error instanceof Error ? error.message : 'Silakan coba lagi.',
+      description:
+        error instanceof Error ? error.message : 'Silakan coba lagi.',
       color: 'error'
     })
   } finally {
@@ -566,11 +568,13 @@ async function deleteRecord() {
 }
 
 function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
-  const actions: DropdownMenuItem[] = [{
-    label: 'Lihat Riwayat',
-    icon: 'i-lucide-history',
-    onSelect: () => openHistoryModal(record)
-  }]
+  const actions: DropdownMenuItem[] = [
+    {
+      label: 'Lihat Riwayat',
+      icon: 'i-lucide-history',
+      onSelect: () => openHistoryModal(record)
+    }
+  ]
 
   if (record.permissions.canUpdate) {
     actions.push({
@@ -592,25 +596,37 @@ function getRowActions(record: DatasetRecordListItem): DropdownMenuItem[][] {
   return actions.length > 0 ? [actions] : []
 }
 
-function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMenuItem[][] {
-  return [[{
-    label: 'Lihat Riwayat',
-    icon: 'i-lucide-history',
-    onSelect: () => openHistoryModal(record)
-  }]]
+function getDeletedRowActions(
+  record: DeletedDatasetRecordListItem
+): DropdownMenuItem[][] {
+  return [
+    [
+      {
+        label: 'Lihat Riwayat',
+        icon: 'i-lucide-history',
+        onSelect: () => openHistoryModal(record)
+      }
+    ]
+  ]
 }
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-6 lg:gap-8">
+  <div
+    class="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-6 lg:gap-8"
+  >
     <AppPageIntro
       kicker="Data operasional"
       title="Kelola Data"
       description="Kelola data operasional melalui Dataset yang tersedia dalam scope Anda."
     />
 
-    <section class="overflow-hidden rounded-2xl border border-default bg-default">
-      <div class="flex flex-col gap-4 border-b border-default px-4 py-4 lg:flex-row lg:items-end lg:justify-between">
+    <section
+      class="overflow-hidden rounded-2xl border border-default bg-default"
+    >
+      <div
+        class="flex flex-col gap-4 border-b border-default px-4 py-4 lg:flex-row lg:items-end lg:justify-between"
+      >
         <div class="flex flex-wrap items-center gap-2">
           <h2 class="text-lg font-semibold text-highlighted">
             Dataset
@@ -620,7 +636,10 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
           </UBadge>
         </div>
 
-        <div v-if="!isPending && !hasOptionsError && bidangs.length > 0" class="w-full lg:w-56">
+        <div
+          v-if="!isPending && !hasOptionsError && bidangs.length > 0"
+          class="w-full lg:w-56"
+        >
           <USelectMenu
             v-model="selectedBidangId"
             :items="bidangSelectItems"
@@ -634,7 +653,9 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
 
       <div v-if="isPending" class="overflow-x-auto px-4 py-3">
         <div class="min-w-[680px] divide-y divide-default">
-          <div class="grid grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_96px] gap-4 px-4 py-3">
+          <div
+            class="grid grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_96px] gap-4 px-4 py-3"
+          >
             <div class="h-3 w-20 rounded bg-elevated" />
             <div class="h-3 w-24 rounded bg-elevated" />
             <div class="h-3 w-28 rounded bg-elevated/80" />
@@ -758,80 +779,35 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
 
     <section
       v-if="selectedDataset"
-      class="overflow-hidden rounded-2xl border border-default bg-default"
+      ref="recordsWorkspace"
+      class="scroll-mt-24 overflow-hidden rounded-2xl border border-default bg-default"
     >
-      <div class="flex flex-col gap-4 border-b border-default px-4 py-4">
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div class="space-y-3">
-            <div class="grid gap-4 md:grid-cols-2">
-              <div class="rounded-2xl border border-default/70 bg-elevated/20 p-4">
-                <p class="text-xs font-medium tracking-[0.16em] text-muted uppercase">
-                  Bidang
-                </p>
-                <p class="mt-2 text-lg font-semibold text-highlighted">
-                  {{ selectedDataset.ownerBidangName }}
-                </p>
-                <p class="mt-1 text-xs text-muted">
-                  {{ selectedDataset.ownerBidangId }}
-                </p>
-              </div>
-
-              <div class="rounded-2xl border border-default/70 bg-elevated/20 p-4">
-                <p class="text-xs font-medium tracking-[0.16em] text-muted uppercase">
-                  Dataset
-                </p>
-                <p class="mt-2 text-lg font-semibold text-highlighted">
-                  {{ selectedDataset.name }}
-                </p>
-                <p class="mt-1 text-xs text-muted">
-                  {{ selectedDataset.id }}
-                </p>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-              <UBadge color="neutral" variant="subtle" size="sm">
-                {{ formatPeriodicityLabel(selectedDataset.periodicity) }}
-              </UBadge>
-              <UBadge color="neutral" variant="outline" size="sm">
-                {{ formatRegionLevelLabel(selectedDataset.regionLevel) }}
-              </UBadge>
+      <div class="flex flex-col gap-3 border-b border-default px-4 py-3">
+        <div
+          class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+        >
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="truncate text-base font-semibold text-highlighted">
+                {{ selectedDataset.name }}
+              </h2>
               <UBadge
-                v-for="badge in getPermissionBadges(selectedDataset)"
-                :key="`active:${badge.label}`"
-                :color="badge.color"
+                v-if="selectedDataset.archivedAt"
+                color="warning"
                 variant="subtle"
                 size="sm"
               >
-                {{ badge.label }}
+                Diarsipkan · read-only
               </UBadge>
             </div>
+            <p class="mt-1 truncate text-xs text-muted">
+              {{ selectedDataset.ownerBidangName }} ·
+              {{ formatPeriodicityLabel(selectedDataset.periodicity) }} ·
+              {{ formatRegionLevelLabel(selectedDataset.regionLevel) }}
+            </p>
           </div>
 
-          <div class="flex flex-wrap gap-2">
-            <div class="flex rounded-lg border border-default p-1">
-              <UButton
-                label="Data Aktif"
-                size="sm"
-                :color="dataView === 'active' ? 'primary' : 'neutral'"
-                :variant="dataView === 'active' ? 'solid' : 'ghost'"
-                @click="dataView = 'active'"
-              />
-              <UButton
-                label="Data Terhapus"
-                size="sm"
-                :color="dataView === 'deleted' ? 'primary' : 'neutral'"
-                :variant="dataView === 'deleted' ? 'solid' : 'ghost'"
-                @click="dataView = 'deleted'"
-              />
-            </div>
-            <UButton
-              label="Ganti Dataset"
-              icon="i-lucide-layout-grid"
-              color="neutral"
-              variant="outline"
-              @click="clearSelectedDataset"
-            />
+          <div class="flex flex-wrap items-center gap-1.5">
             <DataRecordsFormModal
               v-if="dataView === 'active' && canCreate"
               :dataset="selectedDataset"
@@ -839,37 +815,70 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
               @created="refreshRecords()"
             />
             <DataRecordsImportModal
-              v-if="dataView === 'active' && selectedDataset.permissions.canCreate && selectedDataset.permissions.canUpdate"
+              v-if="
+                dataView === 'active'
+                  && selectedDataset.permissions.canCreate
+                  && selectedDataset.permissions.canUpdate
+              "
               :dataset="selectedDataset"
               @imported="refreshRecords()"
             />
             <UButton
               v-if="dataView === 'active'"
-              label="Export CSV"
+              label="Export"
               icon="i-lucide-download"
               color="neutral"
               variant="outline"
+              size="sm"
               :disabled="filteredRecords.length === 0"
               @click="exportRecords"
+            />
+            <UButton
+              v-if="dataView === 'active'"
+              icon="i-lucide-history"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              square
+              title="Data terhapus"
+              aria-label="Data terhapus"
+              @click="dataView = 'deleted'"
+            />
+            <UButton
+              v-else
+              icon="i-lucide-archive-restore"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              square
+              title="Kembali ke data aktif"
+              aria-label="Kembali ke data aktif"
+              @click="dataView = 'active'"
             />
           </div>
         </div>
 
         <div class="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
           <UInput
-            v-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'HARIAN'"
+            v-if="
+              getDatasetPeriodicity(selectedDataset.dataConfig) === 'HARIAN'
+            "
             v-model="periodValue"
             type="date"
             class="w-full"
           />
           <UInput
-            v-else-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'BULANAN'"
+            v-else-if="
+              getDatasetPeriodicity(selectedDataset.dataConfig) === 'BULANAN'
+            "
             v-model="periodValue"
             type="month"
             class="w-full"
           />
           <UInput
-            v-else-if="getDatasetPeriodicity(selectedDataset.dataConfig) === 'TAHUNAN'"
+            v-else-if="
+              getDatasetPeriodicity(selectedDataset.dataConfig) === 'TAHUNAN'
+            "
             v-model="periodValue"
             placeholder="2026"
             class="w-full"
@@ -877,7 +886,11 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
           <UInput
             v-else
             v-model="periodValue"
-            :placeholder="getDatasetPeriodicity(selectedDataset.dataConfig) === 'TRIWULANAN' ? '2026-Q3' : '2026-W32'"
+            :placeholder="
+              getDatasetPeriodicity(selectedDataset.dataConfig) === 'TRIWULANAN'
+                ? '2026-Q3'
+                : '2026-W32'
+            "
             class="w-full"
           />
 
@@ -919,14 +932,17 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
               color: 'neutral',
               variant: 'subtle',
               onClick: () => {
-                refreshRecords()
+                refreshRecords();
               }
             }
           ]"
         />
       </div>
 
-      <div v-else-if="dataView === 'deleted' && deletedRecordsError" class="px-4 py-10">
+      <div
+        v-else-if="dataView === 'deleted' && deletedRecordsError"
+        class="px-4 py-10"
+      >
         <UEmpty
           icon="i-lucide-folder-search"
           title="Data terhapus tidak dapat dimuat"
@@ -938,7 +954,7 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
               color: 'neutral',
               variant: 'subtle',
               onClick: () => {
-                refreshDeletedRecords()
+                refreshDeletedRecords();
               }
             }
           ]"
@@ -949,10 +965,14 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
         <table class="w-full min-w-[1180px] divide-y divide-default text-sm">
           <thead class="bg-elevated/35">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Period
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Region
               </th>
               <th
@@ -962,13 +982,19 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
               >
                 {{ field.label }}
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Status
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Updated
               </th>
-              <th class="px-4 py-3 text-right text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-right text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Actions
               </th>
             </tr>
@@ -1033,7 +1059,8 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
                     {{ record.status }}
                   </UBadge>
                   <span v-if="hasMoreFields" class="block text-xs text-muted">
-                    +{{ fields.length - visibleFields.length }} field lain tersedia di form detail
+                    +{{ fields.length - visibleFields.length }} field lain
+                    tersedia di form detail
                   </span>
                 </div>
               </td>
@@ -1073,10 +1100,14 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
         <table class="w-full min-w-[1180px] divide-y divide-default text-sm">
           <thead class="bg-elevated/35">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Period
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Region
               </th>
               <th
@@ -1086,13 +1117,19 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
               >
                 {{ field.label }}
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Status
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Dihapus
               </th>
-              <th class="px-4 py-3 text-right text-xs font-medium tracking-[0.16em] text-muted uppercase">
+              <th
+                class="px-4 py-3 text-right text-xs font-medium tracking-[0.16em] text-muted uppercase"
+              >
                 Actions
               </th>
             </tr>
@@ -1165,7 +1202,7 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
                 <div class="space-y-1">
                   <p>{{ formatDateTime(record.deletedAt) }}</p>
                   <p class="text-xs">
-                    oleh {{ record.deletedByName ?? 'Pengguna tidak tersedia' }}
+                    oleh {{ record.deletedByName ?? "Pengguna tidak tersedia" }}
                   </p>
                 </div>
               </td>
@@ -1207,7 +1244,11 @@ function getDeletedRowActions(record: DeletedDatasetRecordListItem): DropdownMen
       v-model:open="historyModalOpen"
       :record="historyRecord"
       :data-schema="selectedDataset.dataSchema"
-      @update:open="(isOpen) => { if (!isOpen) historyRecord = null }"
+      @update:open="
+        (isOpen) => {
+          if (!isOpen) historyRecord = null;
+        }
+      "
     />
 
     <UModal

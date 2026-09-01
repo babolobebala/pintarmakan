@@ -52,6 +52,8 @@ export interface DatasetManagementItem {
   dataConfig: Record<string, unknown>
   periodicity: string | null
   regionLevel: string | null
+  startPeriod: string | null
+  endPeriod: string | null
   archivedAt: string | null
   createdAt: string
   updatedAt: string

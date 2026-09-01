@@ -8,6 +8,15 @@ import { db } from '#server/utils/db'
 const baseURL = process.env.BETTER_AUTH_URL || process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
 function getBaseAuthOptions(): BetterAuthOptions {
+  const account = {
+    identityStrategy: 'provider-id' as const,
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ['google'],
+      allowDifferentEmails: false
+    }
+  }
+
   return {
     appName: 'Nuxt Dashboard Template',
     baseURL,
@@ -29,13 +38,7 @@ function getBaseAuthOptions(): BetterAuthOptions {
         disableImplicitSignUp: true
       }
     },
-    account: {
-      accountLinking: {
-        enabled: true,
-        trustedProviders: ['google'],
-        allowDifferentEmails: false
-      }
-    }
+    account
   }
 }
 

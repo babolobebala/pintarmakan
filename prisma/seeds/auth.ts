@@ -113,6 +113,10 @@ const setRolePermission = { user: ['set-role'] } as const
 
 function createSeedAuth(db: SeedDbClient) {
   const baseURL = process.env.BETTER_AUTH_URL || process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const account = {
+    identityStrategy: 'provider-id' as const,
+    accountLinking: {}
+  }
 
   return betterAuth({
     appName: 'Nuxt Dashboard Template',
@@ -126,6 +130,7 @@ function createSeedAuth(db: SeedDbClient) {
       disableSignUp: true,
       autoSignIn: false
     },
+    account,
     plugins: [
       admin({
         ac,

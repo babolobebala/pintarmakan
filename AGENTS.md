@@ -296,7 +296,6 @@ Core invariants:
 V1 periodicity values:
 
 - `HARIAN`
-- `MINGGUAN`
 - `BULANAN`
 - `TRIWULANAN`
 - `TAHUNAN`

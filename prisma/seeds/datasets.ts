@@ -1,4 +1,5 @@
 import type { Prisma } from '../../server/generated/prisma/client.js'
+import { validateDatasetConfigDefinition, validateDatasetSchemaDefinition } from '../../shared/datasets.ts'
 import { seedSuperAdminEmail } from './auth.js'
 
 type SeedDbClient = InstanceType<typeof import('../../server/generated/prisma/client.js').PrismaClient>
@@ -58,7 +59,6 @@ const seedDatasets = [
           key: 'value',
           label: 'Indeks Ketahanan Pangan (IKP)',
           type: 'number',
-          unit: 'indeks',
           required: false
         }
       ]
@@ -66,8 +66,8 @@ const seedDatasets = [
     dataConfig: {
       version: 1,
       periodicity: 'TAHUNAN',
-      useRegion: true,
-      regionLevel: 'KABUPATEN'
+      regionLevel: 'KABUPATEN',
+      startPeriod: '2025-01-01'
     }
   },
   {
@@ -82,7 +82,6 @@ const seedDatasets = [
           key: 'value',
           label: 'PPH Konsumsi',
           type: 'number',
-          unit: 'indeks',
           required: false
         }
       ]
@@ -90,8 +89,8 @@ const seedDatasets = [
     dataConfig: {
       version: 1,
       periodicity: 'TAHUNAN',
-      useRegion: true,
-      regionLevel: 'KABUPATEN'
+      regionLevel: 'KABUPATEN',
+      startPeriod: '2025-01-01'
     }
   },
   {
@@ -106,7 +105,6 @@ const seedDatasets = [
           key: 'value',
           label: 'PPH Ketersediaan',
           type: 'number',
-          unit: 'indeks',
           required: false
         }
       ]
@@ -114,8 +112,80 @@ const seedDatasets = [
     dataConfig: {
       version: 1,
       periodicity: 'TAHUNAN',
-      useRegion: true,
-      regionLevel: 'KABUPATEN'
+      regionLevel: 'KABUPATEN',
+      startPeriod: '2025-01-01'
+    }
+  },
+  {
+    id: 'HARGA_PANGAN_HARIAN',
+    ownerBidangId: defaultOwnerBidangId,
+    name: 'Perkembangan Harga Pangan Kabupaten Sumbawa Barat',
+    description: 'Data harian perkembangan harga pangan Kabupaten Sumbawa Barat.',
+    dataSchema: {
+      version: 1,
+      fields: [
+        { key: 'beras_premium', label: 'Beras Premium (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'beras_medium', label: 'Beras Medium (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'beras_sphp', label: 'Beras SPHP (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'beras_medium_non_sphp', label: 'Beras Medium Non SPHP (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'beras_khusus_lokal', label: 'Beras Khusus (Lokal) (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'kedelai_biji_kering', label: 'Kedelai Biji Kering (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'bawang_merah', label: 'Bawang Merah (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'bawang_putih', label: 'Bawang Putih (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'cabai_merah_keriting', label: 'Cabai Merah Keriting (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'cabai_besar', label: 'Cabai Besar (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'cabai_rawit_merah', label: 'Cabai Rawit Merah (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'daging_sapi', label: 'Daging Sapi (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'daging_ayam_ras', label: 'Daging Ayam Ras (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'telur_ayam_ras', label: 'Telur Ayam Ras (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'gula_pasir', label: 'Gula Pasir (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'minyak_goreng_kemasan', label: 'Minyak Goreng Kemasan (Rp/L)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'tepung_terigu_curah', label: 'Tepung Terigu (Curah) (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'minyak_goreng_curah', label: 'Minyak Goreng Curah (Rp/L)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'minyak_goreng_kita', label: 'Minyak Goreng Kita (Rp/L)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'tepung_terigu_kemasan', label: 'Tepung Terigu Kemasan (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'jagung_pipilan_kering', label: 'Jagung Pipilan Kering (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'ikan_kembung', label: 'Ikan Kembung (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'ikan_tongkol', label: 'Ikan Tongkol (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'ikan_bandeng', label: 'Ikan Bandeng (Rp/kg)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'garam', label: 'Garam (Rp/kg)', type: 'number', required: false, validation: { min: 0 } }
+      ]
+    },
+    dataConfig: {
+      version: 1,
+      periodicity: 'HARIAN',
+      regionLevel: 'KABUPATEN',
+      startPeriod: '2025-01-01'
+    }
+  },
+  {
+    id: 'PROYEKSI_NERACA_PANGAN_BULANAN',
+    ownerBidangId: defaultOwnerBidangId,
+    name: 'Proyeksi Neraca Pangan Kabupaten Sumbawa Barat',
+    description: 'Data proyeksi neraca pangan bulanan Kabupaten Sumbawa Barat untuk tahun 2026.',
+    dataSchema: {
+      version: 1,
+      fields: [
+        { key: 'beras', label: 'Beras', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'jagung', label: 'Jagung', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'kedelai', label: 'Kedelai', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'bawang_merah', label: 'Bawang Merah', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'bawang_putih', label: 'Bawang Putih', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'cabai_merah', label: 'Cabai Merah', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'cabai_rawit', label: 'Cabai Rawit', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'daging_sapi_kerbau', label: 'Daging Sapi/Kerbau', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'daging_ayam_ras', label: 'Daging Ayam Ras', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'telur_ayam_ras', label: 'Telur Ayam Ras', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'gula_konsumsi', label: 'Gula Konsumsi', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'minyak_goreng', label: 'Minyak Goreng', type: 'number', required: false, validation: { min: 0 } }
+      ]
+    },
+    dataConfig: {
+      version: 1,
+      periodicity: 'BULANAN',
+      regionLevel: 'KABUPATEN',
+      startPeriod: '2026-01-01',
+      endPeriod: '2026-12-01'
     }
   },
   {
@@ -137,8 +207,8 @@ const seedDatasets = [
     dataConfig: {
       version: 1,
       periodicity: 'TAHUNAN',
-      useRegion: true,
-      regionLevel: 'DESA'
+      regionLevel: 'DESA',
+      startPeriod: '2025-01-01'
     }
   }
 ] as const satisfies readonly SeedDatasetDefinition[]
@@ -217,6 +287,13 @@ const seedDatasetRecords = [
   { datasetId: 'STATUS_KETAHANAN_PANGAN_TAHUNAN', regionId: '52.07.06.2006', periodDate: foodSecurityStatusPeriodDate, data: { priority: 4 }, status: 'PUBLISHED' }
 ] as const satisfies readonly SeedDatasetRecord[]
 
+function validateSeedDatasetDefinitions() {
+  for (const seedDataset of seedDatasets) {
+    validateDatasetSchemaDefinition(seedDataset.dataSchema)
+    validateDatasetConfigDefinition(seedDataset.dataConfig)
+  }
+}
+
 async function resolveSeedSuperAdminUserId(db: SeedDbClient) {
   const user = await db.user.findUnique({
     where: {
@@ -237,6 +314,8 @@ async function resolveSeedSuperAdminUserId(db: SeedDbClient) {
 }
 
 export async function runDatasetSeed(db: SeedDbClient) {
+  validateSeedDatasetDefinitions()
+
   const superAdminUserId = await resolveSeedSuperAdminUserId(db)
   let createdDatasetCount = 0
   let updatedDatasetCount = 0

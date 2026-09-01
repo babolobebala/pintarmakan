@@ -3,445 +3,364 @@
 Status: Canonical  
 Version: 1
 
-This document is the canonical contract for all future work involving:
+This document is the canonical contract for all work involving:
 
 - `datasets`
 - `dataset_records`
-- dataset CRUD
-- dataset record CRUD
+- Dataset CRUD
+- DatasetRecord CRUD
 - dynamic forms
 - API validation
 - import/export
-- dataset tables
-- dataset filters
-- dashboard dataset consumption
+- Dataset tables and filters
+- dashboard Dataset consumption
+
+It defines the finalized V1 structure. Some structural enforcement described
+below is intentionally a follow-up implementation task; it does not change the
+current runtime behaviour until that work is completed.
 
 ## 1. Core Model
 
 The application uses:
 
-- `datasets` as the definition/template of a business dataset.
-- `dataset_records` as the current canonical data snapshot produced from a dataset definition.
+- `datasets` as the definition/template of a business Dataset;
+- `dataset_records` as the current canonical business snapshot; and
 - `dataset_record_history` as immutable previous DatasetRecord snapshots.
 
-Relationship:
+Relationship: `datasets` 1:N `dataset_records`.
 
-`datasets` 1:N `dataset_records`
+A real DatasetRecord UPDATE snapshots the previous current state before
+mutation, and a DELETE snapshots it before hard deletion. History owns previous
+business state; `audit_logs` retain concise actor/action metadata.
 
-DatasetRecord history is retained separately. A real UPDATE snapshots the old
-current state before mutation, and a DELETE snapshots the old current state
-before hard deletion. History survives deletion of the current row; it is not
-a version-number system and it does not replace `audit_logs`. History owns
-previous business state, while audit logs retain concise actor/action metadata.
+Dataset lifecycle is represented by `datasets.archivedAt`: `null` means active;
+a non-null value means archived and read-only for DatasetRecord mutations.
+Datasets with current records or history MUST NOT be hard-deleted; a never-used
+Dataset may be hard-deleted.
 
-Dataset lifecycle is represented by `datasets.archivedAt`: `null` means active
-and a non-null value means archived. Archiving retains Dataset definitions,
-records, and history, but prevents DatasetRecord create/update/delete. Datasets
-with current records or history cannot be hard-deleted; a never-used Dataset
-may still be hard-deleted.
-
-One `dataset_record` represents:
-
-- one dataset;
-- one region;
-- one normalized period; and
-- one complete business payload matching `datasets.dataSchema`.
-
-Example:
-
-- `datasetId = FOOD_STOCK_DAILY`
-- `regionId = 52.07.02`
-- `periodDate = 2026-08-10`
-
-`data`:
-
-```json
-{
-  "beras": 5000,
-  "jagung": 2100,
-  "padi": 3200
-}
-```
-
-Do not model every commodity or individual field as a separate dataset record.
-
-A dataset record represents the complete snapshot defined by the dataset schema for one region and one period.
+One DatasetRecord represents one Dataset, one Region, one normalized period,
+and one complete business payload conforming to `datasets.dataSchema`.
 
 ## 2. Dataset Ownership
 
-Every dataset must define:
+Every Dataset MUST define `datasets.ownerBidangId`. It is the one canonical
+owner Bidang; a Bidang may own many Datasets.
 
-`datasets.ownerBidangId`
+DatasetRecords do not store ownership. Ownership is resolved through:
 
-`datasets.ownerBidangId` is required for every dataset.
+`dataset_record.datasetId -> datasets.ownerBidangId`.
 
-A dataset has exactly one canonical owner bidang.
+Keep these responsibilities separate:
 
-A bidang may own many datasets.
+- `datasets.ownerBidangId`: structural ownership/responsible Bidang;
+- `auth_user_to_bidang`: Operator Bidang scope;
+- Better Auth: capability; and
+- `dataset_records`: business snapshots.
 
-Relationship:
+## 3. Canonical `datasets.dataSchema`
 
-`auth_bidang` 1:N `datasets`
+`dataSchema` defines the dynamic business fields in `dataset_records.data`.
 
-Dataset records do not store ownership directly.
-
-Ownership is inherited through:
-
-`dataset_record.datasetId`  
-`-> datasets.id`  
-`-> datasets.ownerBidangId`
-
-Keep this distinction strict:
-
-- `datasets.ownerBidangId` = structural ownership / responsible bidang
-- `auth_user_to_bidang` = Operator Bidang scope for owner DatasetRecord access
-- Better Auth = capability / allowed actions
-- `dataset_records` = actual business snapshots
-
-Owner DatasetRecord access is authorized by matching `datasets.ownerBidangId`
-against the authenticated Operator's assigned Bidang plus the required Better
-Auth capability. Admin and Super Admin have global Bidang scope.
-
-Do not introduce multiple dataset owners.
-
-Do not add `ownerBidangId` back to `dataset_records`.
-
-## 3. `datasets.dataSchema`
-
-`dataSchema` defines what business data fields exist in a dataset.
-
-Canonical V1 structure:
+The canonical V1 shape is:
 
 ```json
 {
   "version": 1,
   "fields": [
     {
-      "key": "value",
-      "label": "Nilai",
-      "type": "number",
-      "unit": "indeks",
-      "required": false
+      "key": "nama",
+      "label": "Nama",
+      "description": "Nama komoditas",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "minLength": 1,
+        "maxLength": 100
+      }
     }
   ]
 }
 ```
 
-Canonical field properties:
+Canonical common field properties are:
 
-- `key`: required
-- `label`: required
-- `type`: required
-- `required`: required boolean
-- `unit`: optional
-- `description`: optional
-- `options`: required when `type = "select"` and otherwise not needed
+- `key`: required stable business key;
+- `label`: required non-empty presentation label;
+- `description`: optional string presentation/help metadata, which forms and
+  other display helpers MAY use;
+- `type`: required canonical field type; and
+- `required`: required boolean.
 
-Do not allow a `select` field without valid options.
+A field MUST contain only properties applicable to its type. `unit` is not part
+of the canonical V1 field contract and MUST NOT be used in new Dataset
+definitions.
 
-Do not invent arbitrary properties without intentionally extending or versioning this contract.
+`version` remains `1`. This is a V1 hardening/extension, not a V2 redesign.
 
-## 4. Field Key Convention
+## 4. Field Key Requirements
 
-All `dataSchema.fields[].key` values must use camelCase.
+All `dataSchema.fields[].key` values MUST be non-empty, trimmed/normalized,
+and unique within `fields`. V1 does not impose a naming style: camelCase,
+snake_case, and other naming styles are not rejected solely by their style.
 
-Valid examples:
+Dataset IDs remain separate, uppercase technical identifiers such as
+`IKP_TAHUNAN` and `FOOD_STOCK_DAILY`.
 
-- `value`
-- `beras`
-- `cabaiRawit`
-- `luasPanen`
-- `pphKetersediaan`
-- `jumlahRumahTanggaRentan`
+## 5. Canonical Field Types
 
-Do not use mixed naming styles such as:
+New Dataset definitions MUST use only:
 
-- `cabai_rawit`
-- `CabaiRawit`
-- `CABAI_RAWIT`
-- `cabai-rawit`
-
-Dataset IDs use a different convention and must remain uppercase technical identifiers, for example:
-
-- `IKP_YEARLY`
-- `PPH_CONSUMPTION_YEARLY`
-- `PPH_AVAILABILITY_YEARLY`
-- `FOOD_STOCK_DAILY`
-- `FOOD_PRODUCTION_MONTHLY`
-
-Do not mix dataset ID conventions with field key conventions.
-
-## 5. Supported Field Types
-
-Dataset Schema Contract V1 supports only:
-
+- `string`
 - `number`
-- `text`
-- `textarea`
-- `select`
 - `boolean`
+- `select`
 - `date`
 
-Do not introduce:
+`select` is the canonical finite-choice type. Do not add `enum`, including as
+an alias.
 
-- `object`
-- `array`
-- `group`
-- `matrix`
-- `relation`
-- nested schema types
+Legacy compatibility remains important:
 
-unless the contract is explicitly extended or versioned.
+- `text` is a legacy string-like type;
+- `textarea` is a legacy string-like type with its previous presentation
+  semantics.
+
+Legacy types remain readable by the current runtime but are not canonical for
+new definitions. Unknown, new, or misspelled types MUST eventually be rejected
+on Dataset-definition writes; they MUST NOT be silently normalized to
+`string`. That structural enforcement is not implemented by this document.
+
+## 6. Field-Type Semantics
+
+### `string`
+
+String values are persisted as JSON strings.
+
+```json
+{
+  "key": "nama",
+  "label": "Nama",
+  "description": "Nama komoditas",
+  "type": "string",
+  "required": true,
+  "validation": {
+    "minLength": 1,
+    "maxLength": 100
+  }
+}
+```
+
+Supported validation properties:
+
+- `required`
+- `minLength`
+- `maxLength`
+
+`minLength` and `maxLength` MUST be non-negative integers. When both exist,
+`minLength` MUST be less than or equal to `maxLength`. V1 does not define
+regex/pattern validation.
 
 ### `number`
 
-Schema example:
+Number values are persisted as JSON numbers, never numeric strings.
 
 ```json
 {
-  "key": "value",
-  "label": "Indeks Ketahanan Pangan",
+  "key": "skor",
+  "label": "Skor",
   "type": "number",
-  "unit": "indeks",
-  "required": false
+  "required": true,
+  "validation": {
+    "min": 0,
+    "max": 5,
+    "decimalPlaces": 2
+  }
 }
 ```
 
-Persist actual JSON numbers:
+Supported validation properties:
+
+- `required`
+- `min`
+- `max`
+- `decimalPlaces`
+
+`min` and `max` are numeric bounds; when both exist, `min` MUST be less than
+or equal to `max`. `decimalPlaces` MUST be a non-negative integer:
+
+- `0` means integer-only;
+- `1` allows at most one fractional digit;
+- `2` allows at most two fractional digits; and so on.
+
+`decimalPlaces` describes numeric precision only. It does not specify whether
+users type decimal values with `.` or `,`; locale/input formatting is a
+separate UI concern. Do not use `comma`, `precision`, `step`, or `integer`
+unless a later contract explicitly adds them.
+
+### `boolean`
+
+Boolean values are persisted as JSON booleans.
 
 ```json
 {
-  "value": 80.4
+  "key": "aktif",
+  "label": "Aktif",
+  "type": "boolean",
+  "required": true
 }
 ```
 
-Do not persist numeric values as strings such as:
-
-```json
-{
-  "value": "80.4"
-}
-```
-
-### `text`
-
-Schema values must be persisted as JSON strings.
-
-Example:
-
-```json
-{
-  "keterangan": "Kondisi aman"
-}
-```
-
-### `textarea`
-
-The persisted representation is also a JSON string.
-
-`textarea` differs from `text` only in frontend presentation.
+Only `required` is defined for V1 booleans.
 
 ### `select`
 
-Schema example:
+Persist only the selected option `value`; the label belongs to `dataSchema`.
 
 ```json
 {
   "key": "status",
   "label": "Status",
   "type": "select",
-  "required": false,
+  "required": true,
   "options": [
+    { "value": "AMAN", "label": "Aman" },
+    { "value": "WASPADA", "label": "Waspada" }
+  ]
+}
+```
+
+Each option MUST have a non-empty `value` and `label`. A canonical select MUST
+have at least one option, and option values MUST be unique within its field.
+Display surfaces MAY show the matching option label.
+
+### `date`
+
+Date values are persisted using strict `YYYY-MM-DD`.
+
+```json
+{
+  "key": "tanggalPemantauan",
+  "label": "Tanggal Pemantauan",
+  "type": "date",
+  "required": false
+}
+```
+
+Only `required` is defined for V1 dates. Do not introduce `minDate` or
+`maxDate` in V1.
+
+## 7. Required and Optional Values
+
+`required: true` means the field MUST exist and MUST NOT be empty or `null`.
+
+`required: false` permits an empty field. The current normalization convention
+is to omit optional empty fields from `dataset_records.data`; it does not
+standardize them as explicit `null` values.
+
+For example, an empty optional `keterangan` is represented as:
+
+```json
+{
+  "harga": 15000
+}
+```
+
+not:
+
+```json
+{
+  "harga": 15000,
+  "keterangan": null
+}
+```
+
+## 8. Representative `dataSchema` Example
+
+```json
+{
+  "version": 1,
+  "fields": [
     {
-      "value": "AMAN",
-      "label": "Aman"
+      "key": "namaKomoditas",
+      "label": "Nama Komoditas",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "minLength": 1,
+        "maxLength": 100
+      }
     },
     {
-      "value": "WASPADA",
-      "label": "Waspada"
+      "key": "harga",
+      "label": "Harga",
+      "type": "number",
+      "required": true,
+      "validation": {
+        "min": 0,
+        "decimalPlaces": 0
+      }
     },
     {
-      "value": "RAWAN",
-      "label": "Rawan"
+      "key": "tersedia",
+      "label": "Tersedia",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "key": "status",
+      "label": "Status",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "AMAN", "label": "Aman" },
+        { "value": "WASPADA", "label": "Waspada" }
+      ]
+    },
+    {
+      "key": "tanggalPemantauan",
+      "label": "Tanggal Pemantauan",
+      "type": "date",
+      "required": false
     }
   ]
 }
 ```
 
-Persist only the selected option value:
+## 9. `dataset_records.data`
 
-```json
-{
-  "status": "AMAN"
-}
-```
+`dataset_records.data` MUST be a flat JSON object containing business data
+only. Its keys MUST conform to declared `dataSchema.fields[].key` values.
+Undeclared business-data keys are invalid and MUST be rejected by the future
+hardening validator.
 
-Do not persist duplicated option objects such as:
-
-```json
-{
-  "status": {
-    "value": "AMAN",
-    "label": "Aman"
-  }
-}
-```
-
-The label belongs to `dataSchema`.
-
-### `boolean`
-
-Persist actual JSON booleans:
-
-```json
-{
-  "terverifikasi": true
-}
-```
-
-### `date`
-
-Persist date values using the canonical format `YYYY-MM-DD`.
-
-Example:
-
-```json
-{
-  "tanggalPublikasi": "2026-08-10"
-}
-```
-
-## 6. Required and Null Behavior
-
-`required: true` means:
-
-- the field must exist; and
-- the field must not be `null`.
-
-`required: false` means:
-
-- the field may contain `null`.
-
-For optional schema-defined fields, prefer preserving the key with a `null` value rather than omitting the key.
-
-Preferred:
-
-```json
-{
-  "ikp": 80.4,
-  "catatan": null
-}
-```
-
-This keeps forms, dynamic tables, exports, validation, and chart processing predictable.
-
-This remains preferred normalization behavior rather than a reason to redesign historical payloads.
-
-## 7. `dataset_records.data`
-
-`dataset_records.data` must be a flat JSON object.
-
-It must:
-
-- be a JSON object;
-- contain business data only;
-- use keys that correspond exactly to `datasets.dataSchema.fields[].key`; and
-- not contain unknown fields.
-
-Example schema field keys:
-
-- `beras`
-- `jagung`
-- `cabaiRawit`
-
-Valid record payload:
-
-```json
-{
-  "beras": 5000,
-  "jagung": 2100,
-  "cabaiRawit": 24
-}
-```
-
-Do not duplicate relational metadata inside `data`.
-
-The following values belong only in relational columns:
+Do not put relational/contextual metadata in the JSON payload:
 
 - `datasetId`
 - `regionId`
-- `periodDate`
+- `periodDate` or period
+- `ownerBidangId`
 - `status`
-- `createdBy`
-- `createdAt`
-- `updatedAt`
+- audit/user metadata
+- authorization data
 
-Dataset ownership also remains outside JSON and is resolved from:
+The current runtime may silently drop undeclared keys. That is an implementation
+gap, not an alternative contract; rejection belongs to the upcoming
+structural/value-validation hardening.
 
-`datasets.ownerBidangId`
+## 10. Canonical `datasets.dataConfig`
 
-Do not put `ownerBidangId` inside `dataset_records.data`.
+`dataConfig` defines Dataset-level record-context behaviour. It does not define
+dynamic business payload fields.
 
-Invalid example:
-
-```json
-{
-  "regionId": "52.07",
-  "periodDate": "2026-01-01",
-  "createdBy": "user-id",
-  "value": 80.4
-}
-```
-
-Correct:
-
-- `dataset_records.datasetId = IKP_YEARLY`
-- `dataset_records.regionId = 52.07`
-- `dataset_records.periodDate = 2026-01-01`
-
-`dataset_records.data`:
-
-```json
-{
-  "value": 80.4
-}
-```
-
-The JSON payload contains business data only.
-
-## 8. Unknown Fields
-
-Server-side validation must reject fields that are not declared in `dataSchema`.
-
-If the schema contains only:
-
-- `value`
-- `catatan`
-
-then this payload must be rejected:
-
-```json
-{
-  "value": 80,
-  "catatan": null,
-  "randomField": "abc"
-}
-```
-
-Do not silently persist unknown fields.
-
-## 9. `datasets.dataConfig`
-
-`dataConfig` defines how the dataset behaves in the application.
-
-Canonical Dataset Schema Contract V1 structure:
+The canonical V1 shape is:
 
 ```json
 {
   "version": 1,
-  "periodicity": "TAHUNAN",
-  "useRegion": true,
-  "regionLevel": "KABUPATEN"
+  "periodicity": "BULANAN",
+  "regionLevel": "KECAMATAN",
+  "startPeriod": "2025-01-01",
+  "endPeriod": "2025-12-01"
 }
 ```
 
@@ -449,351 +368,188 @@ Canonical properties:
 
 - `version`
 - `periodicity`
-- `useRegion`
 - `regionLevel`
+- `startPeriod`
+- optional `endPeriod`
 
-`dataSchema` and `dataConfig` have strictly separate responsibilities:
-
-- `dataSchema` = what data exists
-- `dataConfig` = how the dataset behaves
-
-Do not store dashboard presentation configuration in `dataConfig`.
-
-Do not place things such as:
-
-- chart colors
-- widget size
-- widget position
-- dashboard layout
-- UI styling
-
-inside Dataset Schema Contract V1 `dataConfig`.
-
-## 10. Periodicity
-
-Canonical V1 periodicity values:
+Allowed `periodicity` values:
 
 - `HARIAN`
-- `MINGGUAN`
 - `BULANAN`
 - `TRIWULANAN`
 - `TAHUNAN`
 
-Do not use English periodicity enum values in `dataConfig`.
+`startPeriod` is required for canonical V1 Dataset writes. It MUST be a strict
+valid `YYYY-MM-DD` date and already be the first normalized period for the
+selected periodicity. It is the earliest period allowed for DatasetRecords.
 
-`dataset_records.periodDate` stores one normalized SQL `DATE`.
+`endPeriod` is optional. When supplied, it MUST be a strict valid `YYYY-MM-DD`
+date, already be the first normalized period for the selected periodicity, and
+be greater than or equal to `startPeriod`. An explicit `endPeriod` defines a
+fixed upper coverage bound and may be in the future. When omitted, coverage is
+rolling through the current normalized period, so `startPeriod` MUST NOT be
+after that current period.
 
-Normalization rules:
-
-- `HARIAN`: use the actual selected date.
-- `MINGGUAN`: use the canonical start date of the week according to the application's weekly convention.
-- `BULANAN`: use the first day of the month.
-- `TRIWULANAN`: use the first day of the quarter.
-- `TAHUNAN`: use the first day of the year.
-
-Examples:
-
-- `10 August 2026 -> 2026-08-10`
-- `August 2026 -> 2026-08-01`
-- `Q3 2026 -> 2026-07-01`
-- `2026 -> 2026-01-01`
-
-Dataset IDs may still use stable English technical identifiers such as:
-
-- `IKP_YEARLY`
-- `FOOD_STOCK_DAILY`
-
-Do not rename existing dataset IDs merely because `dataConfig.periodicity` uses Indonesian values.
-
-Do not introduce `periodStart` or `periodEnd` for standard dataset records.
-
-## 11. Region Contract
-
-The application uses the canonical `regions` table.
-
-`regions.id` directly stores the Kemendagri region identifier.
-
-Examples:
-
-- `52.07`
-- `52.07.02`
-- `52.07.02.2001`
-
-Canonical V1 region levels:
+Allowed `regionLevel` values:
 
 - `KABUPATEN`
 - `KECAMATAN`
 - `DESA`
 
-Do not change `DESA` to `DESA_KELURAHAN`.
+`regionLevel` MUST eventually be structurally validated against that set.
+`useRegion` is removed from canonical new definitions because Region is always
+part of DatasetRecord identity and context. Existing legacy JSON containing
+`useRegion` may remain readable; do not migrate existing database JSON solely
+for this change.
 
-`dataConfig.regionLevel` defines the region level allowed for dataset record creation.
+Do not store dashboard layout, chart colors, widget positions, UI styling, or
+other presentation configuration in `dataConfig`.
 
-Example:
+## 11. `dataSchema` and `dataConfig` Boundary
 
-```json
-{
-  "version": 1,
-  "periodicity": "HARIAN",
-  "useRegion": true,
-  "regionLevel": "KECAMATAN"
-}
-```
+`dataSchema` defines the dynamic business payload, for example:
 
-This means the dataset record must reference a region whose level is `KECAMATAN`.
+- score
+- price
+- status
+- description
+- measurement value
 
-`dataset_records.regionId` references the canonical region.
+`dataConfig` defines Dataset-level record context, currently:
 
-Do not duplicate region names or region codes inside `dataset_records.data`.
+- periodicity; and
+- required Region level; and
+- temporal coverage starting at `startPeriod` and ending at optional
+  `endPeriod`, or at the current normalized period when `endPeriod` is omitted.
 
-Use only `dataset_records.regionId`.
+Neither JSON document owns Dataset identity, Region identity, period identity,
+owner Bidang, authorization, or DatasetRecord uniqueness. The relational
+business identity remains:
 
-For Dataset Schema Contract V1, currently supported operational datasets are region-based and therefore use:
+`datasetId + regionId + normalized periodDate`.
 
-```json
-{
-  "useRegion": true
-}
-```
+## 12. Periodicity
 
-This keeps V1 consistent with:
+`dataset_records.periodDate` stores one normalized SQL `DATE`.
 
-- required dataset record region context;
-- `dataset_records.regionId`; and
-- `UNIQUE(datasetId, regionId, periodDate)`.
+- `HARIAN`: actual selected date;
+- `BULANAN`: first day of the month;
+- `TRIWULANAN`: first day of the quarter; and
+- `TAHUNAN`: first day of the year.
 
-Do not design `useRegion: false` semantics as part of V1.
+DatasetRecord mutations MUST remain within the temporal range from the
+Dataset's normalized `startPeriod` through its effective normalized end:
+explicit `endPeriod` when present, otherwise the current normalized period.
+The current date does not truncate an explicit fixed range, which may extend
+into the future. Temporal coverage does not classify data as actual,
+projection, target, or any other semantic type. These concerns remain
+separate. `startPeriod` is a lower bound only; it does not change DatasetRecord
+identity or group Regions. It can later support period selectors, bulk/matrix
+entry, import context/template generation, and data completeness/coverage
+calculations. Those features are outside V1's current implementation.
 
-If a future requirement genuinely needs a non-regional dataset, treat that as an intentional contract extension or versioning decision rather than silently allowing nullable or placeholder regions.
+Do not introduce `periodStart` or `periodEnd` for standard DatasetRecords.
+Dataset IDs may continue using stable English technical identifiers even though
+`dataConfig.periodicity` uses Indonesian values.
 
-## 12. Dataset Record Identity and Uniqueness
+## 13. Region Contract
 
-The canonical business identity of a dataset record is:
+`regions` is the canonical Region master. `regions.id` stores the Kemendagri
+region identifier, for example `52.07`, `52.07.02`, or `52.07.02.2001`.
+
+`dataConfig.regionLevel` defines the level valid for DatasetRecord creation.
+DatasetRecords MUST reference the canonical Region through `regionId`; they do
+not duplicate Region name/code inside `data`.
+
+## 14. Dataset Record Identity and Uniqueness
+
+The canonical identity is:
 
 `datasetId + regionId + periodDate`
 
-The database must enforce:
+The database enforces `UNIQUE(datasetId, regionId, periodDate)`. One record is
+one complete Dataset snapshot for that Region and normalized period.
 
-`UNIQUE(datasetId, regionId, periodDate)`
+## 15. Authorization
 
-Do not include `ownerBidangId` in this constraint.
+DatasetRecord authorization remains Better Auth capability plus Dataset owner
+Bidang scope. `datasets.ownerBidangId` is the authoritative structural owner;
+Admin and Super Admin have global Bidang scope according to the existing
+authorization helpers.
 
-There must never be two independent snapshots for the same dataset, region, and normalized period.
+An Operator may act only when its role has the required `businessData`
+capability and it is assigned to the Dataset owner Bidang. Cross-Bidang
+delegated DatasetRecord access is not supported.
 
-If the snapshot already exists, edit or update the existing record instead of creating another record.
+Do not store authorization in `dataSchema`, `dataConfig`, or
+`dataset_records.data`.
 
-One dataset record continues to represent:
+## 16. Structural and Value Validation Roadmap
 
-- one dataset;
-- one region;
-- one normalized period; and
-- one complete business payload conforming to `dataSchema`.
+The finalized contract requires future Dataset-definition write validation to
+remain tolerant enough to preserve readable historical/current definitions,
+while becoming strict for canonical new definitions.
 
-## 13. Authorization
+The future structural validator MUST reject:
 
-DatasetRecord authorization uses the existing application architecture:
+- duplicate field keys;
+- missing/empty `key` or `label`;
+- unsupported field types;
+- validation properties not allowed for the field type;
+- `min > max`;
+- `minLength > maxLength`;
+- negative or non-integer `decimalPlaces`;
+- select fields without valid options;
+- duplicate select option values;
+- invalid periodicity or region level; and
+- unknown structural properties where the canonical contract disallows them.
 
-`user.role`  
-`-> auth_user_to_bidang`  
-`-> auth_bidang`  
-`-> datasets`  
-`-> dataset_records`
+DatasetRecord value validation MUST reject undeclared business-data keys and
+apply the declared type rules. This roadmap is normative, but the structural
+validator and corresponding runtime hardening are deliberately not implemented
+by this documentation change.
 
-For DatasetRecord operations, Better Auth answers what the user may do and
-`datasets.ownerBidangId` answers where the operation may happen.
+Frontend validation is UX only; server-side validation remains authoritative.
 
-An Operator may act on DatasetRecords only when:
+## 17. Dynamic Forms, Import, and Export
 
-- their Better Auth role has the required `businessData` capability; and
-- they are assigned to the Dataset's `ownerBidangId`.
+DatasetRecord forms MUST be generated from `dataSchema`; operators must not
+edit raw JSON to enter records.
 
-Admin and Super Admin keep global Bidang scope. Cross-Bidang delegated
-DatasetRecord access is not supported.
+Canonical form mapping is `string` to text input, `number` to numeric input,
+`boolean` to switch/checkbox, `select` to its configured options, and `date`
+to a date input. Legacy `text` and `textarea` retain their current presentation
+compatibility until a future implementation change explicitly retires it.
 
-Keep these concepts separate:
+Imports map business columns to `dataSchema.fields[].key` and one source row to
+one complete DatasetRecord snapshot. Import validation MUST use the same
+DatasetRecord contract as manual entry; do not create a separate import model.
+Dataset ownership comes from `datasets.ownerBidangId`, not a business import
+column.
 
-- Better Auth = global role or access
-- `auth_user_to_bidang` = user bidang assignment
-- `datasets.ownerBidangId` = canonical structural owner of the dataset
-- owner match + Better Auth capability = DatasetRecord authorization
-- `dataset_records` = business snapshots only and do not store ownership directly
+Exports SHOULD use field `label` values as headings while retaining canonical
+`key` values internally.
 
-Do not store authorization inside:
+## 18. Versioning and Schema Mutation Safety
 
-- `datasets.dataSchema`
-- `datasets.dataConfig`
-- `dataset_records.data`
+Both `dataSchema` and `dataConfig` use `version: 1`. Do not silently change V1
+semantics. A genuinely incompatible future change requires an explicit
+versioning decision.
 
-Do not create a second RBAC system.
+Changing `dataSchema` can affect historical records. Adding an optional field
+is generally safe. Renaming/removing a used key, changing a type, or making a
+previously optional field required can break historical data.
 
-## 14. Server Validation Contract
+Do not automatically rewrite historical DatasetRecord data. Treat field keys
+as stable persisted data-contract keys once records exist.
 
-When creating or updating `dataset_records`, server-side code must:
+## 19. Architectural Boundary and Source of Truth
 
-1. authenticate the request using the existing Better Auth implementation;
-2. load the referenced dataset;
-3. resolve `datasets.ownerBidangId` as the canonical dataset owner;
-4. read `dataset.dataSchema`;
-5. validate submitted data against all declared fields;
-6. reject unknown fields;
-7. enforce `required`;
-8. enforce declared field types;
-9. enforce valid `select.options`;
-10. allow `null` only when `required = false`;
-11. persist actual JSON values, not serialized JSON strings;
-12. read `dataset.dataConfig`;
-13. validate and normalize `periodDate` according to periodicity;
-14. validate `regionId` and `regionLevel`;
-15. enforce `UNIQUE(datasetId, regionId, periodDate)`;
-16. enforce Better Auth capability and Dataset owner Bidang scope; and
-17. derive `createdBy` from the authenticated user instead of trusting client input.
+Relational columns own identity, Region, ownership, authorization, period,
+status, and audit/user metadata. JSON owns dynamic business payload only.
 
-Frontend validation is UX only and must never replace server-side validation.
-
-Server-side validation remains authoritative.
-
-## 15. Dynamic Form Contract
-
-Dataset record forms must be generated from `dataSchema`.
-
-Canonical mapping:
-
-- `number` -> numeric input
-- `text` -> text input
-- `textarea` -> textarea
-- `select` -> select using `options`
-- `boolean` -> checkbox or switch
-- `date` -> date picker or date input
-
-Operators must not be required to manually edit raw JSON when entering dataset records.
-
-## 16. Import Contract
-
-Import logic must use the same Dataset Schema Contract V1.
-
-One imported tabular row represents:
-
-- one complete dataset snapshot;
-- for one region; and
-- for one period.
-
-Business columns map to `dataSchema.fields[].key`.
-
-Example spreadsheet for `FOOD_STOCK_DAILY`:
-
-```text
-Tanggal | Kecamatan | Beras | Jagung | Padi
-2026-08-10 | Taliwang | 5000 | 2100 | 3200
-2026-08-10 | Maluk    | 1200 | 800  | 950
-2026-08-11 | Taliwang | 4980 | 2150 | 3180
-```
-
-Each row becomes one `dataset_record`.
-
-Imported values must pass the exact same validation as manually entered records.
-
-Do not implement separate validation rules specifically for imports.
-
-Do not create a separate import data model.
-
-Do not include dataset owner as a business import column.
-
-Dataset owner comes from:
-
-`datasets.ownerBidangId`
-
-## 17. Export Contract
-
-Exports should derive business columns from `dataSchema`.
-
-Use human-readable `label` values for exported column headers while retaining canonical `key` values internally.
-
-Do not export the business payload as one unreadable raw JSON column unless explicitly requested.
-
-If useful, owner information may appear once in export metadata or header, but not as duplicated per-row business data.
-
-## 18. Versioning
-
-Both `dataSchema` and `dataConfig` must contain:
-
-```json
-{
-  "version": 1
-}
-```
-
-Dataset Schema Contract V1 is the current canonical format.
-
-Do not silently change V1 semantics.
-
-If future requirements require incompatible structures, introduce a new explicit contract version rather than mutating the meaning of V1.
-
-## 19. Schema Mutation Safety
-
-Changing `datasets.dataSchema` may affect historical `dataset_records`.
-
-Examples of generally safe changes:
-
-- adding a new optional field
-
-Examples of potentially breaking changes:
-
-- renaming an existing field key
-- removing a used field
-- changing a field type
-- changing an optional field to required after historical records already exist
-
-Do not automatically rewrite historical dataset records or perform breaking schema migrations unless explicitly requested.
-
-Treat `dataSchema.fields[].key` as a stable persisted data contract once records exist.
-
-## 20. Architectural Boundary
-
-Keep the following distinction strict.
-
-Relational database columns are responsible for:
-
-- identity
-- authentication
-- authorization
-- region
-- ownership
-- period
-- status
-- audit or user metadata
-
-JSON is responsible for:
-
-- dynamic business payload
-
-Do not introduce business master tables such as:
-
-- commodities
-- units
-- markets
-- institutions
-- `data_sources`
-- indicators
-
-unless explicitly requested by the project owner.
-
-## 21. Source of Truth for Future Agents
-
-This `Dataset Schema Contract V1` document must be treated as the source of truth for future work involving:
-
-- `datasets`
-- `dataset_records`
-- dataset CRUD
-- dataset record CRUD
-- dynamic forms
-- API validation
-- import/export
-- dataset tables
-- dataset filters
-- dashboard dataset consumption
-
-If a future requirement conflicts with Dataset Schema Contract V1:
-
-- do not silently invent a different data structure;
-- explicitly identify the conflict; and
-- only extend or version the contract when the requirement genuinely requires it.
+Do not introduce parallel Dataset architectures or business-master tables
+unless explicitly requested. This document is the single source of truth for
+Dataset schema/config structure and behaviour. If a future requirement
+conflicts with it, identify the conflict and intentionally extend or version
+the contract rather than silently inventing a different structure.

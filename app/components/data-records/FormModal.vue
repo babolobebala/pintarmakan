@@ -272,6 +272,7 @@ async function onSubmit() {
       v-if="showTrigger"
       label="Tambah data"
       icon="i-lucide-plus"
+      size="sm"
     />
 
     <template #body>

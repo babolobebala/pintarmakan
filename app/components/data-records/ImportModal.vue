@@ -148,10 +148,11 @@ watch(open, (isOpen) => {
     :ui="{ content: 'sm:max-w-6xl' }"
   >
     <UButton
-      label="Import Data"
+      label="Import"
       icon="i-lucide-upload"
       color="neutral"
       variant="outline"
+      size="sm"
     />
 
     <template #body>

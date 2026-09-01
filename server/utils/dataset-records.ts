@@ -10,15 +10,18 @@ import {
 } from '~~/auth/permissions'
 import {
   formatDatasetPeriod,
+  getDatasetPeriodRange,
   getDatasetPeriodicity,
   getDatasetRegionLevel,
   getDatasetRecordPeriodRangeError,
+  getDatasetSchemaFields,
   normalizeDatasetPeriodInput,
   validateDatasetRecordData
 } from '~~/shared/datasets'
 import { getAssignedBidangIdsForUser, listBidangOptions } from '#server/utils/bidang'
 import { db } from '#server/utils/db'
 import { serializeDataset } from '#server/utils/datasets'
+import { getSumbawaBaratRegionScopeWhere } from '#server/utils/region-scope'
 
 type DatasetPermissionAction = 'read' | 'create' | 'update' | 'delete'
 
@@ -296,6 +299,146 @@ export async function assertDatasetPermissionForUser(user: ScopedUser, options: 
   readonly bidangId?: string | null
 }) {
   return getDatasetPermissionContextForUser(user, options)
+}
+
+export async function listDatasetPeriodOverviewForUser(user: ScopedUser, datasetId: string) {
+  const datasetContext = await assertDatasetPermissionForUser(user, {
+    datasetId,
+    action: 'read'
+  })
+  const { dataset } = datasetContext
+  const periodDates = getDatasetPeriodRange(dataset.dataConfig)
+  const regionLevel = getDatasetRegionLevel(dataset.dataConfig)
+
+  const [periodAggregates, expectedRegionCount] = await Promise.all([
+    db.datasetRecord.groupBy({
+      by: ['periodDate'],
+      where: {
+        datasetId,
+        periodDate: periodDates.length > 0
+          ? {
+              gte: new Date(`${periodDates[0]}T00:00:00.000Z`),
+              lte: new Date(`${periodDates[periodDates.length - 1]}T00:00:00.000Z`)
+            }
+          : undefined
+      },
+      _count: {
+        _all: true
+      },
+      _max: {
+        updatedAt: true
+      }
+    }),
+    regionLevel
+      ? db.region.count({
+          where: getSumbawaBaratRegionScopeWhere(regionLevel)
+        })
+      : Promise.resolve(0)
+  ])
+  const aggregatesByPeriod = new Map(
+    periodAggregates.map(period => [
+      period.periodDate.toISOString().slice(0, 10),
+      {
+        recordCount: period._count._all,
+        latestUpdatedAt: period._max.updatedAt?.toISOString() ?? null
+      }
+    ])
+  )
+
+  return {
+    datasetId,
+    expectedRegionCount,
+    periods: periodDates.map(periodDate => {
+      const aggregate = aggregatesByPeriod.get(periodDate)
+
+      return {
+        periodDate,
+        recordCount: aggregate?.recordCount ?? 0,
+        latestUpdatedAt: aggregate?.latestUpdatedAt ?? null
+      }
+    })
+  }
+}
+
+export async function getDatasetPeriodWorkspaceForUser(user: ScopedUser, options: {
+  readonly datasetId: string
+  readonly periodValue: string
+}) {
+  const datasetContext = await assertDatasetPermissionForUser(user, {
+    datasetId: options.datasetId,
+    action: 'read'
+  })
+  const { dataset } = datasetContext
+  const periodicity = getDatasetPeriodicity(dataset.dataConfig)
+  const periodDate = normalizeDatasetPeriodInput(periodicity, options.periodValue)
+  const periodRangeError = getDatasetRecordPeriodRangeError(dataset.dataConfig, periodDate)
+
+  if (periodRangeError) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: periodRangeError
+    })
+  }
+
+  const regionLevel = getDatasetRegionLevel(dataset.dataConfig)
+  const [regions, records] = await Promise.all([
+    regionLevel
+      ? db.region.findMany({
+          where: getSumbawaBaratRegionScopeWhere(regionLevel),
+          orderBy: [{ name: 'asc' }, { id: 'asc' }],
+          select: { id: true, name: true, level: true }
+        })
+      : Promise.resolve([]),
+    db.datasetRecord.findMany({
+      where: {
+        datasetId: dataset.id,
+        periodDate: new Date(`${periodDate}T00:00:00.000Z`)
+      },
+      select: {
+        id: true,
+        regionId: true,
+        status: true,
+        data: true,
+        updatedAt: true
+      }
+    })
+  ])
+  const recordsByRegionId = new Map(records.map(record => [record.regionId, record]))
+
+  return {
+    dataset: {
+      id: dataset.id,
+      name: dataset.name,
+      periodicity,
+      regionLevel,
+      archivedAt: dataset.archivedAt,
+      fields: getDatasetSchemaFields(dataset.dataSchema),
+      permissions: {
+        canCreate: dataset.permissions.canCreate,
+        canUpdate: dataset.permissions.canUpdate
+      }
+    },
+    periodDate,
+    expectedRegionCount: regions.length,
+    recordCount: records.length,
+    rows: regions.map((region) => {
+      const record = recordsByRegionId.get(region.id)
+
+      return {
+        regionId: region.id,
+        regionName: region.name,
+        regionLevel: region.level,
+        record: record
+          ? {
+              id: record.id,
+              status: record.status,
+              data: record.data as Record<string, unknown>,
+              updatedAt: record.updatedAt.toISOString()
+            }
+          : null
+      }
+    })
+  }
 }
 
 export async function assertRegionAllowedForDataset(dataset: {

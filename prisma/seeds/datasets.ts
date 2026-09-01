@@ -1,5 +1,5 @@
 import type { Prisma } from '../../server/generated/prisma/client.js'
-import { validateDatasetConfigDefinition, validateDatasetSchemaDefinition } from '../../shared/datasets.ts'
+import { validateDatasetConfigDefinition, validateDatasetSchemaDefinition } from '../../shared/datasets'
 import { seedSuperAdminEmail } from './auth.js'
 
 type SeedDbClient = InstanceType<typeof import('../../server/generated/prisma/client.js').PrismaClient>

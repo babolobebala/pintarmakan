@@ -479,11 +479,13 @@ export function validateDatasetConfigDefinition(value: unknown): DatasetConfigDe
       throw new Error('endPeriod harus menggunakan format YYYY-MM-DD.')
     }
 
-    endPeriod = normalizeDateString(value.endPeriod)
+    const normalizedEndPeriodValue = normalizeDateString(value.endPeriod)
 
-    if (!endPeriod) {
+    if (!normalizedEndPeriodValue) {
       throw new Error('endPeriod harus menggunakan format YYYY-MM-DD.')
     }
+
+    endPeriod = normalizedEndPeriodValue
 
     const normalizedEndPeriod = normalizeDatasetPeriodDate(periodicity, endPeriod)
 
@@ -795,6 +797,41 @@ export function getDatasetRecordPeriodBounds(dataConfig: unknown, date = new Dat
     startPeriod: getDatasetStartPeriod(dataConfig),
     effectiveEndPeriod: getDatasetEndPeriod(dataConfig) ?? getCurrentDatasetPeriod(periodicity, date)
   }
+}
+
+/** Returns every normalized period within the configured Dataset coverage. */
+export function getDatasetPeriodRange(dataConfig: unknown, date = new Date()) {
+  const periodicity = getDatasetPeriodicity(dataConfig)
+  const bounds = getDatasetRecordPeriodBounds(dataConfig, date)
+
+  if (!periodicity || !bounds?.startPeriod) {
+    return []
+  }
+
+  const periods: string[] = []
+  const cursor = new Date(`${bounds.startPeriod}T00:00:00.000Z`)
+  const end = new Date(`${bounds.effectiveEndPeriod}T00:00:00.000Z`)
+
+  while (cursor <= end) {
+    periods.push(cursor.toISOString().slice(0, 10))
+
+    switch (periodicity) {
+      case 'BULANAN':
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1)
+        break
+      case 'TRIWULANAN':
+        cursor.setUTCMonth(cursor.getUTCMonth() + 3)
+        break
+      case 'TAHUNAN':
+        cursor.setUTCFullYear(cursor.getUTCFullYear() + 1)
+        break
+      case 'HARIAN':
+      default:
+        cursor.setUTCDate(cursor.getUTCDate() + 1)
+    }
+  }
+
+  return periods
 }
 
 export function getDatasetRecordPeriodRangeError(

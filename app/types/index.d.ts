@@ -83,6 +83,70 @@ export interface DataManagementOptionsResponse {
   datasetsByBidang: Record<string, DatasetRecordDatasetOption[]>
 }
 
+export interface DatasetPeriodOverviewItem {
+  periodDate: string
+  recordCount: number
+  latestUpdatedAt: string | null
+}
+
+export interface DatasetPeriodOverviewResponse {
+  datasetId: string
+  expectedRegionCount: number
+  periods: DatasetPeriodOverviewItem[]
+}
+
+export interface DatasetPeriodWorkspaceField {
+  key: string
+  label: string
+  type: 'string' | 'number' | 'boolean' | 'select' | 'date' | 'text' | 'textarea'
+  required: boolean
+  validation?: {
+    minLength?: number
+    maxLength?: number
+    min?: number
+    max?: number
+    decimalPlaces?: number
+  }
+  options?: Array<{ value: string, label: string }>
+}
+
+export interface DatasetPeriodWorkspaceRow {
+  regionId: string
+  regionName: string
+  regionLevel: string
+  record: {
+    id: string
+    status: string
+    data: Record<string, unknown>
+    updatedAt: string
+  } | null
+}
+
+export interface DatasetPeriodWorkspaceResponse {
+  dataset: {
+    id: string
+    name: string
+    periodicity: string | null
+    regionLevel: string | null
+    archivedAt: string | null
+    fields: DatasetPeriodWorkspaceField[]
+    permissions: {
+      canCreate: boolean
+      canUpdate: boolean
+    }
+  }
+  periodDate: string
+  expectedRegionCount: number
+  recordCount: number
+  rows: DatasetPeriodWorkspaceRow[]
+}
+
+export interface DatasetRecordBulkSaveResult {
+  created: number
+  updated: number
+  unchanged: number
+}
+
 export interface DatasetRecordListItem {
   id: string
   datasetId: string

@@ -36,12 +36,9 @@ const {
   data: bidangs,
   error: bidangOptionsError,
   status: bidangOptionsStatus
-} = await useFetch<BidangOption[]>(
-  '/api/bidang/options',
-  {
-    default: () => []
-  }
-)
+} = await useFetch<BidangOption[]>('/api/bidang/options', {
+  default: () => []
+})
 
 const roleOptions = computed(() => roles.value)
 const roleSlugs = computed(() => roleOptions.value.map(role => role.slug))
@@ -56,8 +53,8 @@ const bidangIds = computed(() =>
   bidangOptions.value.map(bidang => bidang.id)
 )
 const isEdit = computed(() => !!props.member)
-const isReadOnlySuperAdmin = computed(() =>
-  isEdit.value && props.member?.role === 'super-admin'
+const isReadOnlySuperAdmin = computed(
+  () => isEdit.value && props.member?.role === 'super-admin'
 )
 
 const schema = z.object({
@@ -108,9 +105,7 @@ const state = reactive<Schema>({
 })
 
 const loading = ref(false)
-const modalTitle = computed(() =>
-  isEdit.value ? 'Ubah user' : 'Tambah user'
-)
+const modalTitle = computed(() => (isEdit.value ? 'Ubah user' : 'Tambah user'))
 const modalDescription = computed(() => {
   return isEdit.value
     ? 'Perbarui profil user, role sistem, dan penugasan Bidang operator.'
@@ -136,11 +131,13 @@ const selectedRoleDescription = computed(() => {
 
   return selectedRole.value?.description ?? null
 })
-const shouldShowBidangAssignments = computed(() =>
-  !isReadOnlySuperAdmin.value && state.role === 'operator'
+const shouldShowBidangAssignments = computed(
+  () => !isReadOnlySuperAdmin.value && state.role === 'operator'
 )
 const hasBidangOptions = computed(() => bidangOptions.value.length > 0)
-const isBidangOptionsLoading = computed(() => bidangOptionsStatus.value === 'pending')
+const isBidangOptionsLoading = computed(
+  () => bidangOptionsStatus.value === 'pending'
+)
 const hasBidangOptionsError = computed(() => !!bidangOptionsError.value)
 const bidangOptionsErrorMessage = computed(() => {
   if (!hasBidangOptionsError.value) {
@@ -152,8 +149,10 @@ const bidangOptionsErrorMessage = computed(() => {
     : 'Coba muat ulang halaman lalu ulangi kembali.'
 })
 const submitDisabled = computed(() => {
-  return shouldShowBidangAssignments.value
+  return (
+    shouldShowBidangAssignments.value
     && (isBidangOptionsLoading.value || hasBidangOptionsError.value)
+  )
 })
 
 function syncState() {
@@ -214,7 +213,10 @@ watch(
 )
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  if (shouldShowBidangAssignments.value && (isBidangOptionsLoading.value || hasBidangOptionsError.value)) {
+  if (
+    shouldShowBidangAssignments.value
+    && (isBidangOptionsLoading.value || hasBidangOptionsError.value)
+  ) {
     toast.add({
       title: 'Bidang belum siap digunakan',
       description: hasBidangOptionsError.value
@@ -273,7 +275,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   } catch (error) {
     toast.add({
       title: isEdit.value ? 'Gagal memperbarui user' : 'Gagal menyimpan user',
-      description: error instanceof Error ? error.message : 'Silakan coba lagi.',
+      description:
+        error instanceof Error ? error.message : 'Silakan coba lagi.',
       color: 'error'
     })
   } finally {
@@ -289,7 +292,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     :description="modalDescription"
     :ui="{ content: 'sm:max-w-2xl' }"
   >
-    <UButton v-if="showTrigger" label="Tambah user" icon="i-lucide-user-plus" />
+    <UButton
+      v-if="showTrigger"
+      label="Tambah user"
+      class="cursor-pointer"
+      icon="i-lucide-user-plus"
+    />
 
     <template #body>
       <UForm
@@ -393,7 +401,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </UFormField>
 
         <div
-          v-if="isEdit && member && !isReadOnlySuperAdmin && (canManagePassword || canManageStatus)"
+          v-if="
+            isEdit
+              && member
+              && !isReadOnlySuperAdmin
+              && (canManagePassword || canManageStatus)
+          "
           class="space-y-3 rounded-xl border border-default/70 bg-elevated/30 p-4"
         >
           <div class="space-y-1">
@@ -401,7 +414,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               Akses akun
             </p>
             <p class="text-xs text-muted">
-              Gunakan kontrol ini untuk password dan status akun tanpa keluar dari form.
+              Gunakan kontrol ini untuk password dan status akun tanpa keluar
+              dari form.
             </p>
           </div>
 
@@ -410,6 +424,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               v-if="canManagePassword"
               color="neutral"
               variant="outline"
+              class="cursor-pointer"
               :label="member.hasPassword ? 'Reset password' : 'Set password'"
               icon="i-lucide-key-round"
               @click="emit('password', member)"
@@ -418,6 +433,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               v-if="canManageStatus"
               color="neutral"
               variant="outline"
+              class="hidden"
               :label="member.isBanned ? 'Activate member' : 'Deactivate member'"
               :icon="
                 member.isBanned

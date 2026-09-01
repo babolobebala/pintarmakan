@@ -16,107 +16,120 @@ const {
 const state = computed(() => {
   if (!isReady.value) {
     return {
-      badge: 'Checking',
+      badge: 'Memeriksa',
       color: 'neutral' as const,
-      detail: 'Checking browser notification support and current subscription state.'
+      detail:
+        'Memeriksa dukungan notifikasi browser dan status subscription saat ini.'
     }
   }
 
   if (notificationState.value === 'unsupported') {
     return {
-      badge: 'Unsupported',
+      badge: 'Tidak Didukung',
       color: 'neutral' as const,
-      detail: 'This browser does not support the Notification and Push APIs required for Web Push.',
-      helper: 'Use a browser that supports Notifications, PushManager, and service workers for this app.',
+      detail:
+        'Browser ini tidak mendukung API Notification dan Push yang diperlukan untuk Web Push.',
+      helper:
+        'Gunakan browser yang mendukung Notifications, PushManager, dan service worker untuk aplikasi ini.',
       helperIcon: 'i-lucide-info',
-      helperTitle: 'Push notifications unavailable'
+      helperTitle: 'Notifikasi push tidak tersedia'
     }
   }
 
   if (notificationState.value === 'service-worker-unavailable') {
     return {
-      badge: 'Service worker unavailable',
+      badge: 'Service worker tidak tersedia',
       color: 'warning' as const,
-      detail: 'A ready service worker is not available for push notifications in this browser context.',
-      helper: 'Web Push requires HTTPS or localhost plus an active service worker registration for this app.',
+      detail:
+        'Service worker tidak tersedia untuk notifikasi push dalam konteks browser ini.',
+      helper:
+        'Web Push memerlukan HTTPS atau localhost serta registrasi service worker yang aktif untuk aplikasi ini.',
       helperIcon: 'i-lucide-wifi-off',
-      helperTitle: 'Service worker required'
+      helperTitle: 'Service worker diperlukan'
     }
   }
 
   if (notificationState.value === 'config-error') {
     return {
-      badge: 'Configuration error',
+      badge: 'Konfigurasi error',
       color: 'error' as const,
-      detail: 'This application is missing its public Web Push key at runtime.',
-      helper: 'Set VAPID_PUBLIC_KEY for the running application so browsers can subscribe.',
+      detail:
+        'Aplikasi ini tidak memiliki kunci Web Push publik saat dijalankan.',
+      helper:
+        'Tetapkan VAPID_PUBLIC_KEY untuk aplikasi yang sedang berjalan agar browser dapat melakukan subscribe.',
       helperIcon: 'i-lucide-key-round',
-      helperTitle: 'Web Push not configured'
+      helperTitle: 'Web Push belum dikonfigurasi'
     }
   }
 
   if (permission.value === 'denied') {
     return {
-      badge: 'Blocked',
+      badge: 'Terblok',
       color: 'warning' as const,
-      detail: 'Notifications are blocked in your browser settings for this site.',
-      helper: 'Allow notifications for this site in browser settings, then reload this page to subscribe again.',
+      detail: 'Notifikasi diblokir di pengaturan browser Anda untuk situs ini.',
+      helper:
+        'Izinkan notifikasi untuk situs ini di pengaturan browser, lalu muat ulang halaman ini untuk subscription kembali.',
       helperIcon: 'i-lucide-shield-alert',
-      helperTitle: 'Notifications blocked by browser'
+      helperTitle: 'Notifikasi diblokir oleh browser'
     }
   }
 
   if (isSubscribed.value) {
     return {
-      badge: 'Enabled',
+      badge: 'Aktif',
       color: 'success' as const,
-      detail: 'This device is subscribed to receive push notifications.'
+      detail:
+        'Perangkat ini telah Subscription untuk menerima notifikasi push.'
     }
   }
 
   return {
-    badge: 'Disabled',
+    badge: 'Tidak Aktif',
     color: 'neutral' as const,
-    detail: permission.value === 'granted'
-      ? 'Permission is granted, but this device is not currently subscribed.'
-      : 'Turn this on to request browser permission and subscribe this device.'
+    detail:
+      permission.value === 'granted'
+        ? 'Izin diberikan, namun perangkat ini saat ini tidak memiliki subscription.'
+        : 'Aktifkan ini untuk meminta izin browser dan mendaftarkan perangkat ini.'
   }
 })
 
 const canToggle = computed(() => {
-  return notificationState.value === 'enabled' || notificationState.value === 'disabled'
+  return (
+    notificationState.value === 'enabled'
+    || notificationState.value === 'disabled'
+  )
 })
 
 const switchDescription = computed(() => {
   if (!isReady.value) {
-    return 'Checking notification support and current subscription status.'
+    return 'Memeriksa dukungan notifikasi dan status subscription saat ini.'
   }
 
   if (isSubscribed.value) {
-    return 'Receive important notifications on this device.'
+    return 'Terima notifikasi penting di perangkat ini.'
   }
 
   if (!isSupported.value) {
-    return 'This browser cannot use the required Notification or Push APIs.'
+    return 'Browser ini tidak dapat menggunakan API Notifikasi atau Push yang diperlukan.'
   }
 
   if (notificationState.value === 'service-worker-unavailable') {
-    return 'Push notifications need a ready service worker in a secure browser context.'
+    return 'Notifikasi push memerlukan service worker yang siap beroperasi dalam konteks browser yang aman.'
   }
 
   if (notificationState.value === 'config-error') {
-    return 'This application is missing its public Web Push configuration.'
+    return 'Aplikasi ini tidak memiliki konfigurasi Web Push publik.'
   }
 
   if (permission.value === 'denied') {
-    return 'Notification permission is blocked in browser settings.'
+    return 'Izin notifikasi diblokir di pengaturan browser.'
   }
 
   if (permission.value === 'granted') {
-    return 'Permission is already granted. Turn this on to subscribe this browser.'
+    return 'Izin telah diberikan. Aktifkan ini untuk subscription di browser ini.'
   }
 
-  return 'Receive important updates from this application.'
+  return 'Terima pembaruan penting dari aplikasi ini.'
 })
 
 async function enableNotifications() {
@@ -126,8 +139,8 @@ async function enableNotifications() {
     if (!result.ok) {
       if (result.reason === 'denied') {
         toast.add({
-          title: 'Notifications blocked',
-          description: 'Your browser denied notification permission for this site.',
+          title: 'Notifikasi diblokir',
+          description: 'Browser Anda menolak izin notifikasi untuk situs ini.',
           color: 'warning'
         })
         return
@@ -135,8 +148,9 @@ async function enableNotifications() {
 
       if (result.reason === 'default') {
         toast.add({
-          title: 'Permission not granted',
-          description: 'Notification permission was dismissed before subscribing.',
+          title: 'Izin tidak diberikan',
+          description:
+            'Izin notifikasi ditolak sebelum melakukan subscription.',
           color: 'neutral'
         })
         return
@@ -144,8 +158,9 @@ async function enableNotifications() {
 
       if (result.reason === 'service-worker') {
         toast.add({
-          title: 'Service worker unavailable',
-          description: 'Push notifications require a ready service worker in this browser context.',
+          title: 'Service worker tidak tersedia',
+          description:
+            'Notifikasi push memerlukan *service worker* yang siap dalam konteks browser ini.',
           color: 'warning'
         })
         return
@@ -153,31 +168,36 @@ async function enableNotifications() {
 
       if (result.reason === 'config') {
         toast.add({
-          title: 'Push misconfigured',
-          description: 'The application is missing its public Web Push key.',
+          title: 'Konfigurasi push salah',
+          description:
+            'Aplikasi tersebut tidak memiliki kunci Web Push publiknya.',
           color: 'error'
         })
         return
       }
 
       toast.add({
-        title: 'Push unavailable',
-        description: 'This browser cannot create a Web Push subscription for this app.',
+        title: 'Push tidak tersedia',
+        description:
+          'Browser ini tidak dapat membuat subscription Web Push untuk aplikasi ini.',
         color: 'error'
       })
       return
     }
 
     toast.add({
-      title: 'Notifications enabled',
-      description: 'This browser has been subscribed to Web Push notifications.',
+      title: 'Notifikasi diaktifkan',
+      description: 'Browser ini telah subscription notifikasi Web Push.',
       color: 'success'
     })
   } catch (error) {
-    const description = error instanceof Error ? error.message : 'Unable to enable notifications.'
+    const description
+      = error instanceof Error
+        ? error.message
+        : 'Tidak dapat mengaktifkan notifikasi.'
 
     toast.add({
-      title: 'Subscription failed',
+      title: 'subscription gagal',
       description,
       color: 'error'
     })
@@ -191,15 +211,18 @@ async function disableNotifications() {
     await unsubscribe()
 
     toast.add({
-      title: 'Notifications disabled',
-      description: 'This browser subscription has been removed.',
+      title: 'Notifikasi dinonaktifkan',
+      description: 'subscription browser ini telah dihapus.',
       color: 'success'
     })
   } catch (error) {
-    const description = error instanceof Error ? error.message : 'Unable to disable notifications.'
+    const description
+      = error instanceof Error
+        ? error.message
+        : 'Tidak dapat menonaktifkan notifikasi.'
 
     toast.add({
-      title: 'Unsubscribe failed',
+      title: 'Gagal Unsubscribe',
       description,
       color: 'error'
     })
@@ -209,7 +232,11 @@ async function disableNotifications() {
 }
 
 async function toggleNotifications(nextValue: boolean | string) {
-  if (busy.value || typeof nextValue !== 'boolean' || nextValue === isSubscribed.value) {
+  if (
+    busy.value
+    || typeof nextValue !== 'boolean'
+    || nextValue === isSubscribed.value
+  ) {
     return
   }
 

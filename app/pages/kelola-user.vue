@@ -148,7 +148,10 @@ function getMemberSearchValue(member: Member) {
 }
 
 const maxVisibleBidangBadges = 2
-const roleBadgeByRole: Record<AppRoleSlug, { color: 'neutral' | 'info' | 'warning' | 'primary', variant: 'subtle' }> = {
+const roleBadgeByRole: Record<
+  AppRoleSlug,
+  { color: 'neutral' | 'info' | 'warning' | 'primary', variant: 'subtle' }
+> = {
   'user': {
     color: 'neutral',
     variant: 'subtle'
@@ -238,12 +241,14 @@ function getRowActions(member: Member): DropdownMenuItem[][] {
       {
         label: 'Edit',
         icon: 'i-lucide-pencil-line',
+        class: 'cursor-pointer',
         disabled: !canUpdateMembers.value,
         onSelect: () => openEditModal(member)
       },
       {
         label: 'Delete',
         icon: 'i-lucide-trash-2',
+        class: 'cursor-pointer',
         color: 'error',
         disabled:
           !canDeleteMembers.value
@@ -285,7 +290,9 @@ function getRoleBadgeProps(role: string) {
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-6 lg:gap-8">
+  <div
+    class="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-6 lg:gap-8"
+  >
     <AppPageIntro
       kicker="Kontrol akses"
       title="Kelola User"
@@ -422,10 +429,7 @@ function getRoleBadgeProps(role: string) {
             </template>
 
             <template #role-cell="{ row }">
-              <UBadge
-                v-bind="getRoleBadgeProps(row.original.role)"
-                size="sm"
-              >
+              <UBadge v-bind="getRoleBadgeProps(row.original.role)" size="sm">
                 {{ formatRoleLabel(row.original.role) }}
               </UBadge>
             </template>
@@ -470,6 +474,7 @@ function getRoleBadgeProps(role: string) {
                   <UButton
                     icon="i-lucide-ellipsis"
                     color="neutral"
+                    class="cursor-pointer"
                     variant="ghost"
                     size="sm"
                     square
@@ -525,10 +530,10 @@ function getRoleBadgeProps(role: string) {
 
       <UModal
         v-model:open="deleteModalOpen"
-        title="Delete member?"
+        title="Hapus User?"
         :description="
           selectedMember
-            ? `This will permanently remove ${selectedMember.name} (${selectedMember.email}).`
+            ? `Aksi ini akan menghapus ${selectedMember.name} secara permanen`
             : ''
         "
         :dismissible="!deleting"
@@ -536,7 +541,7 @@ function getRoleBadgeProps(role: string) {
         <template #body>
           <div class="space-y-4">
             <p class="text-sm text-muted">
-              This action cannot be undone.
+              Aksi ini tidak dapat dibatalkan
             </p>
 
             <div class="flex justify-end gap-2">

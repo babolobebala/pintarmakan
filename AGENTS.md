@@ -2,76 +2,26 @@
 
 ## Project
 
-- This is a Nuxt application using TypeScript, Prisma, MySQL, Better Auth, Nuxt UI, and `@vite-pwa/nuxt`.
-- Preserve the existing architecture and project conventions.
-- Prefer minimal, targeted changes over broad refactors.
-- Inspect existing implementations before introducing new abstractions.
-- Reuse existing utilities, composables, patterns, and components when appropriate.
-- Do not modify unrelated files.
-- Do not create commits unless explicitly requested.
-- Preserve unrelated existing worktree changes.
+This is the `pintarmakan` Nuxt application.
 
----
+Stack:
 
-## Graphify
+- Nuxt
+- TypeScript
+- Prisma
+- MySQL
+- Better Auth
+- Nuxt UI
+- `@vite-pwa/nuxt`
+- pnpm
 
-- `graphify-out/` is generated local analysis output and is intentionally
-  ignored by Git.
-- Use Graphify when dependency, architecture, call-path, or cross-file
-  context materially helps.
-- If `graphify-out/graph.json` exists, prefer scoped `query`, `path`, or
-  `explain` commands.
-- If the graph does not exist and Graphify context is useful, build it once
-  before querying.
-- Run `graphify update .` after significant structural changes.
-- Do not regenerate Graphify for trivial or isolated changes.
-- Never stage or commit `graphify-out/**`.
+The global OpenCode `AGENTS.md` already defines general agent workflow,
+exploration, Git, MCP usage, context efficiency, and verification policy.
 
-### Usage
+This file contains only project-specific architecture and domain contracts.
 
-Use Graphify when dependency, architecture, call-path, or cross-file context materially helps.
-
-Prefer:
-
-- `graphify query "<question>"` for scoped codebase questions.
-- `graphify path "<A>" "<B>"` for relationships between two concepts/files/nodes.
-- `graphify explain "<concept>"` for focused concept analysis.
-
-When `graphify-out/graph.json` exists, prefer scoped Graphify queries over reading the entire graph or performing unnecessarily broad source exploration.
-
-If `graphify-out/wiki/index.md` exists, prefer it for broad architecture navigation.
-
-Read `graphify-out/GRAPH_REPORT.md` only when:
-
-- performing a broad architecture review; or
-- query/path/explain does not provide enough context.
-
-Dirty `graphify-out/` files are expected after hooks or incremental updates and are not a reason to skip Graphify.
-
-### Update policy
-
-Run:
-
-`graphify update .`
-
-after significant structural changes such as:
-
-- adding/removing APIs;
-- changing authentication/authorization flows;
-- large refactors;
-- adding modules;
-- moving major files;
-- changing important cross-file dependencies.
-
-Do NOT update Graphify for trivial:
-
-- copy/text changes;
-- styling changes;
-- isolated UI edits;
-- comments;
-- other non-structural changes.
-
-Do not manually edit generated Graphify output unless explicitly working on Graphify itself.
+Preserve the existing architecture and established project decisions unless the
+task explicitly requests a redesign.
 
 ---
 
@@ -83,295 +33,419 @@ The canonical access-control definition is:
 
 `auth/permissions.ts`
 
-This must remain the single source of truth for predefined:
+It is the single source of truth for:
 
 - resources;
 - actions;
 - permissions;
-- roles;
+- system roles;
+- role hierarchy;
 - role permission sets;
 - Better Auth access-control configuration.
 
-Rules:
+Do not introduce another RBAC implementation.
 
-- Do not introduce a second RBAC implementation.
-- Do not create separate database-backed role/permission systems unless explicitly requested.
-- Preserve native Better Auth multi-role behavior.
-- Use documented Better Auth public APIs.
-- Do not use Better Auth internal adapters or private APIs.
-- Do not manually hash passwords.
-- Do not manually create credential account records when Better Auth provides an API.
-- Do not directly manipulate Better Auth user/account/session/verification data when a supported Better Auth API exists.
-- Server-side authorization must remain server-enforced.
-- Client-side UI visibility is not a substitute for authorization.
+Use documented Better Auth public APIs for Better Auth-owned operations.
+
+Do not:
+
+- manually hash passwords;
+- manually create credential account records when Better Auth provides an API;
+- manipulate Better Auth user/account/session/verification records directly
+  when a supported public API exists;
+- create another role/permission storage model.
+
+---
+
+## System Roles
+
+The canonical role hierarchy is:
+
+`user < operator < admin < super-admin`
+
+New role writes use exactly ONE canonical system role.
+
+Valid canonical roles:
+
+- `user`
+- `operator`
+- `admin`
+- `super-admin`
+
+Do not create new comma-separated multi-role combinations.
+
+Legacy stored multi-role values may still exist and remain readable for
+backward compatibility.
+
+When reading legacy role values:
+
+- parse only known roles;
+- resolve the highest effective role using the canonical hierarchy;
+- unknown values must never elevate privileges;
+- do not automatically rewrite unrelated legacy records merely because they
+  were read.
+
+Examples:
+
+`user,operator`
+→ `operator`
+
+`operator,admin`
+→ `admin`
+
+Role inheritance is implemented by the existing access-control composition.
+
+Do not duplicate inherited lower-role permissions manually.
+
+---
+
+## User Management
+
+Normal user-management flows may assign only:
+
+- `user`
+- `operator`
+- `admin`
+
+`super-admin` is a valid system role but must NOT be assignable through normal
+user-management create/edit flows.
+
+This restriction must remain server-enforced.
+
+Existing Super Admin accounts remain valid.
+
+When handling an existing Super Admin:
+
+- preserve `super-admin`;
+- do not silently downgrade it;
+- do not expose normal promotion/role-changing behavior for it;
+- unrelated edits must not overwrite its role.
+
+Operator users may have one or more assigned Bidang.
+
+User, Admin, and Super Admin do not require editable Operator-style Bidang
+assignment controls.
+
+Existing Operator assignment rows may remain when a user changes to another
+role; they simply become authorization-irrelevant unless the canonical
+implementation explicitly changes this behavior.
+
+---
+
+## Capability and Bidang Scope
+
+Authorization has two separate dimensions:
+
+1. capability;
+2. scope.
+
+Better Auth capability answers:
+
+`WHAT may this user do?`
+
+Bidang scope answers:
+
+`WHERE may this user do it?`
+
+For scoped operations, both must pass.
+
+A Bidang assignment never grants a capability that the user's system role does
+not already possess.
+
+### Operator
+
+Operator capabilities come from the canonical role hierarchy.
+
+Operator business access is additionally restricted to assigned Bidang using
+the existing database-backed scope implementation.
+
+Do not encode Bidang into role names.
+
+Do not create roles such as:
+
+- `operator-harga`;
+- `operator-produksi`;
+- `operator-cadangan`;
+- `operator-kerawanan`.
+
+### Admin and Super Admin
+
+Admin and Super Admin have global Bidang scope according to the existing
+canonical authorization helpers.
+
+They do not require per-Bidang assignment rows.
+
+### Enforcement
+
+Server authorization is authoritative.
+
+For protected scoped operations:
+
+1. authenticate;
+2. check the required capability;
+3. resolve authoritative ownership/Bidang state;
+4. check applicable scope;
+5. execute the operation.
+
+For update/delete operations, prefer the target's Bidang from trusted database
+state rather than a client-provided value.
+
+For create operations, validate the proposed target Bidang server-side before
+insertion.
+
+Reuse the existing canonical permission and Bidang-scope helpers.
+
+Do not duplicate authorization logic across route handlers.
+
+---
+
+## Bidang
+
+Canonical Bidang master:
+
+`auth_bidang`
+
+Canonical user-to-Bidang assignment:
+
+`auth_user_to_bidang`
+
+Bidang IDs are stable machine/business identifiers.
+
+Do not casually rename or regenerate an existing Bidang ID after referenced
+data exists.
+
+Human-readable Bidang names may change independently of IDs.
+
+`auth_user_to_bidang` represents scope assignment.
+
+It is NOT:
+
+- another RBAC system;
+- a role table;
+- a permission table.
+
+Do not add action flags such as:
+
+- `canCreate`;
+- `canUpdate`;
+- `canDelete`;
+
+to the assignment table.
+
+Capabilities belong to Better Auth.
+
+Scope belongs to Bidang assignment.
 
 ---
 
 ## Prisma
 
-`prisma/schema.prisma` is the Prisma schema source of truth.
+Canonical schema:
 
-### Generated Prisma Client
+`prisma/schema.prisma`
 
-Never manually edit:
+Generated Prisma Client:
 
 `server/generated/prisma/**`
 
-Rules:
-
-- Generated Prisma Client files must remain ignored by Git.
-- Do not stage or commit generated Prisma Client files.
-- Regenerate Prisma Client only when necessary.
-- Do not treat generated files as source files.
+Never manually edit generated Prisma Client files.
 
 ### Migrations
 
-- Do not modify previously applied migrations unless explicitly requested.
-- Do not rewrite, delete, repair, resolve, reset, or squash migration history unless explicitly requested.
-- Do not run destructive database operations unless explicitly requested.
-- Do not perform production database migrations as part of unrelated tasks.
-- Do not automatically repair migration state because Prisma reports a migration-history problem.
+Preserve migration history.
 
-When a new schema change genuinely requires a migration, follow the current project migration workflow and preserve historical migrations.
+Do not modify, delete, rewrite, repair, resolve, reset, or squash previously
+applied migrations unless explicitly requested.
+
+If a new schema change genuinely requires a migration, create a new migration
+using the current project workflow.
+
+Do not perform production migrations automatically.
+
+Do not repair unrelated migration-state issues discovered during another task.
 
 ---
 
 ## Dataset Architecture
 
-The canonical detailed Dataset Schema Contract is:
+The canonical Dataset architecture is documented in:
 
 `docs/architecture/dataset-schema-contract.md`
 
-Before modifying Dataset-related implementation, read and follow that document.
+Read that contract before changing Dataset-related implementation.
+
+Do not read it for unrelated tasks.
 
 Core invariants:
 
 - `datasets` 1:N `dataset_records`.
-- Every Dataset has exactly one canonical owner through `datasets.ownerBidangId`.
-- `datasets.ownerBidangId` is ownership; `auth_bidang_dataset_permissions` is authorization.
-- `dataset_records` do not store ownership directly.
-- One Dataset Record represents one Dataset + one Region + one normalized Period.
+- Every Dataset has exactly one canonical owner through
+  `datasets.ownerBidangId`.
+- `datasets.ownerBidangId` represents ownership.
+- `auth_bidang_dataset_permissions` represents Dataset authorization.
+- `dataset_records` do not duplicate ownership.
+- One Dataset Record represents:
+  Dataset + Region + normalized Period.
 - `dataset_records.data` must conform to `datasets.dataSchema`.
 - `datasets.dataConfig` defines Dataset behavior.
-- V1 periodicity values are `HARIAN`, `MINGGUAN`, `BULANAN`, `TRIWULANAN`, and `TAHUNAN`.
-- V1 region levels are `KABUPATEN`, `KECAMATAN`, and `DESA`.
-- Dataset Record identity is `datasetId + regionId + periodDate`.
-- Preserve `UNIQUE(datasetId, regionId, periodDate)`.
-- Dynamic business values belong in JSON; identity, ownership, authorization, region, period, status, and audit metadata remain relational.
-- Do not introduce another Dataset structure or business master model unless explicitly requested.
 
-If a requested change conflicts with the canonical Dataset Schema Contract, do not silently invent a different architecture. Identify the conflict and only extend or version the contract when explicitly required.
+V1 periodicity values:
 
----
+- `HARIAN`
+- `MINGGUAN`
+- `BULANAN`
+- `TRIWULANAN`
+- `TAHUNAN`
 
-## Nuxt UI
+V1 region levels:
 
-When implementing or modifying UI using Nuxt UI:
+- `KABUPATEN`
+- `KECAMATAN`
+- `DESA`
 
-- Use the installed Nuxt UI MCP when component/API knowledge is needed.
-- Prefer official Nuxt UI components over manually recreating equivalent controls.
-- Use current component APIs discovered through MCP instead of guessing props or behavior.
-- Reuse existing project UI conventions and components.
-- Do not introduce another UI framework unless explicitly requested.
+Dataset Record identity is:
 
-Do not call Nuxt UI MCP unnecessarily for trivial text or style-only changes where the existing component usage already provides sufficient context.
+`datasetId + regionId + periodDate`
 
----
+Preserve:
 
-## Validation Policy
+`UNIQUE(datasetId, regionId, periodDate)`
 
-Use the cheapest validation that provides meaningful confidence for the actual change.
+Dynamic business values belong in JSON.
 
-Do NOT automatically run every available validation command after every edit.
+Identity, ownership, authorization, region, period, status, and audit metadata
+remain relational.
 
-Do NOT run `pnpm run build` by default.
+Do not create a parallel Dataset architecture or separate business-master model
+unless explicitly requested.
 
-### Small/localized changes
-
-For changes such as:
-
-- copy/text changes;
-- small layout changes;
-- styling;
-- simple component edits;
-- small composable changes;
-- straightforward server-route edits;
-
-prefer:
-
-1. inspect the changed files;
-2. review the diff;
-3. run targeted validation only when useful.
-
-A full production build is normally unnecessary.
-
-### ESLint
-
-Prefer targeted ESLint against changed files when practical.
-
-Do not run repository-wide lint repeatedly for small isolated changes unless necessary.
-
-### TypeScript / Vue
-
-Run:
-
-`pnpm run typecheck`
-
-when the change materially affects:
-
-- TypeScript behavior;
-- Vue component contracts;
-- composables;
-- server APIs;
-- shared types;
-- complex state;
-- public interfaces.
-
-Typecheck is usually unnecessary for trivial copy/style-only changes.
-
-### Prisma
-
-When Prisma-related source changes require validation, use as appropriate:
-
-- `pnpm exec prisma validate`
-- `pnpm exec prisma generate`
-- relevant type checking
-
-Do not run Prisma validation/generation for unrelated changes.
+If a requested change conflicts with this contract, identify the conflict
+instead of silently redesigning the model.
 
 ---
 
-## Local Production Build Policy
+## Dashboard Architecture
 
-`pnpm run build` is a production packaging check, not a default post-edit validation step.
+The main dashboard is a full-width monitoring workspace.
 
-Run a local production build only when the change materially affects:
+Current direction:
 
-- `nuxt.config.ts`;
-- Nitro or production server bundling;
-- PWA/service workers;
-- Nuxt modules;
-- Nuxt plugins;
-- dependencies or package configuration;
-- SSR/client boundaries;
-- runtime configuration;
-- deployment configuration;
-- production-only module resolution;
-- build-time generated artifacts;
-- or when explicitly requested.
+- no permanent sidebar;
+- compact enterprise-style information density;
+- responsive CSS Grid;
+- reusable dashboard widgets;
+- widget spans based on content needs.
 
-Examples where a local build IS appropriate:
+### Dashboard Widget
 
-- changing `generateSW` / `injectManifest`;
-- modifying a custom service worker;
-- changing Nitro presets;
-- changing Nuxt modules;
-- changing production runtime configuration;
-- adding dependencies that must be bundled server-side;
-- changing deployment entrypoints.
+Use the existing reusable dashboard widget shell where applicable.
 
-Examples where a local build is normally NOT needed:
+The shell must remain presentation-agnostic and capable of hosting:
 
-- changing button text;
-- changing card layout;
-- modifying simple settings UI;
-- updating labels;
-- small Vue component changes;
-- straightforward API logic;
-- small composable changes.
+- statistics;
+- charts;
+- tables;
+- OSM/maps;
+- rankings;
+- alerts;
+- other monitoring content.
 
-The GitHub Actions deployment pipeline performs the authoritative production build before deployment.
+Grid placement belongs to the dashboard composition layer.
 
-Do not duplicate full CI build validation locally without a concrete technical reason.
+Do not hardcode grid placement into the generic widget shell.
 
----
+Preserve consistent data-source attribution such as:
 
-## Repeated Validation
+`Sumber: ...`
 
-Do not rerun expensive checks when:
+at the widget level where applicable.
 
-- the same check already passed; and
-- no relevant files changed afterward.
+### Global Indicator Context
 
-Do not repeatedly run:
+The primary dashboard context is controlled by the global Indicator selector.
 
-- build;
-- typecheck;
-- Prisma generate;
-- Graphify update;
+Changing the active indicator may trigger one bounded server/API/database load
+for that indicator.
 
-without a meaningful reason.
+Do not preload all indicator datasets by default.
 
-Choose validation once, at the appropriate point after relevant edits are complete.
+### Widget-local Controls
+
+Widget-local filters should normally transform the already loaded indicator
+payload client-side.
+
+They should not trigger API/database requests merely for display changes.
+
+If required data is not present in the current payload:
+
+- extend the intentionally bounded indicator payload when appropriate; or
+- classify the control explicitly as request-level.
+
+Preserve protection against stale asynchronous responses when indicators are
+switched rapidly.
 
 ---
 
-## pnpm / Corepack Sandbox
+## UI
 
-The Codex sandbox may block `pnpm` because Corepack cannot verify or resolve the pinned package-manager release, registry metadata, or package signature.
+Nuxt UI is the primary UI component system.
 
-If a `pnpm` command fails because of:
+Preserve the existing application visual direction and semantic theme usage.
 
-- Corepack;
-- package signature verification;
-- package registry/network access;
-- sandbox restrictions;
+Prefer:
 
-then:
+- compact enterprise UI;
+- clear hierarchy;
+- efficient vertical space;
+- existing reusable patterns.
 
-- do not automatically retry with elevated permissions when the command is optional;
-- do not repeatedly retry the same command;
-- do not modify package-manager configuration merely to bypass the sandbox;
-- do not reinstall or replace the package manager merely for optional validation;
-- report the validation as blocked when appropriate;
-- continue the task when it can safely be completed without that validation.
+Avoid:
 
-Use elevated execution only when the blocked command is genuinely required to complete the requested task.
+- unnecessary nested cards;
+- oversized whitespace;
+- unrelated structural redesign;
+- additional UI frameworks.
 
-Optional validation is not sufficient justification for elevated execution.
+If the project already uses the Cobalt/Hallmark design direction, preserve that
+visual foundation.
 
----
-
-## Runtime Testing
-
-Always distinguish between:
-
-- static inspection;
-- linting;
-- type checking;
-- production build;
-- actual runtime testing.
-
-Do not claim runtime behavior was tested when it was only:
-
-- inspected;
-- linted;
-- typechecked;
-- built.
-
-If browser/device/database/external-service runtime testing cannot be completed, state that clearly.
-
-Do not create risky or unnecessary workarounds solely to claim runtime validation succeeded.
+Hallmark is appropriate for substantial design/redesign work, not routine UI
+polish.
 
 ---
 
-## PWA
+## PWA and Web Push
 
-The project uses `@vite-pwa/nuxt`.
+The project uses:
 
-Preserve the existing PWA architecture unless the requested task explicitly requires changes.
+`@vite-pwa/nuxt`
 
-When modifying:
+Preserve the existing PWA architecture unless the task explicitly changes it.
 
-- service workers;
-- precaching;
-- Web Push;
-- install behavior;
-- manifest behavior;
+The project uses standard Web Push rather than Firebase-based notification
+infrastructure.
 
-verify browser-only APIs are safe with SSR and run a production build when necessary.
+Preserve:
 
-Do not introduce Firebase or another push infrastructure when the existing standard Web Push implementation is sufficient unless explicitly requested.
+- the existing custom service-worker strategy;
+- VAPID-based Web Push;
+- authenticated PushSubscription ownership;
+- existing install-state behavior.
+
+Do not introduce:
+
+- Firebase;
+- Redis;
+- BullMQ;
+- notification queues;
+- separate workers;
+
+unless explicitly requested.
+
+VAPID private material must remain server-only.
+
+When service-worker/PWA build behavior changes, production-build verification
+may be appropriate according to the global verification policy.
 
 ---
 
@@ -379,70 +453,18 @@ Do not introduce Firebase or another push infrastructure when the existing stand
 
 `audit_logs` is application-level audit infrastructure.
 
-Use it only for meaningful actions where an audit trail provides value.
-
-Do not produce excessive audit events for trivial or high-frequency internal operations.
+Use it only for meaningful operations.
 
 Do not store:
 
 - passwords;
-- auth tokens;
+- authentication tokens;
 - private keys;
-- sensitive credential material;
+- VAPID private keys;
+- subscription secrets;
+- other credential material;
 
 inside audit metadata.
 
----
-
-## Scope Discipline
-
-Before finishing a task:
-
-- review the diff;
-- ensure unrelated files were not modified;
-- preserve user work already present in the working tree;
-- remove accidental temporary artifacts;
-- do not expand scope without a concrete technical reason;
-- do not refactor unrelated systems;
-- do not create new abstractions when an existing one already solves the problem.
-
-If an unrelated issue is discovered:
-
-- mention it briefly;
-- do not fix it unless necessary for the requested task.
-
----
-
-## Git
-
-- Do not create commits unless explicitly requested.
-- Do not push unless explicitly requested.
-- Do not revert unrelated user changes.
-- Preserve existing worktree changes.
-- Generated artifacts that are intentionally ignored must remain untracked.
-
----
-
-## Final Response
-
-Keep completion reports concise.
-
-Prefer reporting:
-
-- what changed;
-- important architectural decisions;
-- validation actually performed;
-- runtime tests actually performed;
-- blockers or validations skipped.
-
-Do not produce long file-by-file inventories unless explicitly requested.
-
-Do not claim success for tests that were not actually executed.
-
----
-
-## Formatting
-
-- Do not run Prettier unless explicitly requested.
-- Do not auto-format edited files.
-- Prefer preserving existing formatting when possible.
+Prefer concise metadata representing the meaningful change rather than storing
+entire request payloads.

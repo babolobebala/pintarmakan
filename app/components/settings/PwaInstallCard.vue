@@ -104,7 +104,7 @@ async function installApplication() {
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="space-y-1">
         <p class="font-medium text-highlighted">
-          Install Application
+          Install Aplikasi
         </p>
         <p class="text-muted">
           {{ installStatus.description }}

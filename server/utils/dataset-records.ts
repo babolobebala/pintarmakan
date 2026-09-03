@@ -10,6 +10,7 @@ import {
 } from '~~/auth/permissions'
 import {
   formatDatasetPeriod,
+  getDatasetMode,
   getDatasetPeriodRange,
   getDatasetPeriodicity,
   getDatasetRegionLevel,
@@ -299,7 +300,16 @@ export async function assertDatasetPermissionForUser(user: ScopedUser, options: 
   readonly action: DatasetPermissionAction
   readonly bidangId?: string | null
 }) {
-  return getDatasetPermissionContextForUser(user, options)
+  const datasetContext = await getDatasetPermissionContextForUser(user, options)
+
+  if (getDatasetMode(datasetContext.dataset.dataConfig) !== 'REGIONAL') {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'TABULAR datasets use DatasetTableRecord storage and are not available through DatasetRecord operations.'
+    })
+  }
+
+  return datasetContext
 }
 
 export async function listDatasetPeriodOverviewForUser(user: ScopedUser, datasetId: string) {

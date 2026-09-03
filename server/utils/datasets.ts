@@ -1,7 +1,10 @@
 import type { Prisma } from '#server/utils/db'
 
+import { db } from '#server/utils/db'
+
 import {
   getDatasetInterpretation,
+  getDatasetMode,
   getDatasetPeriodicity,
   getDatasetEndPeriod,
   getDatasetRegionLevel,
@@ -22,6 +25,7 @@ type DatasetLike = {
   archivedAt: Date | null
   createdAt: Date
   updatedAt: Date
+  canChangeMode?: boolean
   ownerBidang?: {
     name: string
   } | null
@@ -50,6 +54,8 @@ export function serializeDataset(dataset: DatasetLike) {
     description: dataset.description,
     dataSchema: dataset.dataSchema as Record<string, unknown>,
     dataConfig: dataset.dataConfig as Record<string, unknown>,
+    mode: getDatasetMode(dataset.dataConfig),
+    canChangeMode: dataset.canChangeMode ?? true,
     periodicity: getDatasetPeriodicity(dataset.dataConfig),
     regionLevel: getDatasetRegionLevel(dataset.dataConfig),
     startPeriod: getDatasetStartPeriod(dataset.dataConfig),
@@ -60,6 +66,20 @@ export function serializeDataset(dataset: DatasetLike) {
     createdAt: dataset.createdAt.toISOString(),
     updatedAt: dataset.updatedAt.toISOString()
   }
+}
+
+export async function hasDatasetRecordLifecycleData(datasetId: string) {
+  const [recordCount, recordHistoryCount, tableRecordCount, tableRecordHistoryCount] = await Promise.all([
+    db.datasetRecord.count({ where: { datasetId } }),
+    db.datasetRecordHistory.count({ where: { datasetId } }),
+    db.datasetTableRecord.count({ where: { datasetId } }),
+    db.datasetTableRecordHistory.count({ where: { datasetId } })
+  ])
+
+  return recordCount > 0
+    || recordHistoryCount > 0
+    || tableRecordCount > 0
+    || tableRecordHistoryCount > 0
 }
 
 export function buildDatasetWriteInput(input: DatasetMutationInput) {

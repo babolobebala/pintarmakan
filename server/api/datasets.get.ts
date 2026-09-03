@@ -16,9 +16,23 @@ export default defineEventHandler(async (event) => {
         select: {
           name: true
         }
+      },
+      _count: {
+        select: {
+          records: true,
+          recordHistory: true,
+          tableRecords: true,
+          tableRecordHistory: true
+        }
       }
     }
   })
 
-  return datasets.map(serializeDataset)
+  return datasets.map(dataset => serializeDataset({
+    ...dataset,
+    canChangeMode: dataset._count.records === 0
+      && dataset._count.recordHistory === 0
+      && dataset._count.tableRecords === 0
+      && dataset._count.tableRecordHistory === 0
+  }))
 })

@@ -50,6 +50,8 @@ export interface DatasetManagementItem {
   description: string | null
   dataSchema: Record<string, unknown>
   dataConfig: Record<string, unknown>
+  mode: 'REGIONAL' | 'TABULAR' | null
+  canChangeMode: boolean
   periodicity: string | null
   regionLevel: string | null
   startPeriod: string | null

@@ -6,11 +6,14 @@ import type { BidangOption, DatasetManagementItem } from '~/types'
 import {
   datasetIdPattern,
   datasetIdValidationMessage,
+  canonicalDatasetModes,
   formatDatasetJsonValue,
   getDatasetInterpretation,
+  getDatasetMode,
   getDatasetSource,
   mergeDatasetConfigMetadata,
-  parseDatasetJsonInput
+  parseDatasetJsonInput,
+  type DatasetMode
 } from '~~/shared/datasets'
 
 const props = withDefaults(defineProps<{
@@ -60,6 +63,7 @@ const schema = z.object({
     .min(1, 'Dataset name is required.')
     .max(191, 'Dataset name is too long.'),
   description: z.string().max(65535, 'Description is too long.'),
+  mode: z.enum(canonicalDatasetModes),
   source: z.string(),
   interpretation: z.string(),
   dataSchema: z.string().superRefine((value, ctx) => {
@@ -86,15 +90,31 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
+const modeItems: { value: DatasetMode, label: string }[] = [
+  { value: 'REGIONAL', label: 'Regional' },
+  { value: 'TABULAR', label: 'Tabular' }
+]
+
+function normalizeDataConfigMode(dataConfig: Record<string, unknown>, mode: DatasetMode) {
+  const normalized: Record<string, unknown> = { ...dataConfig, mode }
+
+  if (mode === 'TABULAR') {
+    delete normalized.regionLevel
+  }
+
+  return normalized
+}
+
 const state = reactive<Schema>({
   id: '',
   ownerBidangId: '',
   name: '',
   description: '',
+  mode: 'REGIONAL',
   source: '',
   interpretation: '',
   dataSchema: formatDatasetJsonValue({}),
-  dataConfig: formatDatasetJsonValue({})
+  dataConfig: formatDatasetJsonValue({ version: 1, mode: 'REGIONAL' })
 })
 
 const loading = ref(false)
@@ -105,6 +125,11 @@ const modalDescription = computed(() => {
     : 'Buat definisi dataset baru dengan ID teknis yang stabil.'
 })
 const submitLabel = computed(() => isEdit.value ? 'Simpan perubahan' : 'Tambah dataset')
+const isModeLocked = computed(() => isEdit.value && props.dataset?.canChangeMode === false)
+const modeDescription = computed(() => isModeLocked.value
+  ? 'Mode tidak dapat diubah karena Dataset sudah memiliki data atau riwayat data.'
+  : 'Menentukan kontrak penyimpanan record Dataset.'
+)
 
 function syncState() {
   if (props.dataset) {
@@ -112,10 +137,13 @@ function syncState() {
     state.ownerBidangId = props.dataset.ownerBidangId
     state.name = props.dataset.name
     state.description = props.dataset.description ?? ''
+    state.mode = getDatasetMode(props.dataset.dataConfig) ?? 'REGIONAL'
     state.source = getDatasetSource(props.dataset.dataConfig) ?? ''
     state.interpretation = getDatasetInterpretation(props.dataset.dataConfig) ?? ''
     state.dataSchema = formatDatasetJsonValue(props.dataset.dataSchema)
-    state.dataConfig = formatDatasetJsonValue(props.dataset.dataConfig)
+    state.dataConfig = formatDatasetJsonValue(
+      normalizeDataConfigMode(props.dataset.dataConfig, state.mode)
+    )
 
     return
   }
@@ -124,10 +152,11 @@ function syncState() {
   state.ownerBidangId = ''
   state.name = ''
   state.description = ''
+  state.mode = 'REGIONAL'
   state.source = ''
   state.interpretation = ''
   state.dataSchema = formatDatasetJsonValue({})
-  state.dataConfig = formatDatasetJsonValue({})
+  state.dataConfig = formatDatasetJsonValue({ version: 1, mode: 'REGIONAL' })
 }
 
 watch(
@@ -140,13 +169,33 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => state.mode,
+  (mode) => {
+    try {
+      state.dataConfig = formatDatasetJsonValue(
+        normalizeDataConfigMode(
+          parseDatasetJsonInput(state.dataConfig, 'Data config'),
+          mode
+        )
+      )
+    } catch {
+      // Keep invalid JSON untouched so the existing form validation can report it.
+    }
+  }
+)
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
 
   try {
+    const parsedDataConfig = normalizeDataConfigMode(
+      parseDatasetJsonInput(event.data.dataConfig, 'Data config'),
+      event.data.mode
+    )
     const dataConfig = formatDatasetJsonValue(
       mergeDatasetConfigMetadata(
-        parseDatasetJsonInput(event.data.dataConfig, 'Data config'),
+        parsedDataConfig,
         {
           source: event.data.source,
           interpretation: event.data.interpretation
@@ -269,6 +318,21 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               :search-input="{ placeholder: 'Cari bidang...' }"
             />
           </UFormField>
+
+          <UFormField
+            label="Mode Dataset"
+            name="mode"
+            :description="modeDescription"
+          >
+            <USelectMenu
+              v-model="state.mode"
+              :items="modeItems"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+              :disabled="isModeLocked"
+            />
+          </UFormField>
         </div>
 
         <div class="grid gap-4 lg:grid-cols-1">
@@ -331,7 +395,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           <UFormField
             label="Data config"
             name="dataConfig"
-            description="Simpan perilaku dataset seperti periodicity, cakupan region, atau opsi input."
+            :description="state.mode === 'REGIONAL'
+              ? 'REGIONAL wajib memuat periodicity, regionLevel, dan startPeriod.'
+              : 'TABULAR wajib memuat periodicity dan startPeriod; regionLevel dihapus saat disimpan.'"
           >
             <UTextarea
               v-model="state.dataConfig"

@@ -8,27 +8,31 @@ datasource db {
 }
 
 model User {
-  id                    String       @id @db.VarChar(191)
-  name                  String       @db.VarChar(191)
-  role                  String?      @default("user") @db.VarChar(191)
-  email                 String       @unique @db.VarChar(191)
-  emailVerified         Boolean      @default(false)
-  image                 String?      @db.Text
-  banned                Boolean      @default(false)
-  banReason             String?      @db.Text
-  banExpires            DateTime?
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
-  accounts              Account[]
-  sessions              Session[]
-  auditLogs             AuditLog[]   @relation("ActorAuditLogs")
-  pushSubscriptions     PushSubscription[]
-  bidangAssignments     AuthUserToBidang[]              @relation("UserBidangAssignments")
-  notifications         Notification[]
-  createdDatasetRecords DatasetRecord[]                 @relation("DatasetRecordCreatedBy")
-  updatedDatasetRecords DatasetRecord[]                 @relation("DatasetRecordUpdatedBy")
-  createdDatasetRecordHistory DatasetRecordHistory[]    @relation("DatasetRecordHistoryCreatedBy")
-  changedDatasetRecordHistory DatasetRecordHistory[]    @relation("DatasetRecordHistoryChangedBy")
+  id                               String                      @id @db.VarChar(191)
+  name                             String                      @db.VarChar(191)
+  role                             String?                     @default("user") @db.VarChar(191)
+  email                            String                      @unique @db.VarChar(191)
+  emailVerified                    Boolean                     @default(false)
+  image                            String?                     @db.Text
+  banned                           Boolean                     @default(false)
+  banReason                        String?                     @db.Text
+  banExpires                       DateTime?
+  createdAt                        DateTime                    @default(now())
+  updatedAt                        DateTime                    @updatedAt
+  accounts                         Account[]
+  sessions                         Session[]
+  auditLogs                        AuditLog[]                  @relation("ActorAuditLogs")
+  pushSubscriptions                PushSubscription[]
+  bidangAssignments                AuthUserToBidang[]          @relation("UserBidangAssignments")
+  notifications                    Notification[]
+  createdDatasetRecords            DatasetRecord[]             @relation("DatasetRecordCreatedBy")
+  updatedDatasetRecords            DatasetRecord[]             @relation("DatasetRecordUpdatedBy")
+  createdDatasetRecordHistory      DatasetRecordHistory[]      @relation("DatasetRecordHistoryCreatedBy")
+  changedDatasetRecordHistory      DatasetRecordHistory[]      @relation("DatasetRecordHistoryChangedBy")
+  createdDatasetTableRecords       DatasetTableRecord[]        @relation("DatasetTableRecordCreatedBy")
+  updatedDatasetTableRecords       DatasetTableRecord[]        @relation("DatasetTableRecordUpdatedBy")
+  createdDatasetTableRecordHistory DatasetTableRecordHistory[] @relation("DatasetTableRecordHistoryCreatedBy")
+  changedDatasetTableRecordHistory DatasetTableRecordHistory[] @relation("DatasetTableRecordHistoryChangedBy")
 
   @@map("user")
 }
@@ -115,13 +119,13 @@ model PushSubscription {
 }
 
 model AuthBidang {
-  id                    String                        @id @db.VarChar(191)
-  name                  String                        @db.VarChar(191)
-  description           String?                       @db.Text
-  createdAt             DateTime                      @default(now())
-  updatedAt             DateTime                      @updatedAt
-  userAssignments       AuthUserToBidang[]            @relation("BidangAssignments")
-  ownedDatasets         Dataset[]                     @relation("DatasetOwnerBidang")
+  id              String             @id @db.VarChar(191)
+  name            String             @db.VarChar(191)
+  description     String?            @db.Text
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  userAssignments AuthUserToBidang[] @relation("BidangAssignments")
+  ownedDatasets   Dataset[]          @relation("DatasetOwnerBidang")
 
   @@map("auth_bidang")
 }
@@ -140,15 +144,15 @@ model AuthUserToBidang {
 }
 
 model Region {
-  id             String          @id @db.VarChar(191)
-  name           String          @db.VarChar(191)
-  level          String          @db.VarChar(191)
-  parentId       String?         @db.VarChar(191)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  parent         Region?         @relation("RegionHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children       Region[]        @relation("RegionHierarchy")
-  datasetRecords DatasetRecord[]
+  id                   String                 @id @db.VarChar(191)
+  name                 String                 @db.VarChar(191)
+  level                String                 @db.VarChar(191)
+  parentId             String?                @db.VarChar(191)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  parent               Region?                @relation("RegionHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children             Region[]               @relation("RegionHierarchy")
+  datasetRecords       DatasetRecord[]
   datasetRecordHistory DatasetRecordHistory[]
 
   @@index([parentId])
@@ -157,33 +161,35 @@ model Region {
 }
 
 model Dataset {
-  id            String          @id @db.VarChar(191)
-  ownerBidangId String          @db.VarChar(191)
-  name          String          @db.VarChar(191)
-  description   String?         @db.Text
-  dataSchema    Json
-  dataConfig    Json
-  archivedAt    DateTime?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  ownerBidang   AuthBidang      @relation("DatasetOwnerBidang", fields: [ownerBidangId], references: [id], onDelete: Restrict)
-  records       DatasetRecord[]
-  recordHistory DatasetRecordHistory[]
+  id                 String                      @id @db.VarChar(191)
+  ownerBidangId      String                      @db.VarChar(191)
+  name               String                      @db.VarChar(191)
+  description        String?                     @db.Text
+  dataSchema         Json
+  dataConfig         Json
+  archivedAt         DateTime?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+  ownerBidang        AuthBidang                  @relation("DatasetOwnerBidang", fields: [ownerBidangId], references: [id], onDelete: Restrict)
+  records            DatasetRecord[]
+  recordHistory      DatasetRecordHistory[]
+  tableRecords       DatasetTableRecord[]
+  tableRecordHistory DatasetTableRecordHistory[]
 
   @@index([ownerBidangId])
   @@map("datasets")
 }
 
 model Notification {
-  id        String   @id @default(cuid()) @db.VarChar(191)
-  userId    String   @db.VarChar(191)
-  type      String   @db.VarChar(191)
-  title     String   @db.VarChar(191)
-  message   String   @db.Text
+  id        String    @id @default(cuid()) @db.VarChar(191)
+  userId    String    @db.VarChar(191)
+  type      String    @db.VarChar(191)
+  title     String    @db.VarChar(191)
+  message   String    @db.Text
   metadata  Json?
   readAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, readAt])
@@ -240,4 +246,46 @@ model DatasetRecordHistory {
   @@index([changedAt])
   @@index([datasetId, regionId, periodDate])
   @@map("dataset_record_history")
+}
+
+model DatasetTableRecord {
+  id         String   @id @default(cuid()) @db.VarChar(191)
+  datasetId  String   @db.VarChar(191)
+  periodDate DateTime @db.Date
+  data       Json
+  createdBy  String   @db.VarChar(191)
+  updatedBy  String?  @db.VarChar(191)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  dataset    Dataset  @relation(fields: [datasetId], references: [id], onDelete: Restrict)
+  creator    User     @relation("DatasetTableRecordCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater    User?    @relation("DatasetTableRecordUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@index([datasetId])
+  @@index([periodDate])
+  @@index([datasetId, periodDate])
+  @@map("dataset_table_records")
+}
+
+model DatasetTableRecordHistory {
+  id             String   @id @default(cuid()) @db.VarChar(191)
+  sourceRecordId String   @db.VarChar(191)
+  datasetId      String   @db.VarChar(191)
+  periodDate     DateTime @db.Date
+  data           Json
+  createdBy      String   @db.VarChar(191)
+  createdAt      DateTime
+  updatedAt      DateTime
+  changeType     String   @db.VarChar(191)
+  changedBy      String?  @db.VarChar(191)
+  changedAt      DateTime @default(now())
+  dataset        Dataset  @relation(fields: [datasetId], references: [id], onDelete: Restrict)
+  creator        User     @relation("DatasetTableRecordHistoryCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  changer        User?    @relation("DatasetTableRecordHistoryChangedBy", fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([sourceRecordId])
+  @@index([datasetId])
+  @@index([changedAt])
+  @@index([datasetId, periodDate])
+  @@map("dataset_table_record_history")
 }

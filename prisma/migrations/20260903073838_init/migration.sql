@@ -39,6 +39,7 @@ CREATE TABLE `account` (
     `userId` VARCHAR(191) NOT NULL,
     `accountId` VARCHAR(191) NOT NULL,
     `providerId` VARCHAR(191) NOT NULL,
+    `issuer` VARCHAR(191) NOT NULL,
     `accessToken` TEXT NULL,
     `refreshToken` TEXT NULL,
     `idToken` TEXT NULL,
@@ -50,7 +51,7 @@ CREATE TABLE `account` (
     `updatedAt` DATETIME(3) NOT NULL,
 
     INDEX `account_userId_idx`(`userId`),
-    UNIQUE INDEX `account_providerId_accountId_key`(`providerId`, `accountId`),
+    UNIQUE INDEX `account_issuer_accountId_key`(`issuer`, `accountId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -144,30 +145,11 @@ CREATE TABLE `datasets` (
     `description` TEXT NULL,
     `dataSchema` JSON NOT NULL,
     `dataConfig` JSON NOT NULL,
+    `archivedAt` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
     INDEX `datasets_ownerBidangId_idx`(`ownerBidangId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `auth_bidang_dataset_permissions` (
-    `id` VARCHAR(191) NOT NULL,
-    `bidangId` VARCHAR(191) NOT NULL,
-    `datasetId` VARCHAR(191) NOT NULL,
-    `canRead` BOOLEAN NOT NULL DEFAULT false,
-    `canCreate` BOOLEAN NOT NULL DEFAULT false,
-    `canUpdate` BOOLEAN NOT NULL DEFAULT false,
-    `canDelete` BOOLEAN NOT NULL DEFAULT false,
-    `canImport` BOOLEAN NOT NULL DEFAULT false,
-    `canExport` BOOLEAN NOT NULL DEFAULT false,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
-
-    INDEX `auth_bidang_dataset_permissions_bidangId_idx`(`bidangId`),
-    INDEX `auth_bidang_dataset_permissions_datasetId_idx`(`datasetId`),
-    UNIQUE INDEX `auth_bidang_dataset_permissions_bidangId_datasetId_key`(`bidangId`, `datasetId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -197,6 +179,7 @@ CREATE TABLE `dataset_records` (
     `data` JSON NOT NULL,
     `status` VARCHAR(191) NOT NULL,
     `createdBy` VARCHAR(191) NOT NULL,
+    `updatedBy` VARCHAR(191) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
@@ -205,6 +188,68 @@ CREATE TABLE `dataset_records` (
     INDEX `dataset_records_periodDate_idx`(`periodDate`),
     INDEX `dataset_records_datasetId_periodDate_idx`(`datasetId`, `periodDate`),
     UNIQUE INDEX `dataset_records_datasetId_regionId_periodDate_key`(`datasetId`, `regionId`, `periodDate`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `dataset_record_history` (
+    `id` VARCHAR(191) NOT NULL,
+    `sourceRecordId` VARCHAR(191) NOT NULL,
+    `datasetId` VARCHAR(191) NOT NULL,
+    `regionId` VARCHAR(191) NOT NULL,
+    `periodDate` DATE NOT NULL,
+    `data` JSON NOT NULL,
+    `status` VARCHAR(191) NOT NULL,
+    `createdBy` VARCHAR(191) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL,
+    `updatedAt` DATETIME(3) NOT NULL,
+    `changeType` VARCHAR(191) NOT NULL,
+    `changedBy` VARCHAR(191) NULL,
+    `changedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `dataset_record_history_sourceRecordId_idx`(`sourceRecordId`),
+    INDEX `dataset_record_history_datasetId_idx`(`datasetId`),
+    INDEX `dataset_record_history_regionId_idx`(`regionId`),
+    INDEX `dataset_record_history_changedAt_idx`(`changedAt`),
+    INDEX `dataset_record_history_datasetId_regionId_periodDate_idx`(`datasetId`, `regionId`, `periodDate`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `dataset_table_records` (
+    `id` VARCHAR(191) NOT NULL,
+    `datasetId` VARCHAR(191) NOT NULL,
+    `periodDate` DATE NOT NULL,
+    `data` JSON NOT NULL,
+    `createdBy` VARCHAR(191) NOT NULL,
+    `updatedBy` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    INDEX `dataset_table_records_datasetId_idx`(`datasetId`),
+    INDEX `dataset_table_records_periodDate_idx`(`periodDate`),
+    INDEX `dataset_table_records_datasetId_periodDate_idx`(`datasetId`, `periodDate`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `dataset_table_record_history` (
+    `id` VARCHAR(191) NOT NULL,
+    `sourceRecordId` VARCHAR(191) NOT NULL,
+    `datasetId` VARCHAR(191) NOT NULL,
+    `periodDate` DATE NOT NULL,
+    `data` JSON NOT NULL,
+    `createdBy` VARCHAR(191) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL,
+    `updatedAt` DATETIME(3) NOT NULL,
+    `changeType` VARCHAR(191) NOT NULL,
+    `changedBy` VARCHAR(191) NULL,
+    `changedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `dataset_table_record_history_sourceRecordId_idx`(`sourceRecordId`),
+    INDEX `dataset_table_record_history_datasetId_idx`(`datasetId`),
+    INDEX `dataset_table_record_history_changedAt_idx`(`changedAt`),
+    INDEX `dataset_table_record_history_datasetId_periodDate_idx`(`datasetId`, `periodDate`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -233,12 +278,6 @@ ALTER TABLE `regions` ADD CONSTRAINT `regions_parentId_fkey` FOREIGN KEY (`paren
 ALTER TABLE `datasets` ADD CONSTRAINT `datasets_ownerBidangId_fkey` FOREIGN KEY (`ownerBidangId`) REFERENCES `auth_bidang`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `auth_bidang_dataset_permissions` ADD CONSTRAINT `auth_bidang_dataset_permissions_bidangId_fkey` FOREIGN KEY (`bidangId`) REFERENCES `auth_bidang`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `auth_bidang_dataset_permissions` ADD CONSTRAINT `auth_bidang_dataset_permissions_datasetId_fkey` FOREIGN KEY (`datasetId`) REFERENCES `datasets`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `notifications` ADD CONSTRAINT `notifications_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -249,3 +288,36 @@ ALTER TABLE `dataset_records` ADD CONSTRAINT `dataset_records_regionId_fkey` FOR
 
 -- AddForeignKey
 ALTER TABLE `dataset_records` ADD CONSTRAINT `dataset_records_createdBy_fkey` FOREIGN KEY (`createdBy`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_records` ADD CONSTRAINT `dataset_records_updatedBy_fkey` FOREIGN KEY (`updatedBy`) REFERENCES `user`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_record_history` ADD CONSTRAINT `dataset_record_history_datasetId_fkey` FOREIGN KEY (`datasetId`) REFERENCES `datasets`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_record_history` ADD CONSTRAINT `dataset_record_history_regionId_fkey` FOREIGN KEY (`regionId`) REFERENCES `regions`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_record_history` ADD CONSTRAINT `dataset_record_history_createdBy_fkey` FOREIGN KEY (`createdBy`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_record_history` ADD CONSTRAINT `dataset_record_history_changedBy_fkey` FOREIGN KEY (`changedBy`) REFERENCES `user`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_table_records` ADD CONSTRAINT `dataset_table_records_datasetId_fkey` FOREIGN KEY (`datasetId`) REFERENCES `datasets`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_table_records` ADD CONSTRAINT `dataset_table_records_createdBy_fkey` FOREIGN KEY (`createdBy`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_table_records` ADD CONSTRAINT `dataset_table_records_updatedBy_fkey` FOREIGN KEY (`updatedBy`) REFERENCES `user`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_table_record_history` ADD CONSTRAINT `dataset_table_record_history_datasetId_fkey` FOREIGN KEY (`datasetId`) REFERENCES `datasets`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_table_record_history` ADD CONSTRAINT `dataset_table_record_history_createdBy_fkey` FOREIGN KEY (`createdBy`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `dataset_table_record_history` ADD CONSTRAINT `dataset_table_record_history_changedBy_fkey` FOREIGN KEY (`changedBy`) REFERENCES `user`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

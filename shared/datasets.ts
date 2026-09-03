@@ -24,6 +24,11 @@ export const canonicalDatasetPeriodicities = [
   'TAHUNAN'
 ] as const
 
+export const canonicalDatasetModes = [
+  'REGIONAL',
+  'TABULAR'
+] as const
+
 export const supportedDatasetPeriodicities = canonicalDatasetPeriodicities
 
 export const readableDatasetPeriodicities = [
@@ -34,6 +39,8 @@ export type CanonicalDatasetFieldType = (typeof canonicalDatasetFieldTypes)[numb
 export type DatasetPeriodicity = (typeof supportedDatasetPeriodicities)[number]
 export type DatasetReadablePeriodicity = (typeof readableDatasetPeriodicities)[number]
 export type CanonicalDatasetPeriodicity = DatasetPeriodicity
+export type DatasetMode = (typeof canonicalDatasetModes)[number]
+export type DatasetRegionLevel = 'KABUPATEN' | 'KECAMATAN' | 'DESA'
 
 export type DatasetSchemaFieldOption = {
   readonly value: string
@@ -75,15 +82,25 @@ export type DatasetSchemaFieldDefinition = {
   readonly options?: readonly DatasetSchemaFieldOption[]
 }
 
-export type DatasetConfigDefinition = {
+type DatasetConfigBaseDefinition = {
   readonly version: 1
+  readonly mode: DatasetMode
   readonly periodicity: CanonicalDatasetPeriodicity
-  readonly regionLevel: 'KABUPATEN' | 'KECAMATAN' | 'DESA'
   readonly startPeriod: string
   readonly endPeriod?: string
   readonly source?: string
   readonly interpretation?: string
 }
+
+export type DatasetConfigDefinition = DatasetConfigBaseDefinition & (
+  | {
+    readonly mode: 'REGIONAL'
+    readonly regionLevel: DatasetRegionLevel
+  }
+  | {
+    readonly mode: 'TABULAR'
+  }
+)
 
 export type DatasetRecordValidationIssue = {
   readonly key: string
@@ -439,11 +456,25 @@ export function validateDatasetConfigDefinition(value: unknown): DatasetConfigDe
     throw new Error('Data config harus berupa objek.')
   }
 
-  assertOnlyAllowedProperties(value, ['version', 'periodicity', 'regionLevel', 'startPeriod', 'endPeriod', 'source', 'interpretation'], 'Data config')
-
   if (value.version !== 1) {
     throw new Error('Data config version harus bernilai 1.')
   }
+
+  if (typeof value.mode !== 'string' || !canonicalDatasetModes.includes(value.mode as DatasetMode)) {
+    const mode = typeof value.mode === 'string' ? value.mode : String(value.mode ?? '')
+
+    throw new Error(`mode "${mode}" tidak didukung.`)
+  }
+
+  const mode = value.mode as DatasetMode
+
+  assertOnlyAllowedProperties(
+    value,
+    mode === 'REGIONAL'
+      ? ['version', 'mode', 'periodicity', 'regionLevel', 'startPeriod', 'endPeriod', 'source', 'interpretation']
+      : ['version', 'mode', 'periodicity', 'startPeriod', 'endPeriod', 'source', 'interpretation'],
+    'Data config'
+  )
 
   if (typeof value.periodicity !== 'string' || !canonicalDatasetPeriodicities.includes(value.periodicity as CanonicalDatasetPeriodicity)) {
     const periodicity = typeof value.periodicity === 'string' ? value.periodicity : String(value.periodicity ?? '')
@@ -451,7 +482,7 @@ export function validateDatasetConfigDefinition(value: unknown): DatasetConfigDe
     throw new Error(`periodicity "${periodicity}" tidak didukung.`)
   }
 
-  if (value.regionLevel !== 'KABUPATEN' && value.regionLevel !== 'KECAMATAN' && value.regionLevel !== 'DESA') {
+  if (mode === 'REGIONAL' && value.regionLevel !== 'KABUPATEN' && value.regionLevel !== 'KECAMATAN' && value.regionLevel !== 'DESA') {
     const regionLevel = typeof value.regionLevel === 'string' ? value.regionLevel : String(value.regionLevel ?? '')
 
     throw new Error(`regionLevel "${regionLevel}" tidak didukung.`)
@@ -508,15 +539,25 @@ export function validateDatasetConfigDefinition(value: unknown): DatasetConfigDe
     'interpretation'
   )
 
-  return {
-    version: 1,
+  const commonConfig = {
+    version: 1 as const,
     periodicity,
-    regionLevel: value.regionLevel,
     startPeriod,
     ...(endPeriod ? { endPeriod } : {}),
     ...(source ? { source } : {}),
     ...(interpretation ? { interpretation } : {})
   }
+
+  return mode === 'REGIONAL'
+    ? {
+      ...commonConfig,
+      mode: 'REGIONAL',
+      regionLevel: value.regionLevel as DatasetRegionLevel
+    }
+    : {
+      ...commonConfig,
+      mode: 'TABULAR'
+    }
 }
 
 function normalizeOptionalDatasetConfigText(value: unknown, property: string) {
@@ -690,8 +731,19 @@ export function getDatasetPeriodicity(dataConfig: unknown): DatasetReadablePerio
     : null
 }
 
+/** Missing mode is a legacy REGIONAL Dataset; canonical writes always include it. */
+export function getDatasetMode(dataConfig: unknown): DatasetMode | null {
+  if (!isJsonObject(dataConfig) || dataConfig.mode === undefined) {
+    return isJsonObject(dataConfig) ? 'REGIONAL' : null
+  }
+
+  return typeof dataConfig.mode === 'string' && canonicalDatasetModes.includes(dataConfig.mode as DatasetMode)
+    ? dataConfig.mode as DatasetMode
+    : null
+}
+
 export function getDatasetRegionLevel(dataConfig: unknown) {
-  if (!isJsonObject(dataConfig)) {
+  if (!isJsonObject(dataConfig) || getDatasetMode(dataConfig) !== 'REGIONAL') {
     return null
   }
 

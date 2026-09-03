@@ -5,10 +5,11 @@ import { db } from '#server/utils/db'
 import {
   buildDatasetWriteInput,
   getDatasetChangedFields,
+  hasDatasetRecordLifecycleData,
   serializeDataset
 } from '#server/utils/datasets'
 import { appPermissions } from '~~/auth/permissions'
-import { datasetIdPattern, getDatasetPeriodicity } from '~~/shared/datasets'
+import { datasetIdPattern, getDatasetMode, getDatasetPeriodicity } from '~~/shared/datasets'
 import { requirePermission } from '~~/server/utils/access'
 
 const updateDatasetSchema = z.object({
@@ -86,6 +87,16 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 400,
       statusMessage: error instanceof Error ? error.message : 'Invalid dataset payload.'
+    })
+  }
+
+  if (
+    getDatasetMode(existingDataset.dataConfig) !== getDatasetMode(datasetInput.dataConfig)
+    && await hasDatasetRecordLifecycleData(existingDataset.id)
+  ) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Mode Dataset tidak dapat diubah karena Dataset sudah memiliki data atau riwayat data.'
     })
   }
 

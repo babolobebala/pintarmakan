@@ -24,10 +24,13 @@ current runtime behaviour until that work is completed.
 The application uses:
 
 - `datasets` as the definition/template of a business Dataset;
-- `dataset_records` as the current canonical business snapshot; and
-- `dataset_record_history` as immutable previous DatasetRecord snapshots.
+- `dataset_records` as the current REGIONAL business snapshot;
+- `dataset_record_history` as immutable previous REGIONAL DatasetRecord snapshots;
+- `dataset_table_records` as current TABULAR rows; and
+- `dataset_table_record_history` as immutable previous TABULAR row snapshots.
 
-Relationship: `datasets` 1:N `dataset_records`.
+Storage is mode-specific: REGIONAL Datasets use `dataset_records`; TABULAR
+Datasets use `dataset_table_records`. These models are intentionally separate.
 
 A real DatasetRecord UPDATE snapshots the previous current state before
 mutation, and a DELETE snapshots it before hard deletion. History owns previous
@@ -357,6 +360,7 @@ The canonical V1 shape is:
 ```json
 {
   "version": 1,
+  "mode": "REGIONAL",
   "periodicity": "BULANAN",
   "regionLevel": "KECAMATAN",
   "startPeriod": "2025-01-01",
@@ -369,8 +373,8 @@ The canonical V1 shape is:
 Canonical properties:
 
 - `version`
+- `mode`: exactly `REGIONAL` or `TABULAR` for canonical writes;
 - `periodicity`
-- `regionLevel`
 - `startPeriod`
 - optional `endPeriod`
 - optional `source`: human-readable provenance for the Dataset;
@@ -399,17 +403,16 @@ fixed upper coverage bound and may be in the future. When omitted, coverage is
 rolling through the current normalized period, so `startPeriod` MUST NOT be
 after that current period.
 
-Allowed `regionLevel` values:
+REGIONAL config requires `regionLevel`. Allowed values are:
 
 - `KABUPATEN`
 - `KECAMATAN`
 - `DESA`
 
-`regionLevel` MUST eventually be structurally validated against that set.
-`useRegion` is removed from canonical new definitions because Region is always
-part of DatasetRecord identity and context. Existing legacy JSON containing
-`useRegion` may remain readable; do not migrate existing database JSON solely
-for this change.
+TABULAR config does not allow `regionLevel`, Region rows, or Region completeness
+denominators. `useRegion` is not part of canonical config. Older stored configs
+without `mode` are read as REGIONAL for compatibility, but all canonical writes
+must serialize an explicit mode.
 
 Do not store dashboard layout, chart colors, widget positions, UI styling, or
 other presentation configuration in `dataConfig`.
@@ -427,7 +430,7 @@ other presentation configuration in `dataConfig`.
 `dataConfig` defines Dataset-level record context, currently:
 
 - periodicity; and
-- required Region level; and
+- required Region level for REGIONAL mode only; and
 - temporal coverage starting at `startPeriod` and ending at optional
   `endPeriod`, or at the current normalized period when `endPeriod` is omitted;
 - optional source provenance; and
@@ -441,7 +444,8 @@ business identity remains:
 
 ## 12. Periodicity
 
-`dataset_records.periodDate` stores one normalized SQL `DATE`.
+Both `dataset_records.periodDate` and `dataset_table_records.periodDate` store
+one normalized SQL `DATE`.
 
 - `HARIAN`: actual selected date;
 - `BULANAN`: first day of the month;
@@ -468,18 +472,25 @@ Dataset IDs may continue using stable English technical identifiers even though
 `regions` is the canonical Region master. `regions.id` stores the Kemendagri
 region identifier, for example `52.07`, `52.07.02`, or `52.07.02.2001`.
 
-`dataConfig.regionLevel` defines the level valid for DatasetRecord creation.
-DatasetRecords MUST reference the canonical Region through `regionId`; they do
-not duplicate Region name/code inside `data`.
+For REGIONAL mode, `dataConfig.regionLevel` defines the level valid for
+DatasetRecord creation. DatasetRecords MUST reference the canonical Region
+through `regionId`; they do not duplicate Region name/code inside `data`.
+TABULAR DatasetTableRecords have no Region relation or Region fields.
 
 ## 14. Dataset Record Identity and Uniqueness
 
-The canonical identity is:
+REGIONAL identity is:
 
 `datasetId + regionId + periodDate`
 
 The database enforces `UNIQUE(datasetId, regionId, periodDate)`. One record is
 one complete Dataset snapshot for that Region and normalized period.
+
+TABULAR identity is `DatasetTableRecord.id`. A Dataset may have any number of
+TABULAR rows in the same normalized period; there is intentionally no unique
+constraint on `datasetId + periodDate`. TABULAR rows never contain `regionId`.
+TABULAR history keeps `sourceRecordId` as a scalar rather than a foreign key,
+so snapshots remain after a source row is hard-deleted.
 
 ## 15. Authorization
 

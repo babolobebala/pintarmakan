@@ -7,6 +7,9 @@ import {
   datasetIdPattern,
   datasetIdValidationMessage,
   formatDatasetJsonValue,
+  getDatasetInterpretation,
+  getDatasetSource,
+  mergeDatasetConfigMetadata,
   parseDatasetJsonInput
 } from '~~/shared/datasets'
 
@@ -57,6 +60,8 @@ const schema = z.object({
     .min(1, 'Dataset name is required.')
     .max(191, 'Dataset name is too long.'),
   description: z.string().max(65535, 'Description is too long.'),
+  source: z.string(),
+  interpretation: z.string(),
   dataSchema: z.string().superRefine((value, ctx) => {
     try {
       parseDatasetJsonInput(value, 'Data schema')
@@ -86,6 +91,8 @@ const state = reactive<Schema>({
   ownerBidangId: '',
   name: '',
   description: '',
+  source: '',
+  interpretation: '',
   dataSchema: formatDatasetJsonValue({}),
   dataConfig: formatDatasetJsonValue({})
 })
@@ -105,6 +112,8 @@ function syncState() {
     state.ownerBidangId = props.dataset.ownerBidangId
     state.name = props.dataset.name
     state.description = props.dataset.description ?? ''
+    state.source = getDatasetSource(props.dataset.dataConfig) ?? ''
+    state.interpretation = getDatasetInterpretation(props.dataset.dataConfig) ?? ''
     state.dataSchema = formatDatasetJsonValue(props.dataset.dataSchema)
     state.dataConfig = formatDatasetJsonValue(props.dataset.dataConfig)
 
@@ -115,6 +124,8 @@ function syncState() {
   state.ownerBidangId = ''
   state.name = ''
   state.description = ''
+  state.source = ''
+  state.interpretation = ''
   state.dataSchema = formatDatasetJsonValue({})
   state.dataConfig = formatDatasetJsonValue({})
 }
@@ -133,6 +144,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
 
   try {
+    const dataConfig = formatDatasetJsonValue(
+      mergeDatasetConfigMetadata(
+        parseDatasetJsonInput(event.data.dataConfig, 'Data config'),
+        {
+          source: event.data.source,
+          interpretation: event.data.interpretation
+        }
+      )
+    )
     await $fetch(
       isEdit.value && props.dataset
         ? `/api/datasets/${props.dataset.id}`
@@ -145,9 +165,16 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               name: event.data.name,
               description: event.data.description,
               dataSchema: event.data.dataSchema,
-              dataConfig: event.data.dataConfig
+              dataConfig
             }
-          : event.data
+          : {
+              id: event.data.id,
+              ownerBidangId: event.data.ownerBidangId,
+              name: event.data.name,
+              description: event.data.description,
+              dataSchema: event.data.dataSchema,
+              dataConfig
+            }
       }
     )
 
@@ -261,6 +288,31 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             :rows="3"
           />
         </UFormField>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+          <UFormField
+            label="Sumber Data"
+            name="source"
+          >
+            <UInput
+              v-model="state.source"
+              class="w-full"
+              placeholder="Contoh: Dinas Ketahanan Pangan Kabupaten Sumbawa Barat"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Interpretasi Data"
+            name="interpretation"
+          >
+            <UTextarea
+              v-model="state.interpretation"
+              class="w-full"
+              placeholder="Catatan singkat mengenai arti atau cara membaca data ini."
+              :rows="3"
+            />
+          </UFormField>
+        </div>
 
         <div class="grid gap-4 xl:grid-cols-2">
           <UFormField

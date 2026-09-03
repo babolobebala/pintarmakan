@@ -1,9 +1,11 @@
 import type { Prisma } from '#server/utils/db'
 
 import {
+  getDatasetInterpretation,
   getDatasetPeriodicity,
   getDatasetEndPeriod,
   getDatasetRegionLevel,
+  getDatasetSource,
   getDatasetStartPeriod,
   parseDatasetJsonInput,
   validateDatasetConfigDefinition,
@@ -52,6 +54,8 @@ export function serializeDataset(dataset: DatasetLike) {
     regionLevel: getDatasetRegionLevel(dataset.dataConfig),
     startPeriod: getDatasetStartPeriod(dataset.dataConfig),
     endPeriod: getDatasetEndPeriod(dataset.dataConfig),
+    source: getDatasetSource(dataset.dataConfig),
+    interpretation: getDatasetInterpretation(dataset.dataConfig),
     archivedAt: dataset.archivedAt?.toISOString() ?? null,
     createdAt: dataset.createdAt.toISOString(),
     updatedAt: dataset.updatedAt.toISOString()

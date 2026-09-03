@@ -360,7 +360,9 @@ The canonical V1 shape is:
   "periodicity": "BULANAN",
   "regionLevel": "KECAMATAN",
   "startPeriod": "2025-01-01",
-  "endPeriod": "2025-12-01"
+  "endPeriod": "2025-12-01",
+  "source": "Dinas Ketahanan Pangan Kabupaten Sumbawa Barat",
+  "interpretation": "Catatan singkat mengenai cara membaca Dataset."
 }
 ```
 
@@ -371,6 +373,13 @@ Canonical properties:
 - `regionLevel`
 - `startPeriod`
 - optional `endPeriod`
+- optional `source`: human-readable provenance for the Dataset;
+- optional `interpretation`: short human-readable context for understanding the Dataset.
+
+When present, `source` and `interpretation` MUST be trimmed non-empty strings.
+Whitespace-only values are omitted from normalized config. They are optional for
+legacy Dataset definitions and do not affect DatasetRecord payload, validation,
+or behavior.
 
 Allowed `periodicity` values:
 
@@ -420,7 +429,9 @@ other presentation configuration in `dataConfig`.
 - periodicity; and
 - required Region level; and
 - temporal coverage starting at `startPeriod` and ending at optional
-  `endPeriod`, or at the current normalized period when `endPeriod` is omitted.
+  `endPeriod`, or at the current normalized period when `endPeriod` is omitted;
+- optional source provenance; and
+- optional interpretation context.
 
 Neither JSON document owns Dataset identity, Region identity, period identity,
 owner Bidang, authorization, or DatasetRecord uniqueness. The relational

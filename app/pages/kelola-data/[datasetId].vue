@@ -325,6 +325,27 @@ function refreshPeriodOverviewAfterBulkSave() {
               {{ formatPeriodicityLabel(dataset.periodicity) }} ·
               {{ formatRegionLevelLabel(dataset.regionLevel) }}
             </p>
+            <div
+              v-if="dataset.source || dataset.interpretation"
+              class="mt-3 grid gap-3 border-t border-default pt-3 text-sm"
+            >
+              <div v-if="dataset.source">
+                <p class="text-xs font-medium tracking-[0.12em] text-muted uppercase">
+                  Sumber
+                </p>
+                <p class="mt-1 text-highlighted">
+                  {{ dataset.source }}
+                </p>
+              </div>
+              <div v-if="dataset.interpretation">
+                <p class="text-xs font-medium tracking-[0.12em] text-muted uppercase">
+                  Interpretasi
+                </p>
+                <p class="mt-1 whitespace-pre-wrap text-highlighted">
+                  {{ dataset.interpretation }}
+                </p>
+              </div>
+            </div>
           </div>
           <UButton
             to="/kelola-data"

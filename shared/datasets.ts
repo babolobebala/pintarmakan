@@ -81,6 +81,8 @@ export type DatasetConfigDefinition = {
   readonly regionLevel: 'KABUPATEN' | 'KECAMATAN' | 'DESA'
   readonly startPeriod: string
   readonly endPeriod?: string
+  readonly source?: string
+  readonly interpretation?: string
 }
 
 export type DatasetRecordValidationIssue = {
@@ -437,7 +439,7 @@ export function validateDatasetConfigDefinition(value: unknown): DatasetConfigDe
     throw new Error('Data config harus berupa objek.')
   }
 
-  assertOnlyAllowedProperties(value, ['version', 'periodicity', 'regionLevel', 'startPeriod', 'endPeriod'], 'Data config')
+  assertOnlyAllowedProperties(value, ['version', 'periodicity', 'regionLevel', 'startPeriod', 'endPeriod', 'source', 'interpretation'], 'Data config')
 
   if (value.version !== 1) {
     throw new Error('Data config version harus bernilai 1.')
@@ -500,12 +502,63 @@ export function validateDatasetConfigDefinition(value: unknown): DatasetConfigDe
     throw new Error('startPeriod tidak boleh setelah periode saat ini untuk Dataset tanpa endPeriod.')
   }
 
+  const source = normalizeOptionalDatasetConfigText(value.source, 'source')
+  const interpretation = normalizeOptionalDatasetConfigText(
+    value.interpretation,
+    'interpretation'
+  )
+
   return {
     version: 1,
     periodicity,
     regionLevel: value.regionLevel,
     startPeriod,
-    ...(endPeriod ? { endPeriod } : {})
+    ...(endPeriod ? { endPeriod } : {}),
+    ...(source ? { source } : {}),
+    ...(interpretation ? { interpretation } : {})
+  }
+}
+
+function normalizeOptionalDatasetConfigText(value: unknown, property: string) {
+  if (value === undefined) {
+    return undefined
+  }
+
+  if (typeof value !== 'string') {
+    throw new Error(`${property} harus berupa teks.`)
+  }
+
+  const normalized = value.trim()
+
+  return normalized || undefined
+}
+
+export function mergeDatasetConfigMetadata(value: unknown, metadata: {
+  readonly source?: unknown
+  readonly interpretation?: unknown
+}) {
+  if (!isJsonObject(value)) {
+    throw new Error('Data config harus berupa objek.')
+  }
+
+  normalizeOptionalDatasetConfigText(value.source, 'source')
+  normalizeOptionalDatasetConfigText(value.interpretation, 'interpretation')
+
+  const source = normalizeOptionalDatasetConfigText(metadata.source, 'source')
+  const interpretation = normalizeOptionalDatasetConfigText(
+    metadata.interpretation,
+    'interpretation'
+  )
+  const configWithoutMetadata = Object.fromEntries(
+    Object.entries(value).filter(
+      ([key]) => key !== 'source' && key !== 'interpretation'
+    )
+  )
+
+  return {
+    ...configWithoutMetadata,
+    ...(source ? { source } : {}),
+    ...(interpretation ? { interpretation } : {})
   }
 }
 
@@ -647,6 +700,24 @@ export function getDatasetRegionLevel(dataConfig: unknown) {
   return typeof regionLevel === 'string' && regionLevel.trim()
     ? regionLevel.trim().toUpperCase()
     : null
+}
+
+function getDatasetConfigText(dataConfig: unknown, property: 'source' | 'interpretation') {
+  if (!isJsonObject(dataConfig) || typeof dataConfig[property] !== 'string') {
+    return null
+  }
+
+  const value = dataConfig[property].trim()
+
+  return value || null
+}
+
+export function getDatasetSource(dataConfig: unknown) {
+  return getDatasetConfigText(dataConfig, 'source')
+}
+
+export function getDatasetInterpretation(dataConfig: unknown) {
+  return getDatasetConfigText(dataConfig, 'interpretation')
 }
 
 export function getDefaultPeriodInput(periodicity: DatasetReadablePeriodicity | null, date = new Date()) {

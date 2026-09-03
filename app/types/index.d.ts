@@ -54,6 +54,8 @@ export interface DatasetManagementItem {
   regionLevel: string | null
   startPeriod: string | null
   endPeriod: string | null
+  source: string | null
+  interpretation: string | null
   archivedAt: string | null
   createdAt: string
   updatedAt: string

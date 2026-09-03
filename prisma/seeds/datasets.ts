@@ -50,7 +50,7 @@ const seedDatasets = [
   {
     id: 'IKP_TAHUNAN',
     ownerBidangId: defaultOwnerBidangId,
-    name: 'Indeks Ketahanan Pangan (IKP)',
+    name: 'Indeks Ketahanan Pangan (IKP) Kabupaten Sumbawa Barat',
     description: 'Data tahunan Indeks Ketahanan Pangan Kabupaten Sumbawa Barat.',
     dataSchema: {
       version: 1,
@@ -73,7 +73,7 @@ const seedDatasets = [
   {
     id: 'PPH_KONSUMSI_TAHUNAN',
     ownerBidangId: defaultOwnerBidangId,
-    name: 'Pola Pangan Harapan (PPH) Konsumsi',
+    name: 'Pola Pangan Harapan (PPH) Konsumsi Kabupaten Sumbawa Barat',
     description: 'Data tahunan skor Pola Pangan Harapan Konsumsi Kabupaten Sumbawa Barat.',
     dataSchema: {
       version: 1,
@@ -96,7 +96,7 @@ const seedDatasets = [
   {
     id: 'PPH_KETERSEDIAAN_TAHUNAN',
     ownerBidangId: defaultOwnerBidangId,
-    name: 'Pola Pangan Harapan (PPH) Ketersediaan',
+    name: 'Pola Pangan Harapan (PPH) Ketersediaan Kabupaten Sumbawa Barat',
     description: 'Data tahunan skor Pola Pangan Harapan Ketersediaan Kabupaten Sumbawa Barat.',
     dataSchema: {
       version: 1,
@@ -159,39 +159,9 @@ const seedDatasets = [
     }
   },
   {
-    id: 'PROYEKSI_NERACA_PANGAN_BULANAN',
-    ownerBidangId: defaultOwnerBidangId,
-    name: 'Proyeksi Neraca Pangan Kabupaten Sumbawa Barat',
-    description: 'Data proyeksi neraca pangan bulanan Kabupaten Sumbawa Barat untuk tahun 2026.',
-    dataSchema: {
-      version: 1,
-      fields: [
-        { key: 'beras', label: 'Beras', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'jagung', label: 'Jagung', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'kedelai', label: 'Kedelai', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'bawang_merah', label: 'Bawang Merah', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'bawang_putih', label: 'Bawang Putih', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'cabai_merah', label: 'Cabai Merah', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'cabai_rawit', label: 'Cabai Rawit', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'daging_sapi_kerbau', label: 'Daging Sapi/Kerbau', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'daging_ayam_ras', label: 'Daging Ayam Ras', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'telur_ayam_ras', label: 'Telur Ayam Ras', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'gula_konsumsi', label: 'Gula Konsumsi', type: 'number', required: false, validation: { min: 0 } },
-        { key: 'minyak_goreng', label: 'Minyak Goreng', type: 'number', required: false, validation: { min: 0 } }
-      ]
-    },
-    dataConfig: {
-      version: 1,
-      periodicity: 'BULANAN',
-      regionLevel: 'KABUPATEN',
-      startPeriod: '2026-01-01',
-      endPeriod: '2026-12-01'
-    }
-  },
-  {
     id: 'STATUS_KETAHANAN_PANGAN_TAHUNAN',
     ownerBidangId: defaultOwnerBidangId,
-    name: 'Status Ketahanan Pangan',
+    name: 'Status Ketahanan Pangan Menurut Desa/Kelurahan di Kabupaten Sumbawa Barat',
     description: 'Data tahunan status ketahanan pangan desa/kelurahan berdasarkan nilai prioritas.',
     dataSchema: {
       version: 1,
@@ -208,6 +178,26 @@ const seedDatasets = [
       version: 1,
       periodicity: 'TAHUNAN',
       regionLevel: 'DESA',
+      startPeriod: '2025-01-01'
+    }
+  },
+  {
+    id: 'PRODUKTIFITAS_PADI_KECAMATAN_TAHUNAN',
+    ownerBidangId: defaultOwnerBidangId,
+    name: 'Data Produktifitas Padi Menurut Kecamatan di Kabupaten Sumbawa Barat',
+    description: 'Data tahunan produktifitas padi menurut kecamatan di Kabupaten Sumbawa Barat.',
+    dataSchema: {
+      version: 1,
+      fields: [
+        { key: 'luas_panen', label: 'Luas Panen (Ha)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'hasil_per_hektar', label: 'Hasil / Hektar (Ku/Ha)', type: 'number', required: false, validation: { min: 0 } },
+        { key: 'produksi', label: 'Produksi (Ton)', type: 'number', required: false, validation: { min: 0 } }
+      ]
+    },
+    dataConfig: {
+      version: 1,
+      periodicity: 'TAHUNAN',
+      regionLevel: 'KECAMATAN',
       startPeriod: '2025-01-01'
     }
   }

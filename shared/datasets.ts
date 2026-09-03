@@ -729,20 +729,39 @@ export function normalizeDatasetPeriodInput(periodicity: DatasetReadablePeriodic
 }
 
 function normalizeDatasetPeriodDate(periodicity: CanonicalDatasetPeriodicity, value: string) {
+  const [year, month] = value.split('-')
+
   switch (periodicity) {
     case 'BULANAN':
-      return normalizeDatasetPeriodInput(periodicity, value.slice(0, 7))
-    case 'TRIWULANAN': {
-      const month = Number(value.slice(5, 7))
-
-      return normalizeDatasetPeriodInput(periodicity, `${value.slice(0, 4)}-Q${Math.floor((month - 1) / 3) + 1}`)
-    }
+      return `${year}-${month}-01`
+    case 'TRIWULANAN':
+      return `${year}-${padNumber(Math.floor((Number(month) - 1) / 3) * 3 + 1)}-01`
     case 'TAHUNAN':
-      return normalizeDatasetPeriodInput(periodicity, value.slice(0, 4))
+      return `${year}-01-01`
     case 'HARIAN':
     default:
-      return normalizeDatasetPeriodInput(periodicity, value)
+      return value
   }
+}
+
+/** Validates a DatasetRecord's stored canonical YYYY-MM-DD period date without parsing raw UI input. */
+export function validateCanonicalDatasetPeriodDate(periodicity: DatasetReadablePeriodicity | null, input: unknown) {
+  const value = typeof input === 'string' ? input.trim() : ''
+  const normalized = normalizeDateString(value)
+
+  if (!normalized) {
+    throw new Error('Period must use a valid YYYY-MM-DD date.')
+  }
+
+  if (!periodicity) {
+    throw new Error('Dataset periodicity is not supported.')
+  }
+
+  if (normalizeDatasetPeriodDate(periodicity, normalized) !== normalized) {
+    throw new Error(`Period must use the canonical ${periodicity} start date.`)
+  }
+
+  return normalized
 }
 
 export function getCurrentDatasetPeriod(periodicity: CanonicalDatasetPeriodicity, date = new Date()) {

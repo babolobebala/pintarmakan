@@ -2,12 +2,22 @@ import { createError } from 'h3'
 import { createRequire } from 'node:module'
 import type { WorkBook } from 'xlsx'
 
-import { getDatasetRegionLevel, getDatasetSchemaFields } from '~~/shared/datasets'
+import {
+  getDatasetPeriodicity,
+  getDatasetRecordPeriodRangeError,
+  getDatasetRegionLevel,
+  getDatasetSchemaFields,
+  validateCanonicalDatasetPeriodDate
+} from '~~/shared/datasets'
 import { db } from '#server/utils/db'
 import {
   assertDatasetPermissionForUser,
-  buildDatasetRecordPayload
+  buildDatasetRecordPayload,
+  buildDatasetRecordPayloadFromCanonicalPeriodDate,
+  commitDatasetPeriodRows
 } from '#server/utils/dataset-records'
+import { resolveDatasetPeriodSpreadsheetFieldHeaders } from '#server/utils/dataset-period-spreadsheet-headers'
+import { getSumbawaBaratRegionScopeWhere } from '#server/utils/region-scope'
 
 const nodeRequire = createRequire(import.meta.url)
 const XLSX = nodeRequire('xlsx') as typeof import('xlsx')
@@ -22,7 +32,7 @@ type ImportFile = {
   readonly data: Uint8Array
 }
 
-type ImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED'
+type ImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | 'SKIPPED'
 
 type PreparedImportRow = {
   rowNumber: number
@@ -492,4 +502,213 @@ export async function commitDatasetRecordImport(user: ScopedUser, datasetId: str
     ...prepared.preview,
     ...result
   }
+}
+
+type PreparedPeriodImportRow = {
+  rowNumber: number
+  regionId: string
+  regionName: string
+  data: Record<string, unknown>
+  meaningful: boolean
+  action: ImportAction | null
+  errors: string[]
+}
+
+function getPeriodPreviewRow(row: PreparedPeriodImportRow, periodDate: string) {
+  return {
+    rowNumber: row.rowNumber,
+    regionId: row.regionId,
+    periodValue: periodDate,
+    periodDate,
+    status: 'draft',
+    data: row.data,
+    action: row.action,
+    errors: row.errors
+  }
+}
+
+export async function prepareDatasetPeriodRecordImport(user: ScopedUser, options: {
+  readonly datasetId: string
+  readonly periodDate: string
+  readonly file: ImportFile
+}) {
+  const datasetContext = await assertDatasetPermissionForUser(user, {
+    datasetId: options.datasetId.trim(),
+    action: 'read'
+  })
+  const dataset = datasetContext.dataset
+
+  if (dataset.archivedAt) {
+    throw createError({ statusCode: 409, statusMessage: 'Dataset is archived and read-only.' })
+  }
+
+  let periodDate: string
+
+  try {
+    periodDate = validateCanonicalDatasetPeriodDate(getDatasetPeriodicity(dataset.dataConfig), options.periodDate)
+  } catch (error) {
+    throw createError({ statusCode: 400, statusMessage: getErrorMessage(error) })
+  }
+
+  const periodRangeError = getDatasetRecordPeriodRangeError(dataset.dataConfig, periodDate)
+
+  if (periodRangeError) {
+    throw createError({ statusCode: 400, statusMessage: periodRangeError })
+  }
+  const { headers, rows: sourceRows } = getImportRows(options.file)
+  const fields = getDatasetSchemaFields(dataset.dataSchema)
+  const missingHeaders = ['regionId'].filter(header => !headers.includes(header))
+
+  if (missingHeaders.length > 0) {
+    throw createError({ statusCode: 400, statusMessage: `Header wajib tidak ditemukan: ${missingHeaders.join(', ')}.` })
+  }
+  const fieldHeaders = resolveDatasetPeriodSpreadsheetFieldHeaders(fields, headers)
+
+  const rows: PreparedPeriodImportRow[] = sourceRows.map(({ row, rowNumber }) => {
+    const values = Object.fromEntries(headers.map((header, index) => [header, getCellText(row[index])]))
+    const data = Object.fromEntries(fields.map(field => [field.key, values[fieldHeaders.get(field.key) ?? ''] ?? '']))
+
+    return {
+      rowNumber,
+      regionId: values.regionId ?? '',
+      regionName: values.regionId ?? '',
+      data,
+      meaningful: fields.some(field => getCellText(values[fieldHeaders.get(field.key) ?? '']) !== ''),
+      action: null,
+      errors: row.slice(headers.length).some(cell => getCellText(cell))
+        ? ['Jumlah kolom pada baris tidak sesuai dengan header.']
+        : []
+    }
+  })
+  const requestedRegionIds = Array.from(new Set(rows.map(row => row.regionId).filter(Boolean)))
+  const regions = requestedRegionIds.length === 0
+    ? []
+    : await db.region.findMany({
+        where: {
+          AND: [
+            getSumbawaBaratRegionScopeWhere(dataset.regionLevel),
+            { id: { in: requestedRegionIds } }
+          ]
+        },
+        select: { id: true, name: true }
+      })
+  const regionsById = new Map(regions.map(region => [region.id, region]))
+  const duplicateRegionIds = new Set<string>()
+  const seenRegionIds = new Set<string>()
+
+  for (const row of rows) {
+    if (row.regionId && seenRegionIds.has(row.regionId)) {
+      duplicateRegionIds.add(row.regionId)
+    }
+
+    if (row.regionId) {
+      seenRegionIds.add(row.regionId)
+    }
+  }
+
+  for (const row of rows) {
+    const region = regionsById.get(row.regionId)
+    row.regionName = region?.name ?? row.regionId
+
+    if (!row.regionId) {
+      row.errors.push('regionId wajib diisi.')
+      continue
+    }
+
+    if (duplicateRegionIds.has(row.regionId)) {
+      row.errors.push('regionId duplikat di dalam file.')
+      continue
+    }
+
+    if (!region) {
+      row.errors.push('Wilayah tidak termasuk cakupan Dataset.')
+      continue
+    }
+
+    if (!row.meaningful) {
+      row.action = 'SKIPPED'
+      continue
+    }
+
+    try {
+      const payload = buildDatasetRecordPayloadFromCanonicalPeriodDate(dataset, {
+        periodDate,
+        status: 'draft',
+        data: row.data
+      })
+      row.data = payload.data
+    } catch (error) {
+      row.errors.push(getErrorMessage(error))
+    }
+  }
+
+  const rowsForLookup = rows.filter(row => row.errors.length === 0 && row.meaningful)
+  const existingRecords = rowsForLookup.length === 0
+    ? []
+    : await db.datasetRecord.findMany({
+        where: {
+          datasetId: dataset.id,
+          regionId: { in: rowsForLookup.map(row => row.regionId) },
+          periodDate: new Date(`${periodDate}T00:00:00.000Z`)
+        },
+        select: { regionId: true, data: true }
+      })
+  const existingByRegionId = new Map(existingRecords.map(record => [record.regionId, record]))
+
+  for (const row of rowsForLookup) {
+    const existing = existingByRegionId.get(row.regionId)
+
+    row.action = !existing
+      ? 'CREATE'
+      : comparableValue(existing.data) === comparableValue(row.data)
+        ? 'UNCHANGED'
+        : 'UPDATE'
+  }
+
+  const previewRows = rows.map(row => getPeriodPreviewRow(row, periodDate))
+
+  return {
+    datasetId: dataset.id,
+    periodDate,
+    rows,
+    preview: {
+      totalRows: previewRows.length,
+      validRows: previewRows.filter(row => row.errors.length === 0).length,
+      invalidRows: previewRows.filter(row => row.errors.length > 0).length,
+      createRows: previewRows.filter(row => row.action === 'CREATE').length,
+      updateRows: previewRows.filter(row => row.action === 'UPDATE').length,
+      unchangedRows: previewRows.filter(row => row.action === 'UNCHANGED').length,
+      skippedRows: previewRows.filter(row => row.action === 'SKIPPED').length,
+      rows: previewRows
+    }
+  }
+}
+
+export async function commitDatasetPeriodRecordImport(user: ScopedUser, options: {
+  readonly datasetId: string
+  readonly periodDate: string
+  readonly file: ImportFile
+}) {
+  const prepared = await prepareDatasetPeriodRecordImport(user, options)
+
+  if (prepared.preview.invalidRows > 0) {
+    throw createError({ statusCode: 400, statusMessage: 'Import memiliki baris tidak valid. Perbaiki file lalu lakukan pratinjau kembali.' })
+  }
+
+  const rowsToWrite = prepared.rows
+    .filter(row => row.meaningful && row.errors.length === 0)
+    .map(row => ({ regionId: row.regionId, data: row.data }))
+
+  if (rowsToWrite.length === 0) {
+    return { ...prepared.preview, created: 0, updated: 0, unchanged: 0 }
+  }
+
+  const result = await commitDatasetPeriodRows(user, {
+    datasetId: prepared.datasetId,
+    periodDate: prepared.periodDate,
+    rows: rowsToWrite,
+    source: 'period_import'
+  })
+
+  return { ...prepared.preview, ...result }
 }

@@ -19,6 +19,6 @@ export default defineEventHandler(async (event) => {
 
   return getDatasetPeriodWorkspaceForUser(session.user, {
     datasetId,
-    periodValue: periodDate
+    periodDate
   })
 })

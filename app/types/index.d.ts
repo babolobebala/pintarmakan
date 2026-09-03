@@ -113,6 +113,8 @@ export interface DatasetPeriodWorkspaceField {
 export interface DatasetPeriodWorkspaceRow {
   regionId: string
   regionName: string
+  parentRegionId: string | null
+  parentRegionName: string | null
   regionLevel: string
   record: {
     id: string
@@ -194,7 +196,7 @@ export interface DeletedDatasetRecordListItem extends DatasetRecordHistoryContex
   deletedByName: string | null
 }
 
-export type DatasetRecordImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | null
+export type DatasetRecordImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | 'SKIPPED' | null
 
 export interface DatasetRecordImportPreviewRow {
   rowNumber: number
@@ -214,6 +216,7 @@ export interface DatasetRecordImportPreview {
   createRows: number
   updateRows: number
   unchangedRows: number
+  skippedRows?: number
   rows: DatasetRecordImportPreviewRow[]
 }
 

@@ -1,8 +1,15 @@
 <script setup lang="ts">
+import { h, resolveComponent } from 'vue'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import type { DatasetManagementItem } from '~/types'
 
 import AppPageIntro from '~/components/AppPageIntro.vue'
+import {
+  getDatasetModeColor,
+  getDatasetOwnerColor,
+  getDatasetPeriodicityColor,
+  getDatasetRegionLevelColor
+} from '~/utils/dataset-table'
 import { appPermissions, hasAccessForRole } from '~~/auth/permissions'
 
 definePageMeta({
@@ -26,6 +33,7 @@ const editModalOpen = ref(false)
 const deleting = ref(false)
 const archiving = ref(false)
 const toast = useToast()
+const UButton = resolveComponent('UButton')
 
 const canCreateDatasets = computed(() =>
   hasAccessForRole(currentUser.value?.user.role, appPermissions.datasetsCreate)
@@ -46,10 +54,32 @@ const totalDatasetsLabel = computed(
     `${datasets.value.length} dataset${datasets.value.length === 1 ? '' : 's'}`
 )
 
+type SortableColumn = {
+  getIsSorted: () => false | 'asc' | 'desc'
+  toggleSorting: (desc?: boolean, isMulti?: boolean) => void
+}
+
+function renderSortableHeader(column: SortableColumn, label: string) {
+  const isSorted = column.getIsSorted()
+
+  return h(UButton, {
+    color: 'neutral',
+    variant: 'ghost',
+    label,
+    icon: isSorted
+      ? isSorted === 'asc'
+        ? 'i-lucide-arrow-up-narrow-wide'
+        : 'i-lucide-arrow-down-wide-narrow'
+      : 'i-lucide-arrow-up-down',
+    class: '-mx-2.5',
+    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+  })
+}
+
 const columns: TableColumn<DatasetManagementItem>[] = [
   {
     accessorKey: 'name',
-    header: 'Nama',
+    header: ({ column }) => renderSortableHeader(column, 'Nama'),
     meta: {
       class: {
         th: 'w-full px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
@@ -58,8 +88,18 @@ const columns: TableColumn<DatasetManagementItem>[] = [
     }
   },
   {
+    accessorKey: 'mode',
+    header: ({ column }) => renderSortableHeader(column, 'Mode'),
+    meta: {
+      class: {
+        th: 'w-[112px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
     accessorKey: 'periodicity',
-    header: 'Periodicity',
+    header: ({ column }) => renderSortableHeader(column, 'Periode'),
     meta: {
       class: {
         th: 'w-[140px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
@@ -69,7 +109,7 @@ const columns: TableColumn<DatasetManagementItem>[] = [
   },
   {
     accessorKey: 'regionLevel',
-    header: 'Region',
+    header: ({ column }) => renderSortableHeader(column, 'Wilayah'),
     meta: {
       class: {
         th: 'w-[160px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
@@ -79,7 +119,7 @@ const columns: TableColumn<DatasetManagementItem>[] = [
   },
   {
     accessorKey: 'ownerBidangName',
-    header: 'Owner',
+    header: ({ column }) => renderSortableHeader(column, 'Owner'),
     meta: {
       class: {
         th: 'w-[220px] px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
@@ -90,6 +130,7 @@ const columns: TableColumn<DatasetManagementItem>[] = [
   {
     id: 'actions',
     header: 'Actions',
+    enableSorting: false,
     meta: {
       class: {
         th: 'w-[72px] px-4 py-3 text-right text-xs font-medium uppercase tracking-[0.16em] text-muted',
@@ -287,10 +328,11 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
         </div>
 
         <div v-if="isPending && !datasets.length" class="px-4 py-3">
-          <div class="min-w-[680px] divide-y divide-default">
+          <div class="min-w-[800px] divide-y divide-default">
             <div
-              class="grid grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_72px] gap-4 px-4 py-3"
+              class="grid grid-cols-[minmax(0,1fr)_112px_140px_160px_minmax(0,220px)_72px] gap-4 px-4 py-3"
             >
+              <div class="h-3 w-20 rounded bg-elevated" />
               <div class="h-3 w-20 rounded bg-elevated" />
               <div class="h-3 w-24 rounded bg-elevated" />
               <div class="h-3 w-28 rounded bg-elevated/80" />
@@ -300,12 +342,13 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             <div
               v-for="row in 5"
               :key="row"
-              class="grid min-w-[680px] grid-cols-[minmax(0,1fr)_140px_160px_minmax(0,220px)_72px] gap-4 px-4 py-4"
+              class="grid min-w-[800px] grid-cols-[minmax(0,1fr)_112px_140px_160px_minmax(0,220px)_72px] gap-4 px-4 py-4"
             >
               <div class="space-y-2">
                 <div class="h-3 w-48 rounded bg-elevated" />
                 <div class="h-3 w-32 rounded bg-elevated/80" />
               </div>
+              <div class="h-6 w-20 rounded-full bg-elevated/80" />
               <div class="h-6 w-24 rounded-full bg-elevated/80" />
               <div class="h-6 w-20 rounded-full bg-elevated/80" />
               <div class="h-3 w-36 self-center rounded bg-elevated" />
@@ -337,9 +380,10 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
           <UTable
             :data="filteredDatasets"
             :columns="columns"
+            :initial-state="{ sorting: [{ id: 'name', desc: false }] }"
             :loading="isPending && datasets.length > 0"
             :ui="{
-              root: 'min-w-[680px]',
+              root: 'min-w-[800px]',
               thead: 'bg-elevated/35',
               tr: 'border-b border-default last:border-b-0',
               td: 'border-b-0',
@@ -366,15 +410,32 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             </template>
 
             <template #ownerBidangName-cell="{ row }">
-              <p class="truncate text-sm text-highlighted">
+              <UBadge
+                :color="getDatasetOwnerColor(row.original.ownerBidangName)"
+                variant="subtle"
+                size="sm"
+                class="max-w-[220px] truncate"
+              >
                 {{ row.original.ownerBidangName }}
-              </p>
+              </UBadge>
+            </template>
+
+            <template #mode-cell="{ row }">
+              <UBadge
+                v-if="row.original.mode"
+                :color="getDatasetModeColor(row.original.mode)"
+                variant="subtle"
+                size="sm"
+              >
+                {{ row.original.mode }}
+              </UBadge>
+              <span v-else class="text-sm text-muted">—</span>
             </template>
 
             <template #periodicity-cell="{ row }">
               <UBadge
                 v-if="row.original.periodicity"
-                color="neutral"
+                :color="getDatasetPeriodicityColor(row.original.periodicity)"
                 variant="subtle"
                 size="sm"
               >
@@ -386,7 +447,7 @@ function getRowActions(dataset: DatasetManagementItem): DropdownMenuItem[][] {
             <template #regionLevel-cell="{ row }">
               <UBadge
                 v-if="row.original.regionLevel"
-                color="neutral"
+                :color="getDatasetRegionLevelColor(row.original.regionLevel)"
                 variant="outline"
                 size="sm"
               >

@@ -16,13 +16,16 @@ import {
   type DatasetMode
 } from '~~/shared/datasets'
 
-const props = withDefaults(defineProps<{
-  dataset?: DatasetManagementItem | null
-  showTrigger?: boolean
-}>(), {
-  dataset: null,
-  showTrigger: true
-})
+const props = withDefaults(
+  defineProps<{
+    dataset?: DatasetManagementItem | null
+    showTrigger?: boolean
+  }>(),
+  {
+    dataset: null,
+    showTrigger: true
+  }
+)
 
 const emit = defineEmits<{
   created: []
@@ -49,16 +52,19 @@ const bidangItems = computed(() => {
 const isLoadingBidangs = computed(() => bidangsStatus.value === 'pending')
 
 const schema = z.object({
-  id: z.string()
+  id: z
+    .string()
     .trim()
     .min(1, 'Dataset ID is required.')
     .max(191, 'Dataset ID is too long.')
     .regex(datasetIdPattern, datasetIdValidationMessage),
-  ownerBidangId: z.string()
+  ownerBidangId: z
+    .string()
     .trim()
     .min(1, 'Owner Bidang is required.')
     .max(191, 'Owner Bidang is too long.'),
-  name: z.string()
+  name: z
+    .string()
     .trim()
     .min(1, 'Dataset name is required.')
     .max(191, 'Dataset name is too long.'),
@@ -72,7 +78,10 @@ const schema = z.object({
     } catch (error) {
       ctx.addIssue({
         code: 'custom',
-        message: error instanceof Error ? error.message : 'Data schema must be valid JSON.'
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Data schema must be valid JSON.'
       })
     }
   }),
@@ -82,7 +91,10 @@ const schema = z.object({
     } catch (error) {
       ctx.addIssue({
         code: 'custom',
-        message: error instanceof Error ? error.message : 'Data config must be valid JSON.'
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Data config must be valid JSON.'
       })
     }
   })
@@ -95,7 +107,10 @@ const modeItems: { value: DatasetMode, label: string }[] = [
   { value: 'TABULAR', label: 'Tabular' }
 ]
 
-function normalizeDataConfigMode(dataConfig: Record<string, unknown>, mode: DatasetMode) {
+function normalizeDataConfigMode(
+  dataConfig: Record<string, unknown>,
+  mode: DatasetMode
+) {
   const normalized: Record<string, unknown> = { ...dataConfig, mode }
 
   if (mode === 'TABULAR') {
@@ -118,17 +133,15 @@ const state = reactive<Schema>({
 })
 
 const loading = ref(false)
-const modalTitle = computed(() => isEdit.value ? 'Ubah dataset' : 'Tambah dataset')
-const modalDescription = computed(() => {
-  return isEdit.value
-    ? 'Perbarui metadata dan konfigurasi JSON untuk dataset yang sudah ada.'
-    : 'Buat definisi dataset baru dengan ID teknis yang stabil.'
-})
-const submitLabel = computed(() => isEdit.value ? 'Simpan perubahan' : 'Tambah dataset')
-const isModeLocked = computed(() => isEdit.value && props.dataset?.canChangeMode === false)
-const modeDescription = computed(() => isModeLocked.value
-  ? 'Mode tidak dapat diubah karena Dataset sudah memiliki data atau riwayat data.'
-  : 'Menentukan kontrak penyimpanan record Dataset.'
+const modalTitle = computed(() =>
+  isEdit.value ? 'Ubah dataset' : 'Tambah dataset'
+)
+
+const submitLabel = computed(() =>
+  isEdit.value ? 'Simpan perubahan' : 'Tambah dataset'
+)
+const isModeLocked = computed(
+  () => isEdit.value && props.dataset?.canChangeMode === false
 )
 
 function syncState() {
@@ -139,7 +152,8 @@ function syncState() {
     state.description = props.dataset.description ?? ''
     state.mode = getDatasetMode(props.dataset.dataConfig) ?? 'REGIONAL'
     state.source = getDatasetSource(props.dataset.dataConfig) ?? ''
-    state.interpretation = getDatasetInterpretation(props.dataset.dataConfig) ?? ''
+    state.interpretation
+      = getDatasetInterpretation(props.dataset.dataConfig) ?? ''
     state.dataSchema = formatDatasetJsonValue(props.dataset.dataSchema)
     state.dataConfig = formatDatasetJsonValue(
       normalizeDataConfigMode(props.dataset.dataConfig, state.mode)
@@ -194,13 +208,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       event.data.mode
     )
     const dataConfig = formatDatasetJsonValue(
-      mergeDatasetConfigMetadata(
-        parsedDataConfig,
-        {
-          source: event.data.source,
-          interpretation: event.data.interpretation
-        }
-      )
+      mergeDatasetConfigMetadata(parsedDataConfig, {
+        source: event.data.source,
+        interpretation: event.data.interpretation
+      })
     )
     await $fetch(
       isEdit.value && props.dataset
@@ -246,8 +257,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     emit('created')
   } catch (error) {
     toast.add({
-      title: isEdit.value ? 'Gagal memperbarui dataset' : 'Gagal membuat dataset',
-      description: error instanceof Error ? error.message : 'Silakan coba lagi.',
+      title: isEdit.value
+        ? 'Gagal memperbarui dataset'
+        : 'Gagal membuat dataset',
+      description:
+        error instanceof Error ? error.message : 'Silakan coba lagi.',
       color: 'error'
     })
   } finally {
@@ -260,7 +274,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   <UModal
     v-model:open="open"
     :title="modalTitle"
-    :description="modalDescription"
     :ui="{ content: 'sm:max-w-4xl' }"
   >
     <UButton
@@ -287,13 +300,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         />
 
         <div class="grid gap-4 lg:grid-cols-2">
-          <UFormField
-            label="Dataset ID"
-            name="id"
-            :description="isEdit
-              ? 'Dataset ID bersifat permanen setelah dibuat.'
-              : 'Gunakan format teknis seperti FOOD_STOCK_DAILY atau IKP_YEARLY.'"
-          >
+          <UFormField label="Dataset ID" name="id">
             <UInput
               v-model="state.id"
               class="w-full"
@@ -302,11 +309,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             />
           </UFormField>
 
-          <UFormField
-            label="Owner Bidang"
-            name="ownerBidangId"
-            description="Pilih bidang pemilik struktural dataset ini."
-          >
+          <UFormField label="Owner Bidang" name="ownerBidangId">
             <USelectMenu
               v-model="state.ownerBidangId"
               :items="bidangItems"
@@ -319,11 +322,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             />
           </UFormField>
 
-          <UFormField
-            label="Mode Dataset"
-            name="mode"
-            :description="modeDescription"
-          >
+          <UFormField label="Mode Dataset" name="mode">
             <USelectMenu
               v-model="state.mode"
               :items="modeItems"
@@ -331,6 +330,14 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               label-key="label"
               class="w-full"
               :disabled="isModeLocked"
+            />
+          </UFormField>
+
+          <UFormField label="Sumber Data" name="source">
+            <UInput
+              v-model="state.source"
+              class="w-full"
+              placeholder="Contoh: Dinas Ketahanan Pangan Kabupaten Sumbawa Barat"
             />
           </UFormField>
         </div>
@@ -341,49 +348,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </UFormField>
         </div>
 
-        <UFormField
-          label="Deskripsi"
-          name="description"
-          description="Opsional. Ringkasan singkat untuk membantu admin lain memahami tujuan dataset."
-        >
-          <UTextarea
-            v-model="state.description"
-            class="w-full"
-            :rows="3"
-          />
+        <UFormField label="Deskripsi" name="description">
+          <UTextarea v-model="state.description" class="w-full" :rows="3" />
         </UFormField>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-          <UFormField
-            label="Sumber Data"
-            name="source"
-          >
-            <UInput
-              v-model="state.source"
-              class="w-full"
-              placeholder="Contoh: Dinas Ketahanan Pangan Kabupaten Sumbawa Barat"
-            />
-          </UFormField>
-
-          <UFormField
-            label="Interpretasi Data"
-            name="interpretation"
-          >
-            <UTextarea
-              v-model="state.interpretation"
-              class="w-full"
-              placeholder="Catatan singkat mengenai arti atau cara membaca data ini."
-              :rows="3"
-            />
-          </UFormField>
-        </div>
-
         <div class="grid gap-4 xl:grid-cols-2">
-          <UFormField
-            label="Data schema"
-            name="dataSchema"
-            description="Definisikan field data yang akan diisi oleh record dataset."
-          >
+          <UFormField label="Data schema" name="dataSchema">
             <UTextarea
               v-model="state.dataSchema"
               class="w-full font-mono text-xs"
@@ -392,13 +362,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             />
           </UFormField>
 
-          <UFormField
-            label="Data config"
-            name="dataConfig"
-            :description="state.mode === 'REGIONAL'
-              ? 'REGIONAL wajib memuat periodicity, regionLevel, dan startPeriod.'
-              : 'TABULAR wajib memuat periodicity dan startPeriod; regionLevel dihapus saat disimpan.'"
-          >
+          <UFormField label="Data config" name="dataConfig">
             <UTextarea
               v-model="state.dataConfig"
               class="w-full font-mono text-xs"
@@ -415,11 +379,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             variant="subtle"
             @click="open = false"
           />
-          <UButton
-            :label="submitLabel"
-            type="submit"
-            :loading="loading"
-          />
+          <UButton :label="submitLabel" type="submit" :loading="loading" />
         </div>
       </UForm>
     </template>

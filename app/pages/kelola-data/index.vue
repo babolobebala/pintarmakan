@@ -1,7 +1,18 @@
 <script setup lang="ts">
-import type { DataManagementOptionsResponse } from '~/types'
+import { h, resolveComponent } from 'vue'
+import type { TableColumn } from '@nuxt/ui'
+import type {
+  DataManagementOptionsResponse,
+  DatasetManagementItem
+} from '~/types'
 
 import AppPageIntro from '~/components/AppPageIntro.vue'
+import {
+  getDatasetModeColor,
+  getDatasetOwnerColor,
+  getDatasetPeriodicityColor,
+  getDatasetRegionLevelColor
+} from '~/utils/dataset-table'
 import { appPermissions } from '~~/auth/permissions'
 
 definePageMeta({ permission: appPermissions.businessDataRead })
@@ -37,6 +48,7 @@ const datasets = computed(() => {
     ? allDatasets.value
     : (optionsResponse.value.datasetsByBidang[selectedBidangId.value] ?? [])
 })
+const UButton = resolveComponent('UButton')
 const datasetCountLabel = computed(
   () =>
     `${datasets.value.length} dataset${datasets.value.length === 1 ? '' : 's'}`
@@ -54,6 +66,92 @@ watch(
   },
   { immediate: true }
 )
+
+type SortableColumn = {
+  getIsSorted: () => false | 'asc' | 'desc'
+  toggleSorting: (desc?: boolean, isMulti?: boolean) => void
+}
+
+function renderSortableHeader(column: SortableColumn, label: string) {
+  const isSorted = column.getIsSorted()
+
+  return h(UButton, {
+    color: 'neutral',
+    variant: 'ghost',
+    label,
+    icon: isSorted
+      ? isSorted === 'asc'
+        ? 'i-lucide-arrow-up-narrow-wide'
+        : 'i-lucide-arrow-down-wide-narrow'
+      : 'i-lucide-arrow-up-down',
+    class: '-mx-2.5',
+    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+  })
+}
+
+const columns: TableColumn<DatasetManagementItem>[] = [
+  {
+    accessorKey: 'name',
+    header: ({ column }) => renderSortableHeader(column, 'Nama'),
+    meta: {
+      class: {
+        th: 'w-full px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'min-w-0 px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'mode',
+    header: ({ column }) => renderSortableHeader(column, 'Mode'),
+    meta: {
+      class: {
+        th: 'w-[112px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'periodicity',
+    header: ({ column }) => renderSortableHeader(column, 'Periode'),
+    meta: {
+      class: {
+        th: 'w-[140px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'regionLevel',
+    header: ({ column }) => renderSortableHeader(column, 'Wilayah'),
+    meta: {
+      class: {
+        th: 'w-[160px] whitespace-nowrap px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'whitespace-nowrap px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    accessorKey: 'ownerBidangName',
+    header: ({ column }) => renderSortableHeader(column, 'Owner'),
+    meta: {
+      class: {
+        th: 'w-[220px] px-4 py-3 text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'max-w-[220px] px-4 py-3 align-middle'
+      }
+    }
+  },
+  {
+    id: 'actions',
+    header: 'Aksi',
+    enableSorting: false,
+    meta: {
+      class: {
+        th: 'w-[96px] px-4 py-3 text-right text-xs font-medium uppercase tracking-[0.16em] text-muted',
+        td: 'w-[96px] px-4 py-3 align-middle'
+      }
+    }
+  }
+]
 
 function reloadOptions() {
   void refreshOptions()
@@ -159,79 +257,95 @@ function formatRegionLevelLabel(value: string | null) {
         />
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[680px] divide-y divide-default text-sm">
-          <thead class="bg-elevated/35">
-            <tr>
-              <th
-                class="w-full px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
-              >
-                Nama
-              </th>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
-              >
-                Periodisitas
-              </th>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
-              >
-                Wilayah
-              </th>
-              <th
-                class="w-[220px] px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
-              >
-                Owner
-              </th>
-              <th
-                class="px-4 py-3 text-right text-xs font-medium tracking-[0.16em] text-muted uppercase"
-              >
-                Aksi
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-default">
-            <tr v-for="dataset in datasets" :key="dataset.id">
-              <td class="px-4 py-3">
-                <div class="flex min-w-0 items-center gap-2">
-                  <p class="truncate font-medium text-highlighted">
-                    {{ dataset.name }}
-                  </p>
-                  <UBadge
-                    v-if="dataset.archivedAt"
-                    color="warning"
-                    variant="subtle"
-                    size="sm"
-                  >
-                    Diarsipkan
-                  </UBadge>
-                </div>
-              </td>
-              <td class="px-4 py-3">
-                <UBadge color="neutral" variant="subtle" size="sm">
-                  {{ formatPeriodicityLabel(dataset.periodicity) }}
-                </UBadge>
-              </td>
-              <td class="px-4 py-3">
-                <UBadge color="neutral" variant="outline" size="sm">
-                  {{ formatRegionLevelLabel(dataset.regionLevel) }}
-                </UBadge>
-              </td>
-              <td class="max-w-[220px] px-4 py-3">
-                <p class="truncate text-highlighted">
-                  {{ dataset.ownerBidangName }}
+        <UTable
+          :data="datasets"
+          :columns="columns"
+          :initial-state="{ sorting: [{ id: 'name', desc: false }] }"
+          :ui="{
+            root: 'min-w-[800px]',
+            thead: 'bg-elevated/35',
+            tr: 'border-b border-default last:border-b-0',
+            td: 'border-b-0',
+            th: 'border-b border-default'
+          }"
+          :get-row-id="(row) => row.id"
+        >
+          <template #name-cell="{ row }">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="truncate text-sm font-medium text-highlighted">
+                  {{ row.original.name }}
                 </p>
-              </td>
-              <td class="px-4 py-3 text-right">
-                <NuxtLink
-                  :to="`/kelola-data/${dataset.id}`"
-                  target="_blank"
-                  rel="noopener"
-                  class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1.5 text-sm font-medium text-highlighted hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2"
-                ><UIcon name="i-lucide-arrow-up-right" class="size-4" /><span>Buka</span></NuxtLink>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <UBadge
+                  v-if="row.original.archivedAt"
+                  color="warning"
+                  variant="subtle"
+                  size="sm"
+                >
+                  Diarsipkan
+                </UBadge>
+              </div>
+            </div>
+          </template>
+
+          <template #mode-cell="{ row }">
+            <UBadge
+              v-if="row.original.mode"
+              :color="getDatasetModeColor(row.original.mode)"
+              variant="subtle"
+              size="sm"
+            >
+              {{ row.original.mode }}
+            </UBadge>
+            <span v-else class="text-sm text-muted">—</span>
+          </template>
+
+          <template #periodicity-cell="{ row }">
+            <UBadge
+              v-if="row.original.periodicity"
+              :color="getDatasetPeriodicityColor(row.original.periodicity)"
+              variant="subtle"
+              size="sm"
+            >
+              {{ formatPeriodicityLabel(row.original.periodicity) }}
+            </UBadge>
+            <span v-else class="text-sm text-muted">—</span>
+          </template>
+
+          <template #regionLevel-cell="{ row }">
+            <UBadge
+              v-if="row.original.regionLevel"
+              :color="getDatasetRegionLevelColor(row.original.regionLevel)"
+              variant="outline"
+              size="sm"
+            >
+              {{ formatRegionLevelLabel(row.original.regionLevel) }}
+            </UBadge>
+            <span v-else class="text-sm text-muted">—</span>
+          </template>
+
+          <template #ownerBidangName-cell="{ row }">
+            <UBadge
+              :color="getDatasetOwnerColor(row.original.ownerBidangName)"
+              variant="subtle"
+              size="sm"
+              class="max-w-[220px] truncate"
+            >
+              {{ row.original.ownerBidangName }}
+            </UBadge>
+          </template>
+
+          <template #actions-cell="{ row }">
+            <div class="flex justify-end">
+              <NuxtLink
+                :to="`/kelola-data/${row.original.id}`"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1.5 text-sm font-medium text-highlighted hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2"
+              ><UIcon name="i-lucide-arrow-up-right" class="size-4" /><span>Buka</span></NuxtLink>
+            </div>
+          </template>
+        </UTable>
       </div>
     </section>
   </div>

@@ -7,6 +7,7 @@ import type {
 
 import AppPageIntro from '~/components/AppPageIntro.vue'
 import PeriodMatrixModal from '~/components/data-records/PeriodMatrixModal.vue'
+import TabularPeriodModal from '~/components/data-records/TabularPeriodModal.vue'
 import { appPermissions } from '~~/auth/permissions'
 import { formatDatasetPeriod } from '~~/shared/datasets'
 
@@ -36,9 +37,13 @@ const dataset = computed(
 )
 const requestFetch = useRequestFetch()
 
-async function loadPeriodOverview() {
+function createEmptyPeriodOverview(): DatasetPeriodOverviewResponse {
+  return { datasetId: '', mode: 'REGIONAL', expectedRegionCount: 0, periods: [] }
+}
+
+async function loadPeriodOverview(): Promise<DatasetPeriodOverviewResponse> {
   if (!dataset.value) {
-    return { datasetId: '', expectedRegionCount: 0, periods: [] }
+    return createEmptyPeriodOverview()
   }
 
   return requestFetch<DatasetPeriodOverviewResponse>(
@@ -59,7 +64,7 @@ const {
   'dataset-period-overview-detail',
   loadPeriodOverview,
   {
-    default: () => ({ datasetId: '', expectedRegionCount: 0, periods: [] }),
+    default: createEmptyPeriodOverview,
     watch: [dataset]
   }
 )
@@ -69,6 +74,7 @@ const selectedMonth = ref('')
 const periodSearch = ref('')
 const selectedPeriod = ref<DatasetPeriodOverviewItem | null>(null)
 const periodModalOpen = ref(false)
+const tabularPeriodModalOpen = ref(false)
 const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
   dateStyle: 'medium',
   timeStyle: 'short'
@@ -79,6 +85,8 @@ const yearFormatter = new Intl.DateTimeFormat('id-ID', {
 })
 
 const periodicity = computed(() => dataset.value?.periodicity ?? null)
+const isRegionalDataset = computed(() => dataset.value?.mode === 'REGIONAL')
+const isTabularDataset = computed(() => dataset.value?.mode === 'TABULAR')
 const years = computed(() => {
   return Array.from(
     new Set(
@@ -149,10 +157,21 @@ const periodSummary = computed(() => {
     total: filteredPeriods.value.length,
     complete: 0,
     partial: 0,
-    empty: 0
+    empty: 0,
+    withData: 0
   }
 
   for (const period of filteredPeriods.value) {
+    if (isTabularDataset.value) {
+      if (period.recordCount === 0) {
+        counts.empty += 1
+      } else {
+        counts.withData += 1
+      }
+
+      continue
+    }
+
     switch (getPeriodCompleteness(period).label) {
       case 'Lengkap':
         counts.complete += 1
@@ -248,8 +267,21 @@ function formatDateTime(value: string | null) {
 }
 
 function openPeriodModal(period: DatasetPeriodOverviewItem) {
+  if (!isRegionalDataset.value) {
+    return
+  }
+
   selectedPeriod.value = period
   periodModalOpen.value = true
+}
+
+function openTabularPeriodModal(period: DatasetPeriodOverviewItem) {
+  if (!isTabularDataset.value) {
+    return
+  }
+
+  selectedPeriod.value = period
+  tabularPeriodModalOpen.value = true
 }
 
 async function retryPeriodOverview() {
@@ -322,8 +354,10 @@ function refreshPeriodOverviewAfterBulkSave() {
             </div>
             <p class="mt-1 truncate text-xs text-muted">
               {{ dataset.ownerBidangName }} ·
-              {{ formatPeriodicityLabel(dataset.periodicity) }} ·
-              {{ formatRegionLevelLabel(dataset.regionLevel) }}
+              {{ formatPeriodicityLabel(dataset.periodicity) }}
+              <template v-if="isRegionalDataset">
+                · {{ formatRegionLevelLabel(dataset.regionLevel) }}
+              </template>
             </p>
             <div
               v-if="dataset.source || dataset.interpretation"
@@ -391,10 +425,17 @@ function refreshPeriodOverviewAfterBulkSave() {
             />
           </div>
           <p class="text-xs text-muted">
-            {{ periodSummary.total }} periode ·
-            {{ periodSummary.complete }} lengkap ·
-            {{ periodSummary.partial }} sebagian ·
-            {{ periodSummary.empty }} belum ada
+            <template v-if="isRegionalDataset">
+              {{ periodSummary.total }} periode ·
+              {{ periodSummary.complete }} lengkap ·
+              {{ periodSummary.partial }} sebagian ·
+              {{ periodSummary.empty }} belum ada
+            </template>
+            <template v-else>
+              {{ periodSummary.total }} periode ·
+              {{ periodSummary.withData }} berisi ·
+              {{ periodSummary.empty }} belum ada
+            </template>
           </p>
         </div>
 
@@ -418,7 +459,7 @@ function refreshPeriodOverviewAfterBulkSave() {
           />
         </div>
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[780px] divide-y divide-default text-sm">
+          <table class="w-full min-w-[680px] divide-y divide-default text-sm">
             <thead class="bg-elevated/35">
               <tr>
                 <th
@@ -426,20 +467,28 @@ function refreshPeriodOverviewAfterBulkSave() {
                 >
                   Periode
                 </th>
+                <template v-if="isRegionalDataset">
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+                  >
+                    Cakupan
+                  </th>
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+                  >
+                    Terisi
+                  </th>
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
+                  >
+                    Status
+                  </th>
+                </template>
                 <th
+                  v-else
                   class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
                 >
-                  Cakupan
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
-                >
-                  Terisi
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
-                >
-                  Status
+                  Jumlah Data
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium tracking-[0.16em] text-muted uppercase"
@@ -455,7 +504,7 @@ function refreshPeriodOverviewAfterBulkSave() {
             </thead>
             <tbody class="divide-y divide-default">
               <tr v-if="periodOverviewStatus === 'pending'">
-                <td colspan="6" class="px-4 py-10">
+                <td :colspan="isRegionalDataset ? 6 : 4" class="px-4 py-10">
                   <div class="space-y-3">
                     <div class="h-3 w-1/3 rounded bg-elevated" />
                     <div class="h-3 w-2/3 rounded bg-elevated/80" />
@@ -463,7 +512,7 @@ function refreshPeriodOverviewAfterBulkSave() {
                 </td>
               </tr>
               <tr v-else-if="filteredPeriods.length === 0">
-                <td colspan="6" class="px-4 py-10">
+                <td :colspan="isRegionalDataset ? 6 : 4" class="px-4 py-10">
                   <UEmpty
                     icon="i-lucide-calendar-search"
                     :title="
@@ -480,27 +529,33 @@ function refreshPeriodOverviewAfterBulkSave() {
                 <td class="px-4 py-3 font-medium text-highlighted">
                   {{ formatPeriod(period.periodDate) }}
                 </td>
-                <td class="px-4 py-3 text-muted">
-                  {{ formatRegionLevelLabel(dataset.regionLevel) }}
-                </td>
-                <td class="px-4 py-3 text-muted">
-                  {{ period.recordCount }} /
-                  {{ periodOverview.expectedRegionCount }}
-                </td>
-                <td class="px-4 py-3">
-                  <UBadge
-                    :color="getPeriodCompleteness(period).color"
-                    variant="subtle"
-                    size="sm"
-                  >
-                    {{ getPeriodCompleteness(period).label }}
-                  </UBadge>
+                <template v-if="isRegionalDataset">
+                  <td class="px-4 py-3 text-muted">
+                    {{ formatRegionLevelLabel(dataset.regionLevel) }}
+                  </td>
+                  <td class="px-4 py-3 text-muted">
+                    {{ period.recordCount }} /
+                    {{ periodOverview.expectedRegionCount }}
+                  </td>
+                  <td class="px-4 py-3">
+                    <UBadge
+                      :color="getPeriodCompleteness(period).color"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ getPeriodCompleteness(period).label }}
+                    </UBadge>
+                  </td>
+                </template>
+                <td v-else class="px-4 py-3 text-muted">
+                  {{ period.recordCount }} baris
                 </td>
                 <td class="px-4 py-3 text-muted">
                   {{ formatDateTime(period.latestUpdatedAt) }}
                 </td>
                 <td class="px-4 py-3 text-right">
                   <UButton
+                    v-if="isRegionalDataset"
                     label="Kelola"
                     class="cursor-pointer"
                     icon="i-lucide-arrow-up-right"
@@ -509,6 +564,17 @@ function refreshPeriodOverviewAfterBulkSave() {
                     size="sm"
                     @click="openPeriodModal(period)"
                   />
+                  <div v-else class="inline-flex items-center gap-2">
+                    <UButton
+                      label="Kelola"
+                      class="cursor-pointer"
+                      icon="i-lucide-arrow-up-right"
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                      @click="openTabularPeriodModal(period)"
+                    />
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -518,7 +584,16 @@ function refreshPeriodOverviewAfterBulkSave() {
     </template>
 
     <PeriodMatrixModal
+      v-if="isRegionalDataset"
       v-model:open="periodModalOpen"
+      :dataset-id="dataset?.id ?? ''"
+      :period-date="selectedPeriod?.periodDate ?? null"
+      :period-label="selectedPeriod ? formatPeriod(selectedPeriod.periodDate) : ''"
+      @saved="refreshPeriodOverviewAfterBulkSave"
+    />
+    <TabularPeriodModal
+      v-if="isTabularDataset"
+      v-model:open="tabularPeriodModalOpen"
       :dataset-id="dataset?.id ?? ''"
       :period-date="selectedPeriod?.periodDate ?? null"
       :period-label="selectedPeriod ? formatPeriod(selectedPeriod.periodDate) : ''"

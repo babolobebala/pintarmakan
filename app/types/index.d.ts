@@ -95,7 +95,8 @@ export interface DatasetPeriodOverviewItem {
 
 export interface DatasetPeriodOverviewResponse {
   datasetId: string
-  expectedRegionCount: number
+  mode: 'REGIONAL' | 'TABULAR'
+  expectedRegionCount: number | null
   periods: DatasetPeriodOverviewItem[]
 }
 
@@ -145,6 +146,30 @@ export interface DatasetPeriodWorkspaceResponse {
   expectedRegionCount: number
   recordCount: number
   rows: DatasetPeriodWorkspaceRow[]
+}
+
+export interface DatasetTablePeriodWorkspaceRow {
+  id: string
+  data: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DatasetTablePeriodWorkspaceResponse {
+  dataset: {
+    id: string
+    name: string
+    periodicity: string | null
+    archivedAt: string | null
+    fields: DatasetPeriodWorkspaceField[]
+    permissions: {
+      canCreate: boolean
+      canUpdate: boolean
+      canDelete: boolean
+    }
+  }
+  periodDate: string
+  rows: DatasetTablePeriodWorkspaceRow[]
 }
 
 export interface DatasetRecordBulkSaveResult {

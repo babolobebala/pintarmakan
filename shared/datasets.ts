@@ -550,14 +550,14 @@ export function validateDatasetConfigDefinition(value: unknown): DatasetConfigDe
 
   return mode === 'REGIONAL'
     ? {
-      ...commonConfig,
-      mode: 'REGIONAL',
-      regionLevel: value.regionLevel as DatasetRegionLevel
-    }
+        ...commonConfig,
+        mode: 'REGIONAL',
+        regionLevel: value.regionLevel as DatasetRegionLevel
+      }
     : {
-      ...commonConfig,
-      mode: 'TABULAR'
-    }
+        ...commonConfig,
+        mode: 'TABULAR'
+      }
 }
 
 function normalizeOptionalDatasetConfigText(value: unknown, property: string) {
@@ -984,7 +984,7 @@ export function getDatasetRecordPeriodRangeError(
   const bounds = getDatasetRecordPeriodBounds(dataConfig, date)
 
   if (!bounds) {
-    return 'Periodisitas Dataset tidak didukung.'
+    return 'Periode Dataset tidak didukung.'
   }
 
   if (bounds.startPeriod && periodDate < bounds.startPeriod) {

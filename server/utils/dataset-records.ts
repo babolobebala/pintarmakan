@@ -313,14 +313,67 @@ export async function assertDatasetPermissionForUser(user: ScopedUser, options: 
 }
 
 export async function listDatasetPeriodOverviewForUser(user: ScopedUser, datasetId: string) {
-  const datasetContext = await assertDatasetPermissionForUser(user, {
+  const datasetContext = await getDatasetPermissionContextForUser(user, {
     datasetId,
     action: 'read'
   })
   const { dataset } = datasetContext
+  const mode = getDatasetMode(dataset.dataConfig)
   const periodDates = getDatasetPeriodRange(dataset.dataConfig)
-  const regionLevel = getDatasetRegionLevel(dataset.dataConfig)
 
+  if (mode === 'TABULAR') {
+    const periodAggregates = await db.datasetTableRecord.groupBy({
+      by: ['periodDate'],
+      where: {
+        datasetId,
+        periodDate: periodDates.length > 0
+          ? {
+              gte: new Date(`${periodDates[0]}T00:00:00.000Z`),
+              lte: new Date(`${periodDates[periodDates.length - 1]}T00:00:00.000Z`)
+            }
+          : undefined
+      },
+      _count: {
+        _all: true
+      },
+      _max: {
+        updatedAt: true
+      }
+    })
+    const aggregatesByPeriod = new Map(
+      periodAggregates.map(period => [
+        period.periodDate.toISOString().slice(0, 10),
+        {
+          recordCount: period._count._all,
+          latestUpdatedAt: period._max.updatedAt?.toISOString() ?? null
+        }
+      ])
+    )
+
+    return {
+      datasetId,
+      mode,
+      expectedRegionCount: null,
+      periods: periodDates.map(periodDate => {
+        const aggregate = aggregatesByPeriod.get(periodDate)
+
+        return {
+          periodDate,
+          recordCount: aggregate?.recordCount ?? 0,
+          latestUpdatedAt: aggregate?.latestUpdatedAt ?? null
+        }
+      })
+    }
+  }
+
+  if (mode !== 'REGIONAL') {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Dataset mode is not supported for period overview.'
+    })
+  }
+
+  const regionLevel = getDatasetRegionLevel(dataset.dataConfig)
   const [periodAggregates, expectedRegionCount] = await Promise.all([
     db.datasetRecord.groupBy({
       by: ['periodDate'],
@@ -358,6 +411,7 @@ export async function listDatasetPeriodOverviewForUser(user: ScopedUser, dataset
 
   return {
     datasetId,
+    mode,
     expectedRegionCount,
     periods: periodDates.map(periodDate => {
       const aggregate = aggregatesByPeriod.get(periodDate)
@@ -508,7 +562,7 @@ export async function assertRegionAllowedForDataset(dataset: {
   return region
 }
 
-function assertDatasetRecordPeriodInCoverage(dataConfig: unknown, periodDate: string) {
+export function assertDatasetPeriodInCoverage(dataConfig: unknown, periodDate: string) {
   const periodRangeError = getDatasetRecordPeriodRangeError(dataConfig, periodDate)
 
   if (periodRangeError) {
@@ -560,7 +614,7 @@ export function buildDatasetRecordPayload(dataset: {
 }) {
   const periodDate = normalizeDatasetPeriodInput(getDatasetPeriodicity(dataset.dataConfig), input.periodValue)
 
-  assertDatasetRecordPeriodInCoverage(dataset.dataConfig, periodDate)
+  assertDatasetPeriodInCoverage(dataset.dataConfig, periodDate)
 
   return createDatasetRecordPayload(dataset, periodDate, input)
 }
@@ -575,12 +629,12 @@ export function buildDatasetRecordPayloadFromCanonicalPeriodDate(dataset: {
 }) {
   const periodDate = validateCanonicalDatasetPeriodDate(getDatasetPeriodicity(dataset.dataConfig), input.periodDate)
 
-  assertDatasetRecordPeriodInCoverage(dataset.dataConfig, periodDate)
+  assertDatasetPeriodInCoverage(dataset.dataConfig, periodDate)
 
   return createDatasetRecordPayload(dataset, periodDate, input)
 }
 
-function comparableDatasetValue(value: unknown): string {
+export function comparableDatasetValue(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(comparableDatasetValue).join(',')}]`
   }
@@ -629,7 +683,7 @@ export async function commitDatasetPeriodRows(user: ScopedUser, options: {
     })
   }
 
-  assertDatasetRecordPeriodInCoverage(dataset.dataConfig, periodDate)
+  assertDatasetPeriodInCoverage(dataset.dataConfig, periodDate)
 
   const regionIds = Array.from(new Set(options.rows.map(row => row.regionId)))
   const regions = await db.region.findMany({

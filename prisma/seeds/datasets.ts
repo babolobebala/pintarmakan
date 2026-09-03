@@ -93,6 +93,18 @@ const monthlyTonFields = [
   ['desember', 'Desember']
 ].map(([key, label]) => numberField(key, `${label} (Ton)`, false, { min: 0 }))
 
+const cpmFields = [
+  { key: 'kecamatan', label: 'Kecamatan', type: 'string', required: false },
+  { key: 'desa', label: 'Desa', type: 'string', required: false },
+  {
+    key: 'nama_pemilik',
+    label: 'Nama Pemilik',
+    type: 'string',
+    required: false
+  },
+  ...monthlyTonFields
+]
+
 const projectionFields = [
   numberField('total_ketersediaan', 'Total Ketersediaan', false, {
     decimalPlaces: 2
@@ -244,14 +256,20 @@ const seedDatasets = [
     }
   },
   ...[
-    ['CPM_JAGUNG_TAHUNAN', 'Cadangan Pangan Masyarakat (CPM) - Jagung'],
-    ['CPM_GABAH_TAHUNAN', 'Cadangan Pangan Masyarakat (CPM) - Gabah']
+    [
+      'CPM_JAGUNG_TAHUNAN',
+      'Cadangan Pangan Masyarakat (CPM) - Jagung (Ton)'
+    ],
+    [
+      'CPM_GABAH_TAHUNAN',
+      'Cadangan Pangan Masyarakat (CPM) - Gabah (Ton)'
+    ]
   ].map(([id, name]) => ({
     id,
     ownerBidangId: distributionBidangId,
     name,
     description: `Data tahunan ${name.toLowerCase()}.`,
-    dataSchema: { version: 1, fields: monthlyTonFields },
+    dataSchema: { version: 1, fields: cpmFields },
     dataConfig: {
       version: 1,
       mode: 'TABULAR',
@@ -274,13 +292,13 @@ const seedDatasets = [
           type: 'string',
           required: false
         },
-        { key: 'desa', label: 'Desa', type: 'string', required: false },
         {
           key: 'kecamatan',
           label: 'Kecamatan',
           type: 'string',
           required: false
         },
+        { key: 'desa', label: 'Desa', type: 'string', required: false },
         numberField('keadaan_dalam_tahun', 'Keadaan dalam Tahun', false, {
           min: 2000,
           max: 2100

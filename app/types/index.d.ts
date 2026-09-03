@@ -254,3 +254,29 @@ export interface DatasetRecordImportResult extends DatasetRecordImportPreview {
   updated: number
   unchanged: number
 }
+
+export type DatasetTableRecordImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | null
+
+export interface DatasetTableRecordImportPreviewRow {
+  rowNumber: number
+  recordId: string
+  action: DatasetTableRecordImportAction
+  data: Record<string, unknown>
+  errors: string[]
+}
+
+export interface DatasetTableRecordImportPreview {
+  totalRows: number
+  validRows: number
+  invalidRows: number
+  createRows: number
+  updateRows: number
+  unchangedRows: number
+  rows: DatasetTableRecordImportPreviewRow[]
+}
+
+export interface DatasetTableRecordImportResult extends DatasetTableRecordImportPreview {
+  created: number
+  updated: number
+  unchanged: number
+}

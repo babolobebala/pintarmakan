@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import TabularImportPanel from './TabularImportPanel.vue'
+
 import type {
   DatasetPeriodWorkspaceField,
   DatasetTablePeriodWorkspaceResponse,
@@ -31,6 +33,8 @@ const workspaceError = ref('')
 const editor = ref<RowEditor | null>(null)
 const fieldErrors = ref<FieldErrors>({})
 const pendingDeleteRecordId = ref<string | null>(null)
+const importFileInput = ref<HTMLInputElement | null>(null)
+const importFile = ref<File | null>(null)
 
 const fields = computed(() => workspace.value?.dataset.fields ?? [])
 const rows = computed(() => workspace.value?.rows ?? [])
@@ -267,9 +271,53 @@ async function deleteRow(row: DatasetTablePeriodWorkspaceRow) {
   }
 }
 
+function openImportPicker() {
+  if (importFileInput.value) {
+    importFileInput.value.value = ''
+  }
+
+  importFileInput.value?.click()
+}
+
+function handleImportFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  importFile.value = input.files?.[0] ?? null
+}
+
+function clearImport() {
+  importFile.value = null
+
+  if (importFileInput.value) {
+    importFileInput.value.value = ''
+  }
+}
+
+async function handleImported() {
+  clearImport()
+  await loadWorkspace()
+  emit('saved')
+}
+
+function downloadSpreadsheet(kind: 'template' | 'export') {
+  if (!workspace.value || !import.meta.client) {
+    return
+  }
+
+  const endpoint = kind === 'template'
+    ? '/api/dataset-table-period-template'
+    : '/api/dataset-table-period-export'
+  const query = new URLSearchParams({
+    datasetId: workspace.value.dataset.id,
+    periodDate: workspace.value.periodDate
+  })
+
+  window.open(`${endpoint}?${query.toString()}`, '_blank', 'noopener')
+}
+
 watch([() => props.datasetId, () => props.periodDate], () => {
   closeEditor()
   pendingDeleteRecordId.value = null
+  clearImport()
   void loadWorkspace()
 })
 
@@ -302,29 +350,76 @@ await loadWorkspace()
     </div>
 
     <template v-else-if="workspace">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-default pb-3">
-        <div class="text-xs text-muted">
-          <span>{{ workspace.dataset.name }}</span>
-          <span> · </span>
-          <span>{{ rows.length }} data</span>
-          <UBadge
-            v-if="isArchived"
-            class="ml-2"
-            color="warning"
-            variant="subtle"
-            size="sm"
-          >
-            Diarsipkan · read-only
-          </UBadge>
-        </div>
+      <div
+        class="flex flex-wrap items-center gap-2 border-b border-default pb-3 text-xs text-muted"
+      >
+        <span>{{ workspace.dataset.name }}</span><span>·</span><span>{{ rows.length }} data</span><UBadge
+          v-if="isArchived"
+          color="warning"
+          variant="subtle"
+          size="sm"
+        >
+          Diarsipkan · read-only
+        </UBadge>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2">
         <UButton
           label="Tambah Baris"
           icon="i-lucide-plus"
           size="sm"
+          class="cursor-pointer"
           :disabled="isArchived || !canCreate"
           @click="openCreateEditor"
         />
+        <UButton
+          v-if="!isArchived && (canCreate || canUpdate)"
+          label="Import"
+          icon="i-lucide-upload"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          class="cursor-pointer"
+          @click="openImportPicker"
+        />
+        <UButton
+          label="Export data"
+          icon="i-lucide-download"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          class="cursor-pointer"
+          @click="downloadSpreadsheet('export')"
+        />
+        <UButton
+          label="Unduh template"
+          icon="i-lucide-file-down"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          class="cursor-pointer"
+          @click="downloadSpreadsheet('template')"
+        />
       </div>
+
+      <input
+        ref="importFileInput"
+        type="file"
+        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        class="hidden"
+        @change="handleImportFile"
+      >
+
+      <TabularImportPanel
+        v-if="importFile"
+        v-model:file="importFile"
+        class="mt-3 rounded-lg border border-default p-3"
+        :dataset="workspace.dataset"
+        :period-date="workspace.periodDate"
+        @cancel="clearImport"
+        @imported="handleImported"
+        @replace-file="openImportPicker"
+      />
 
       <form v-if="editor" class="space-y-4 rounded-xl border border-default bg-elevated/25 p-4" @submit.prevent="saveEditor">
         <div class="flex items-center justify-between gap-3">
@@ -410,7 +505,7 @@ await loadWorkspace()
         </div>
       </form>
 
-      <div class="overflow-x-auto rounded-xl border border-default">
+      <div class="mt-3 overflow-x-auto rounded-lg border border-default">
         <table class="w-full min-w-max divide-y divide-default text-sm">
           <thead class="bg-elevated/35">
             <tr>
@@ -476,7 +571,7 @@ await loadWorkspace()
         </table>
       </div>
 
-      <div class="flex justify-end border-t border-default pt-3">
+      <div class="mt-4 flex items-center justify-end gap-2 border-t border-default pt-3">
         <UButton
           label="Tutup"
           color="neutral"

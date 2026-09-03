@@ -1,42 +1,35 @@
 <script setup lang="ts">
 import type {
-  DatasetRecordDatasetOption,
-  DatasetRecordImportPreview,
-  DatasetRecordImportPreviewRow,
-  DatasetRecordImportResult,
-  DatasetPeriodWorkspaceResponse
+  DatasetPeriodWorkspaceField,
+  DatasetTableRecordImportPreview,
+  DatasetTableRecordImportPreviewRow,
+  DatasetTableRecordImportResult
 } from '~/types'
 
-type ImportDataset
-  = | Pick<DatasetRecordDatasetOption, 'id' | 'name' | 'dataSchema'>
-    | DatasetPeriodWorkspaceResponse['dataset']
-
-const props = withDefaults(
-  defineProps<{
-    dataset: ImportDataset
-    periodDate?: string | null
-    showPicker?: boolean
-  }>(),
-  {
-    showPicker: true
+const props = defineProps<{
+  dataset: {
+    id: string
+    name: string
+    archivedAt: string | null
+    fields: DatasetPeriodWorkspaceField[]
   }
-)
+  periodDate: string
+}>()
 
 const emit = defineEmits<{
   cancel: []
-  imported: [result: DatasetRecordImportResult]
+  imported: [result: DatasetTableRecordImportResult]
   replaceFile: []
 }>()
 
 const toast = useToast()
 const selectedFile = defineModel<File | null>('file', { default: null })
-const preview = ref<DatasetRecordImportPreview | null>(null)
+const preview = ref<DatasetTableRecordImportPreview | null>(null)
 const submitError = ref('')
 const fileValidationError = ref('')
 const previewing = ref(false)
 const committing = ref(false)
 const previewRows = computed(() => preview.value?.rows.slice(0, 20) ?? [])
-const isPeriodScoped = computed(() => !!props.periodDate)
 const selectedFileType = computed(() => {
   const extension = selectedFile.value?.name.split('.').pop()?.toLowerCase()
   return extension?.toUpperCase() || 'FILE'
@@ -76,7 +69,7 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Silakan coba lagi.'
 }
 
-function getActionLabel(action: DatasetRecordImportPreviewRow['action']) {
+function getActionLabel(action: DatasetTableRecordImportPreviewRow['action']) {
   switch (action) {
     case 'CREATE':
       return 'Baru'
@@ -84,19 +77,19 @@ function getActionLabel(action: DatasetRecordImportPreviewRow['action']) {
       return 'Perbarui'
     case 'UNCHANGED':
       return 'Tanpa perubahan'
-    case 'SKIPPED':
-      return 'Dilewati'
     default:
       return 'Tidak valid'
   }
 }
 
 function getFormData() {
-  if (!selectedFile.value) return null
+  if (!selectedFile.value) {
+    return null
+  }
 
   const formData = new FormData()
   formData.append('datasetId', props.dataset.id)
-  if (props.periodDate) formData.append('periodDate', props.periodDate)
+  formData.append('periodDate', props.periodDate)
   formData.append('file', selectedFile.value)
   return formData
 }
@@ -111,6 +104,7 @@ watch(selectedFile, (file) => {
   }
 
   const extension = file.name.split('.').pop()?.toLowerCase()
+
   if (extension !== 'csv' && extension !== 'xlsx') {
     fileValidationError.value = 'Pilih file berformat CSV atau XLSX.'
   } else if (file.size > 5 * 1024 * 1024) {
@@ -133,11 +127,10 @@ async function requestPreview() {
 
   submitError.value = ''
   previewing.value = true
+
   try {
-    preview.value = await $fetch<DatasetRecordImportPreview>(
-      isPeriodScoped.value
-        ? '/api/dataset-period-import/preview'
-        : '/api/dataset-records/import/preview',
+    preview.value = await $fetch<DatasetTableRecordImportPreview>(
+      '/api/dataset-table-period-import/preview',
       { method: 'POST', body: formData }
     )
   } catch (error) {
@@ -150,15 +143,17 @@ async function requestPreview() {
 
 async function commitImport() {
   const formData = getFormData()
-  if (!formData || !canCommit.value) return
+
+  if (!formData || !canCommit.value) {
+    return
+  }
 
   submitError.value = ''
   committing.value = true
+
   try {
-    const result = await $fetch<DatasetRecordImportResult>(
-      isPeriodScoped.value
-        ? '/api/dataset-period-import/commit'
-        : '/api/dataset-records/import/commit',
+    const result = await $fetch<DatasetTableRecordImportResult>(
+      '/api/dataset-table-period-import/commit',
       { method: 'POST', body: formData }
     )
     toast.add({
@@ -187,7 +182,7 @@ async function commitImport() {
     />
 
     <div
-      v-if="selectedFile && !showPicker"
+      v-if="selectedFile"
       class="rounded-lg border border-default bg-elevated/30 p-3"
     >
       <p class="text-sm font-medium text-highlighted">
@@ -247,30 +242,6 @@ async function commitImport() {
       </div>
     </div>
 
-    <div v-else class="space-y-3">
-      <UFileUpload
-        v-if="showPicker"
-        v-model="selectedFile"
-        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        color="neutral"
-        icon="i-lucide-upload"
-        label="Tarik file ke sini atau pilih file"
-        description="XLSX atau CSV · maksimal 5 MB"
-        size="lg"
-        :ui="{ base: 'min-h-40' }"
-      />
-      <p v-if="selectedFile" class="text-sm text-muted">
-        {{ selectedFile.name }}
-      </p>
-      <UButton
-        label="Pratinjau"
-        icon="i-lucide-scan-search"
-        :loading="previewing"
-        :disabled="!canPreview || committing"
-        @click="requestPreview"
-      />
-    </div>
-
     <template v-if="preview">
       <div class="rounded-lg border border-default bg-elevated/30 p-3">
         <p class="text-sm font-medium text-highlighted">
@@ -283,7 +254,7 @@ async function commitImport() {
           {{ preview.createRows }} akan ditambahkan ·
           {{ preview.updateRows }} akan diperbarui ·
           {{ preview.unchangedRows }} tidak berubah ·
-          {{ preview.skippedRows }} dilewati · {{ preview.invalidRows }} error
+          {{ preview.invalidRows }} error
         </p>
       </div>
       <UAlert
@@ -302,13 +273,7 @@ async function commitImport() {
                 Baris
               </th>
               <th class="px-3 py-2 font-medium">
-                Wilayah
-              </th>
-              <th class="px-3 py-2 font-medium">
-                Periode
-              </th>
-              <th class="px-3 py-2 font-medium">
-                Status
+                recordId
               </th>
               <th class="px-3 py-2 font-medium">
                 Aksi
@@ -328,13 +293,7 @@ async function commitImport() {
                 {{ row.rowNumber }}
               </td>
               <td class="px-3 py-2 font-mono text-xs">
-                {{ row.regionId || "—" }}
-              </td>
-              <td class="px-3 py-2">
-                {{ row.periodValue || "—" }}
-              </td>
-              <td class="px-3 py-2">
-                {{ row.status || "—" }}
+                {{ row.recordId || "—" }}
               </td>
               <td class="px-3 py-2">
                 <UBadge color="neutral" variant="subtle" size="sm">
@@ -357,11 +316,10 @@ async function commitImport() {
     </template>
 
     <div
-      v-if="preview || showPicker"
+      v-if="preview"
       class="flex justify-end gap-2 border-t border-default pt-4"
     >
       <UButton
-        v-if="showPicker"
         label="Batal"
         color="neutral"
         variant="subtle"
@@ -371,7 +329,6 @@ async function commitImport() {
       <UButton
         label="Konfirmasi impor"
         class="cursor-pointer"
-
         icon="i-lucide-circle-check"
         :loading="committing"
         :disabled="!canCommit || previewing"

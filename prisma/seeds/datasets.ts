@@ -55,7 +55,7 @@ const foodSource = 'Dinas Ketahanan Pangan Kabupaten Sumbawa Barat'
 const agricultureSource = 'Dinas Pertanian Kabupaten Sumbawa Barat'
 const nationalFoodSource = 'Badan Pangan Nasional'
 const distributionBidangId = 'DKP_DISTRIBUSI'
-const newDatasetStartPeriod = '2026-01-01'
+const newDatasetStartPeriod = '2025-01-01'
 
 const numberField = (
   key: string,
@@ -149,9 +149,10 @@ const projectionDatasets = [
   dataConfig: {
     version: 1,
     mode: 'REGIONAL',
-    periodicity: 'TAHUNAN',
+    periodicity: 'BULANAN',
     regionLevel: 'KABUPATEN',
     startPeriod: newDatasetStartPeriod,
+    endPeriod: '2026-12-01',
     source: nationalFoodSource
   }
 }))
@@ -206,7 +207,7 @@ const seedDatasets = [
       mode: 'REGIONAL',
       periodicity: 'TAHUNAN',
       regionLevel: 'KABUPATEN',
-      startPeriod: '2024-01-01',
+      startPeriod: '2025-01-01',
       source: nationalFoodSource
     }
   },
@@ -582,7 +583,7 @@ const seedDatasetRecords = [
   {
     datasetId: 'PPH_TAHUNAN',
     regionId: defaultKabupatenRegionId,
-    periodDate: '2024-01-01',
+    periodDate: '2025-01-01',
     data: { pph_konsumsi: 90, pph_ketersediaan: 79.01 },
     status: 'PUBLISHED'
   },

@@ -976,6 +976,23 @@ export function getDatasetPeriodRange(dataConfig: unknown, date = new Date()) {
   return periods
 }
 
+export type DatasetPeriodCompleteness = 'Lengkap' | 'Sebagian' | 'Belum ada'
+
+export function getDatasetPeriodCompleteness(
+  recordCount: number,
+  expectedRegionCount: number
+): DatasetPeriodCompleteness {
+  if (recordCount === 0) {
+    return 'Belum ada'
+  }
+
+  if (recordCount === expectedRegionCount) {
+    return 'Lengkap'
+  }
+
+  return 'Sebagian'
+}
+
 export function getDatasetRecordPeriodRangeError(
   dataConfig: unknown,
   periodDate: string,

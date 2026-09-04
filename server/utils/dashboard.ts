@@ -1,4 +1,5 @@
 import type {
+  DashboardUtamaCardDefinition,
   DashboardDatasetBundle,
   DashboardDatasetDefinition,
   DashboardDatasetRecord,
@@ -8,21 +9,16 @@ import type {
   DashboardUtamaPayload
 } from '~~/shared/dashboard'
 
+import {
+  validateDatasetConfigDefinition,
+  validateDatasetSchemaDefinition
+} from '~~/shared/datasets'
+import { dashboardUtamaCardDefinitions } from '~~/shared/dashboard'
 import { db } from '~~/server/utils/db'
 
-const dashboardUtamaDatasetIds = [
-  'IKP_TAHUNAN',
-  'PPH_KETERSEDIAAN_TAHUNAN',
-  'PPH_KONSUMSI_TAHUNAN',
-  'STATUS_KETAHANAN_PANGAN_TAHUNAN'
-] as const
-
-const dashboardUtamaDatasetNameMap: Record<(typeof dashboardUtamaDatasetIds)[number], string> = {
-  IKP_TAHUNAN: 'Indeks Ketahanan Pangan',
-  PPH_KETERSEDIAAN_TAHUNAN: 'PPH Ketersediaan',
-  PPH_KONSUMSI_TAHUNAN: 'PPH Konsumsi',
-  STATUS_KETAHANAN_PANGAN_TAHUNAN: 'Status Ketahanan Pangan'
-}
+const dashboardUtamaDatasetIds = [...new Set(
+  dashboardUtamaCardDefinitions.map(card => card.datasetId)
+)]
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -41,11 +37,36 @@ function getLatestUpdatedAt(dates: Date[]) {
   return new Date(timestamp || Date.now())
 }
 
-function createFallbackDefinition(datasetId: (typeof dashboardUtamaDatasetIds)[number]): DashboardDatasetDefinition {
+function createFallbackDefinition(card: DashboardUtamaCardDefinition): DashboardDatasetDefinition {
   return {
-    id: datasetId,
-    name: dashboardUtamaDatasetNameMap[datasetId],
+    id: card.datasetId,
+    name: card.title,
     dataSchema: {}
+  }
+}
+
+function isDashboardCardDatasetSupported(
+  card: DashboardUtamaCardDefinition,
+  definition: {
+    dataSchema: unknown
+    dataConfig: unknown
+    archivedAt: Date | null
+  } | undefined
+) {
+  if (!definition || definition.archivedAt) {
+    return false
+  }
+
+  try {
+    const dataConfig = validateDatasetConfigDefinition(definition.dataConfig)
+    const dataSchema = validateDatasetSchemaDefinition(definition.dataSchema)
+
+    return dataConfig.mode === card.mode
+      && dataConfig.periodicity === card.periodicity
+      && dataConfig.regionLevel === card.regionLevel
+      && dataSchema.fields.some(field => field.key === card.fieldKey)
+  } catch {
+    return false
   }
 }
 
@@ -76,22 +97,27 @@ async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
     db.dataset.findMany({
       where: {
         id: {
-          in: [...dashboardUtamaDatasetIds]
+          in: dashboardUtamaDatasetIds
         }
       },
       select: {
         id: true,
         name: true,
         dataSchema: true,
+        dataConfig: true,
+        archivedAt: true,
         updatedAt: true
       }
     }),
     db.datasetRecord.findMany({
       where: {
         datasetId: {
-          in: [...dashboardUtamaDatasetIds]
+          in: dashboardUtamaDatasetIds
         },
-        status: 'PUBLISHED'
+        status: 'PUBLISHED',
+        dataset: {
+          archivedAt: null
+        }
       },
       orderBy: [{
         periodDate: 'desc'
@@ -120,33 +146,48 @@ async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
 
   const definitionMap = new Map(datasetDefinitions.map(definition => [definition.id, definition]))
   const recordsByDataset = new Map<string, DashboardDatasetRecord[]>()
+  const supportedDatasetIds = new Set(
+    dashboardUtamaCardDefinitions
+      .filter(card => isDashboardCardDatasetSupported(card, definitionMap.get(card.datasetId)))
+      .map(card => card.datasetId)
+  )
 
   for (const record of datasetRecords) {
+    if (!supportedDatasetIds.has(record.datasetId)) {
+      continue
+    }
+
     const collection = recordsByDataset.get(record.datasetId) ?? []
     collection.push(serializeRecord(record))
     recordsByDataset.set(record.datasetId, collection)
   }
 
-  const datasets = Object.fromEntries(
-    dashboardUtamaDatasetIds.map((datasetId) => {
-      const definition = definitionMap.get(datasetId)
+  const cards = Object.fromEntries(
+    dashboardUtamaCardDefinitions.map((card) => {
+      const definition = definitionMap.get(card.datasetId)
+      const available = isDashboardCardDatasetSupported(card, definition)
 
-      return [datasetId, {
+      return [card.key, {
         definition: definition
           ? {
               id: definition.id,
               name: definition.name,
               dataSchema: definition.dataSchema
             }
-          : createFallbackDefinition(datasetId),
-        records: recordsByDataset.get(datasetId) ?? []
+          : createFallbackDefinition(card),
+        records: available ? recordsByDataset.get(card.datasetId) ?? [] : [],
+        available
       } satisfies DashboardDatasetBundle]
     })
-  ) as DashboardUtamaPayload['datasets']
+  ) as DashboardUtamaPayload['cards']
 
   const updatedAt = getLatestUpdatedAt([
-    ...datasetDefinitions.map(definition => definition.updatedAt),
-    ...datasetRecords.map(record => record.updatedAt)
+    ...datasetDefinitions
+      .filter(definition => supportedDatasetIds.has(definition.id))
+      .map(definition => definition.updatedAt),
+    ...datasetRecords
+      .filter(record => supportedDatasetIds.has(record.datasetId))
+      .map(record => record.updatedAt)
   ])
 
   return {
@@ -156,7 +197,7 @@ async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
       title: 'Dashboard Ketahanan Pangan',
       updatedAt: updatedAt.toISOString()
     },
-    datasets
+    cards
   }
 }
 

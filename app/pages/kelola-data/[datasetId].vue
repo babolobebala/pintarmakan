@@ -9,7 +9,10 @@ import AppPageIntro from '~/components/AppPageIntro.vue'
 import PeriodMatrixModal from '~/components/data-records/PeriodMatrixModal.vue'
 import TabularPeriodModal from '~/components/data-records/TabularPeriodModal.vue'
 import { appPermissions } from '~~/auth/permissions'
-import { formatDatasetPeriod } from '~~/shared/datasets'
+import {
+  formatDatasetPeriod,
+  getDatasetPeriodCompleteness
+} from '~~/shared/datasets'
 
 definePageMeta({ permission: appPermissions.businessDataRead })
 
@@ -251,15 +254,19 @@ function formatPeriod(periodDate: string) {
 }
 
 function getPeriodCompleteness(period: { recordCount: number }) {
-  if (period.recordCount === 0) {
-    return { label: 'Belum ada', color: 'neutral' as const }
-  }
+  const label = getDatasetPeriodCompleteness(
+    period.recordCount,
+    periodOverview.value.expectedRegionCount
+  )
 
-  if (period.recordCount === periodOverview.value.expectedRegionCount) {
-    return { label: 'Lengkap', color: 'success' as const }
+  return {
+    label,
+    color: label === 'Lengkap'
+      ? 'success' as const
+      : label === 'Sebagian'
+        ? 'warning' as const
+        : 'neutral' as const
   }
-
-  return { label: 'Sebagian', color: 'warning' as const }
 }
 
 function formatDateTime(value: string | null) {

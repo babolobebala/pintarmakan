@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module'
 
+import { getDatasetPeriodSpreadsheetIdentityHeaders } from '#server/utils/dataset-period-spreadsheet-regions'
 import { getDatasetPeriodWorkspaceForUser } from '#server/utils/dataset-records'
 import { getDatasetPeriodSpreadsheetFieldLabels } from '#server/utils/dataset-period-spreadsheet-headers'
 
@@ -22,30 +23,18 @@ function slugifyFilename(value: string) {
   return slug || 'dataset'
 }
 
-function getIdentityHeaders(regionLevel: string | null) {
-  switch (regionLevel) {
-    case 'DESA':
-      return ['regionId', 'Kecamatan', 'Desa/Kelurahan']
-    case 'KECAMATAN':
-      return ['regionId', 'Kecamatan']
-    case 'KABUPATEN':
-    default:
-      return ['regionId', 'Kabupaten']
-  }
-}
-
 export async function createDatasetPeriodSpreadsheet(user: ScopedUser, options: {
   readonly datasetId: string
   readonly periodDate: string
   readonly mode: 'template' | 'export'
 }) {
   const workspace = await getDatasetPeriodWorkspaceForUser(user, options)
-  const identityHeaders = getIdentityHeaders(workspace.dataset.regionLevel)
+  const identityHeaders = getDatasetPeriodSpreadsheetIdentityHeaders(workspace.dataset.regionLevel)
   const headers = [...identityHeaders, ...getDatasetPeriodSpreadsheetFieldLabels(workspace.dataset.fields)]
   const rows = workspace.rows.map((row) => {
     const identityValues = workspace.dataset.regionLevel === 'DESA'
-      ? [row.regionId, row.parentRegionName ?? '', row.regionName]
-      : [row.regionId, row.regionName]
+      ? [row.parentRegionName ?? '', row.regionName]
+      : [row.regionName]
     const businessValues = workspace.dataset.fields.map((field) => {
       const value = options.mode === 'export' ? row.record?.data[field.key] : undefined
 

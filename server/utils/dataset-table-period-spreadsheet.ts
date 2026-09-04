@@ -38,15 +38,17 @@ export async function createDatasetTablePeriodSpreadsheet(user: ScopedUser, opti
   const workspace = await getTabularDatasetPeriodWorkspaceForUser(user, options)
   const headers = ['recordId', ...getDatasetTablePeriodSpreadsheetFieldLabels(workspace.dataset.fields)]
 
-  const rows = workspace.rows.map((row) => {
-    const businessValues = workspace.dataset.fields.map((field) => {
-      const value = options.mode === 'export' ? row.data[field.key] : undefined
+  const rows = options.mode === 'template'
+    ? []
+    : workspace.rows.map((row) => {
+        const businessValues = workspace.dataset.fields.map((field) => {
+          const value = options.mode === 'export' ? row.data[field.key] : undefined
 
-      return getSpreadsheetValue(field, value)
-    })
+          return getSpreadsheetValue(field, value)
+        })
 
-    return [row.id, ...businessValues]
-  })
+        return [row.id, ...businessValues]
+      })
   const workbook = XLSX.utils.book_new()
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
 

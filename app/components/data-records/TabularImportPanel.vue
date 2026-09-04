@@ -181,6 +181,10 @@ async function commitImport() {
       variant="subtle"
     />
 
+    <p class="text-xs text-muted">
+      Kosongkan recordId untuk menambahkan data baru. recordId dari hasil export digunakan untuk memperbarui data yang sudah ada.
+    </p>
+
     <div
       v-if="selectedFile"
       class="rounded-lg border border-default bg-elevated/30 p-3"

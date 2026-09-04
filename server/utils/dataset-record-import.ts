@@ -5,7 +5,6 @@ import type { WorkBook } from 'xlsx'
 import {
   getDatasetPeriodicity,
   getDatasetRecordPeriodRangeError,
-  getDatasetRegionLevel,
   getDatasetSchemaFields,
   validateCanonicalDatasetPeriodDate
 } from '~~/shared/datasets'
@@ -16,8 +15,12 @@ import {
   buildDatasetRecordPayloadFromCanonicalPeriodDate,
   commitDatasetPeriodRows
 } from '#server/utils/dataset-records'
+import {
+  getDatasetPeriodSpreadsheetIdentityHeaders,
+  resolveDatasetPeriodSpreadsheetRegions,
+  type DatasetSpreadsheetRegionContext
+} from '#server/utils/dataset-period-spreadsheet-regions'
 import { resolveDatasetPeriodSpreadsheetFieldHeaders } from '#server/utils/dataset-period-spreadsheet-headers'
-import { getSumbawaBaratRegionScopeWhere } from '#server/utils/region-scope'
 
 const nodeRequire = createRequire(import.meta.url)
 const XLSX = nodeRequire('xlsx') as typeof import('xlsx')
@@ -37,6 +40,8 @@ type ImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | 'SKIPPED'
 type PreparedImportRow = {
   rowNumber: number
   regionId: string
+  regionName: string
+  regionContext: DatasetSpreadsheetRegionContext
   periodValue: string
   status: string
   data: Record<string, unknown>
@@ -184,6 +189,7 @@ function getPreviewRow(row: PreparedImportRow) {
   return {
     rowNumber: row.rowNumber,
     regionId: row.regionId,
+    regionName: row.regionName,
     periodValue: row.periodValue,
     periodDate: row.periodDate ?? null,
     status: row.status,
@@ -215,7 +221,8 @@ export async function prepareDatasetRecordImport(user: ScopedUser, datasetId: st
   const dataset = createContext.dataset
   const { headers, rows: sourceRows } = getImportRows(file)
   const fields = getDatasetSchemaFields(dataset.dataSchema)
-  const requiredHeaders = ['regionId', 'period', ...fields.map(field => field.key)]
+  const identityHeaders = getDatasetPeriodSpreadsheetIdentityHeaders(dataset.regionLevel)
+  const requiredHeaders = [...identityHeaders, 'period']
   const missingHeaders = requiredHeaders.filter(header => !headers.includes(header))
 
   if (missingHeaders.length > 0) {
@@ -224,6 +231,27 @@ export async function prepareDatasetRecordImport(user: ScopedUser, datasetId: st
       statusMessage: `Header wajib tidak ditemukan: ${missingHeaders.join(', ')}.`
     })
   }
+
+  if (headers.includes('regionId')) {
+    throw createError({ statusCode: 400, statusMessage: 'Header kolom tidak dikenal: regionId.' })
+  }
+
+  const allowedHeaders = new Set([
+    ...identityHeaders,
+    'period',
+    'status',
+    ...fields.flatMap(field => [field.key, field.label])
+  ])
+  const unsupportedHeader = headers.find(header => header && !allowedHeaders.has(header))
+
+  if (unsupportedHeader) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Header kolom tidak dikenal: ${unsupportedHeader}.`
+    })
+  }
+
+  const fieldHeaders = resolveDatasetPeriodSpreadsheetFieldHeaders(fields, headers)
 
   const rows: PreparedImportRow[] = sourceRows.map(({ row, rowNumber }) => {
     const values = Object.fromEntries(headers.map((header, index) => [header, getCellText(row[index])]))
@@ -234,35 +262,36 @@ export async function prepareDatasetRecordImport(user: ScopedUser, datasetId: st
 
     return {
       rowNumber,
-      regionId: values.regionId ?? '',
+      regionId: '',
+      regionName: '',
+      regionContext: {
+        kabupaten: values.Kabupaten ?? '',
+        kecamatan: values.Kecamatan ?? '',
+        desa: values['Desa/Kelurahan'] ?? ''
+      },
       periodValue: values.period ?? '',
       status: values.status ?? '',
-      data: Object.fromEntries(fields.map(field => [field.key, values[field.key] ?? ''])),
+      data: Object.fromEntries(fields.map(field => [
+        field.key,
+        values[fieldHeaders.get(field.key) ?? ''] ?? ''
+      ])),
       errors
     }
   })
 
-  const requestedRegionIds = Array.from(new Set(rows.map(row => row.regionId).filter(Boolean)))
-  const regions = requestedRegionIds.length > 0
-    ? await db.region.findMany({
-        where: { id: { in: requestedRegionIds } },
-        select: { id: true, level: true }
-      })
-    : []
-  const regionsById = new Map(regions.map(region => [region.id, region]))
-  const expectedRegionLevel = getDatasetRegionLevel(dataset.dataConfig)
+  const resolutions = await resolveDatasetPeriodSpreadsheetRegions(
+    dataset.regionLevel,
+    rows.map(row => row.regionContext)
+  )
 
-  for (const row of rows) {
-    if (!row.regionId) {
-      row.errors.push('regionId wajib diisi.')
-    } else {
-      const region = regionsById.get(row.regionId)
+  for (const [index, row] of rows.entries()) {
+    const resolution = resolutions[index]
 
-      if (!region) {
-        row.errors.push('Wilayah tidak ditemukan.')
-      } else if (expectedRegionLevel && region.level.toUpperCase() !== expectedRegionLevel) {
-        row.errors.push(`Wilayah harus memiliki level ${expectedRegionLevel}.`)
-      }
+    row.regionId = resolution?.regionId ?? ''
+    row.regionName = resolution?.regionName ?? ''
+
+    if (resolution?.error) {
+      row.errors.push(resolution.error)
     }
 
     try {
@@ -508,6 +537,7 @@ type PreparedPeriodImportRow = {
   rowNumber: number
   regionId: string
   regionName: string
+  regionContext: DatasetSpreadsheetRegionContext
   data: Record<string, unknown>
   meaningful: boolean
   action: ImportAction | null
@@ -518,6 +548,7 @@ function getPeriodPreviewRow(row: PreparedPeriodImportRow, periodDate: string) {
   return {
     rowNumber: row.rowNumber,
     regionId: row.regionId,
+    regionName: row.regionName,
     periodValue: periodDate,
     periodDate,
     status: 'draft',
@@ -557,11 +588,27 @@ export async function prepareDatasetPeriodRecordImport(user: ScopedUser, options
   }
   const { headers, rows: sourceRows } = getImportRows(options.file)
   const fields = getDatasetSchemaFields(dataset.dataSchema)
-  const missingHeaders = ['regionId'].filter(header => !headers.includes(header))
+  const identityHeaders = getDatasetPeriodSpreadsheetIdentityHeaders(dataset.regionLevel)
+  const missingHeaders = identityHeaders.filter(header => !headers.includes(header))
 
   if (missingHeaders.length > 0) {
     throw createError({ statusCode: 400, statusMessage: `Header wajib tidak ditemukan: ${missingHeaders.join(', ')}.` })
   }
+
+  if (headers.includes('regionId')) {
+    throw createError({ statusCode: 400, statusMessage: 'Header kolom tidak dikenal: regionId.' })
+  }
+
+  const allowedHeaders = new Set([
+    ...identityHeaders,
+    ...fields.flatMap(field => [field.key, field.label])
+  ])
+  const unsupportedHeader = headers.find(header => header && !allowedHeaders.has(header))
+
+  if (unsupportedHeader) {
+    throw createError({ statusCode: 400, statusMessage: `Header kolom tidak dikenal: ${unsupportedHeader}.` })
+  }
+
   const fieldHeaders = resolveDatasetPeriodSpreadsheetFieldHeaders(fields, headers)
 
   const rows: PreparedPeriodImportRow[] = sourceRows.map(({ row, rowNumber }) => {
@@ -570,8 +617,13 @@ export async function prepareDatasetPeriodRecordImport(user: ScopedUser, options
 
     return {
       rowNumber,
-      regionId: values.regionId ?? '',
-      regionName: values.regionId ?? '',
+      regionId: '',
+      regionName: '',
+      regionContext: {
+        kabupaten: values.Kabupaten ?? '',
+        kecamatan: values.Kecamatan ?? '',
+        desa: values['Desa/Kelurahan'] ?? ''
+      },
       data,
       meaningful: fields.some(field => getCellText(values[fieldHeaders.get(field.key) ?? '']) !== ''),
       action: null,
@@ -580,23 +632,24 @@ export async function prepareDatasetPeriodRecordImport(user: ScopedUser, options
         : []
     }
   })
-  const requestedRegionIds = Array.from(new Set(rows.map(row => row.regionId).filter(Boolean)))
-  const regions = requestedRegionIds.length === 0
-    ? []
-    : await db.region.findMany({
-        where: {
-          AND: [
-            getSumbawaBaratRegionScopeWhere(dataset.regionLevel),
-            { id: { in: requestedRegionIds } }
-          ]
-        },
-        select: { id: true, name: true }
-      })
-  const regionsById = new Map(regions.map(region => [region.id, region]))
+  const resolutions = await resolveDatasetPeriodSpreadsheetRegions(
+    dataset.regionLevel,
+    rows.map(row => row.regionContext)
+  )
   const duplicateRegionIds = new Set<string>()
   const seenRegionIds = new Set<string>()
 
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
+    const resolution = resolutions[index]
+
+    row.regionId = resolution?.regionId ?? ''
+    row.regionName = resolution?.regionName ?? ''
+
+    if (resolution?.error) {
+      row.errors.push(resolution.error)
+      continue
+    }
+
     if (row.regionId && seenRegionIds.has(row.regionId)) {
       duplicateRegionIds.add(row.regionId)
     }
@@ -607,21 +660,12 @@ export async function prepareDatasetPeriodRecordImport(user: ScopedUser, options
   }
 
   for (const row of rows) {
-    const region = regionsById.get(row.regionId)
-    row.regionName = region?.name ?? row.regionId
-
-    if (!row.regionId) {
-      row.errors.push('regionId wajib diisi.')
+    if (row.errors.length > 0) {
       continue
     }
 
     if (duplicateRegionIds.has(row.regionId)) {
-      row.errors.push('regionId duplikat di dalam file.')
-      continue
-    }
-
-    if (!region) {
-      row.errors.push('Wilayah tidak termasuk cakupan Dataset.')
+      row.errors.push('Wilayah duplikat di dalam file.')
       continue
     }
 

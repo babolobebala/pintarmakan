@@ -14,6 +14,86 @@ export const dashboardOptions = [{
 
 export type DashboardKey = (typeof dashboardOptions)[number]['key']
 
+type DashboardCardBaseDefinition = {
+  readonly key: string
+  readonly datasetId: string
+  readonly fieldKey: string
+  readonly title: string
+  readonly mode: 'REGIONAL'
+  readonly periodicity: 'TAHUNAN'
+  readonly regionLevel: 'KABUPATEN' | 'DESA'
+}
+
+export type DashboardKpiCardDefinition = DashboardCardBaseDefinition & {
+  readonly key: 'ikp' | 'pph-ketersediaan' | 'pph-konsumsi'
+  readonly type: 'kpi'
+  readonly regionLevel: 'KABUPATEN'
+  readonly icon: string
+  readonly badgeColor: 'success' | 'info' | 'warning' | 'neutral'
+}
+
+export type DashboardStatusPriorityCardDefinition = DashboardCardBaseDefinition & {
+  readonly key: 'status-ketahanan-pangan'
+  readonly type: 'status-priority'
+  readonly regionLevel: 'DESA'
+}
+
+export type DashboardUtamaCardDefinition = DashboardKpiCardDefinition | DashboardStatusPriorityCardDefinition
+
+export const dashboardUtamaCardDefinitions: readonly DashboardUtamaCardDefinition[] = [{
+  key: 'ikp',
+  type: 'kpi',
+  datasetId: 'IKP_TAHUNAN',
+  fieldKey: 'ikp',
+  title: 'Indeks Ketahanan Pangan',
+  mode: 'REGIONAL',
+  periodicity: 'TAHUNAN',
+  regionLevel: 'KABUPATEN',
+  icon: 'i-lucide-badge-info',
+  badgeColor: 'success'
+}, {
+  key: 'pph-ketersediaan',
+  type: 'kpi',
+  datasetId: 'PPH_TAHUNAN',
+  fieldKey: 'pph_ketersediaan',
+  title: 'PPH Ketersediaan',
+  mode: 'REGIONAL',
+  periodicity: 'TAHUNAN',
+  regionLevel: 'KABUPATEN',
+  icon: 'i-lucide-warehouse',
+  badgeColor: 'info'
+}, {
+  key: 'pph-konsumsi',
+  type: 'kpi',
+  datasetId: 'PPH_TAHUNAN',
+  fieldKey: 'pph_konsumsi',
+  title: 'PPH Konsumsi',
+  mode: 'REGIONAL',
+  periodicity: 'TAHUNAN',
+  regionLevel: 'KABUPATEN',
+  icon: 'i-lucide-utensils',
+  badgeColor: 'success'
+}, {
+  key: 'status-ketahanan-pangan',
+  type: 'status-priority',
+  datasetId: 'STATUS_KETAHANAN_PANGAN_TAHUNAN',
+  fieldKey: 'priority',
+  title: 'Status Ketahanan Pangan',
+  mode: 'REGIONAL',
+  periodicity: 'TAHUNAN',
+  regionLevel: 'DESA'
+}]
+
+export type DashboardUtamaCardKey = (typeof dashboardUtamaCardDefinitions)[number]['key']
+
+export const dashboardUtamaKpiCardDefinitions = dashboardUtamaCardDefinitions.filter(
+  (definition): definition is DashboardKpiCardDefinition => definition.type === 'kpi'
+)
+
+export const dashboardUtamaStatusCardDefinition = dashboardUtamaCardDefinitions.find(
+  (definition): definition is DashboardStatusPriorityCardDefinition => definition.type === 'status-priority'
+)!
+
 export interface DashboardMeta {
   title: string
   updatedAt: string
@@ -37,18 +117,14 @@ export interface DashboardDatasetRecord {
 export interface DashboardDatasetBundle {
   definition: DashboardDatasetDefinition
   records: DashboardDatasetRecord[]
+  available: boolean
 }
 
 export interface DashboardUtamaPayload {
   key: 'utama'
   kind: 'utama'
   meta: DashboardMeta
-  datasets: {
-    IKP_TAHUNAN: DashboardDatasetBundle
-    PPH_KETERSEDIAAN_TAHUNAN: DashboardDatasetBundle
-    PPH_KONSUMSI_TAHUNAN: DashboardDatasetBundle
-    STATUS_KETAHANAN_PANGAN_TAHUNAN: DashboardDatasetBundle
-  }
+  cards: Record<DashboardUtamaCardKey, DashboardDatasetBundle>
 }
 
 export interface DashboardPlaceholderWidget {
@@ -109,13 +185,10 @@ export function findDashboardPreviousYear(
   return getDashboardAvailableYears(records).find(candidate => candidate < year) ?? null
 }
 
-export function getDashboardDatasetField(dataSchema: unknown, preferredKey: string) {
+export function getDashboardDatasetField(dataSchema: unknown, fieldKey: string) {
   const fields = getDatasetSchemaFields(dataSchema)
 
-  return fields.find(field => field.key === preferredKey)
-    ?? fields.find(field => field.type === 'number')
-    ?? fields[0]
-    ?? null
+  return fields.find(field => field.key === fieldKey) ?? null
 }
 
 export function readDashboardRecordNumber(record: DashboardDatasetRecord | undefined, fieldKey: string | null) {

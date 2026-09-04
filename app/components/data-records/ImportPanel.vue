@@ -327,8 +327,8 @@ async function commitImport() {
               <td class="px-3 py-2 text-muted">
                 {{ row.rowNumber }}
               </td>
-              <td class="px-3 py-2 font-mono text-xs">
-                {{ row.regionId || "—" }}
+              <td class="px-3 py-2">
+                {{ row.regionName || "—" }}
               </td>
               <td class="px-3 py-2">
                 {{ row.periodValue || "—" }}

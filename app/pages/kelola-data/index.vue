@@ -301,14 +301,19 @@ function formatRegionLevelLabel(value: string | null) {
           </template>
 
           <template #periodicity-cell="{ row }">
-            <UBadge
-              v-if="row.original.periodicity"
-              :color="getDatasetPeriodicityColor(row.original.periodicity)"
-              variant="subtle"
-              size="sm"
-            >
-              {{ formatPeriodicityLabel(row.original.periodicity) }}
-            </UBadge>
+            <div v-if="row.original.periodicity" class="flex flex-col items-start gap-1">
+              <UBadge
+                :color="getDatasetPeriodicityColor(row.original.periodicity)"
+                variant="subtle"
+                size="sm"
+              >
+                {{ formatPeriodicityLabel(row.original.periodicity) }}
+              </UBadge>
+              <span class="text-xs leading-4 text-muted tabular-nums">
+                {{ row.original.periodProgress?.complete ?? 0 }} /
+                {{ row.original.periodProgress?.total ?? 0 }}
+              </span>
+            </div>
             <span v-else class="text-sm text-muted">—</span>
           </template>
 

@@ -56,6 +56,10 @@ export interface DatasetManagementItem {
   regionLevel: string | null
   startPeriod: string | null
   endPeriod: string | null
+  periodProgress?: {
+    complete: number
+    total: number
+  }
   source: string | null
   interpretation: string | null
   archivedAt: string | null
@@ -230,6 +234,7 @@ export type DatasetRecordImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | 'SKI
 export interface DatasetRecordImportPreviewRow {
   rowNumber: number
   regionId: string
+  regionName: string
   periodValue: string
   periodDate: string | null
   status: string

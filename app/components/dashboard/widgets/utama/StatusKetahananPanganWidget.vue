@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardDatasetBundle } from '~~/shared/dashboard'
+import type { DashboardDatasetBundle, DashboardStatusPriorityCardDefinition } from '~~/shared/dashboard'
 
 import {
   filterDashboardRecordsByYear,
@@ -19,6 +19,7 @@ const priorityPalette = [
 ] as const
 
 const props = defineProps<{
+  card: DashboardStatusPriorityCardDefinition
   dataset: DashboardDatasetBundle
 }>()
 
@@ -41,7 +42,7 @@ const selectedYear = computed(() => {
   return selectedYearValue.value ? Number(selectedYearValue.value) : null
 })
 
-const priorityField = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, 'priority'))
+const priorityField = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, props.card.fieldKey))
 const filteredRecords = computed(() => filterDashboardRecordsByYear(props.dataset.records, selectedYear.value))
 const allPriorityKeys = computed(() => {
   return Array.from(new Set(
@@ -117,7 +118,7 @@ const desaValues = computed(() => {
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-map" class="size-4 shrink-0 text-[var(--app-foreground-soft)]" />
               <h2 class="truncate text-sm font-semibold text-[var(--app-foreground)]">
-                {{ dataset.definition.name }}
+                {{ card.title }}
               </h2>
             </div>
           </div>
@@ -144,7 +145,7 @@ const desaValues = computed(() => {
             </span>
           </template>
           <span v-else class="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-muted)] px-2.5 py-1">
-            Belum ada data tahunan.
+            {{ dataset.available ? 'Belum ada data tahunan.' : 'Dataset tidak tersedia.' }}
           </span>
         </div>
       </div>

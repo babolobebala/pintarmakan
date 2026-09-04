@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardDatasetBundle } from '~~/shared/dashboard'
+import type { DashboardDatasetBundle, DashboardKpiCardDefinition } from '~~/shared/dashboard'
 
 import {
   filterDashboardRecordsByYear,
@@ -11,9 +11,8 @@ import {
 } from '~~/shared/dashboard'
 
 const props = defineProps<{
+  card: DashboardKpiCardDefinition
   dataset: DashboardDatasetBundle
-  icon: string
-  badgeColor?: 'success' | 'info' | 'warning' | 'neutral'
 }>()
 
 const formatter = new Intl.NumberFormat('id-ID', {
@@ -39,7 +38,7 @@ const selectedYear = computed(() => {
   return selectedYearValue.value ? Number(selectedYearValue.value) : null
 })
 
-const field = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, 'value'))
+const field = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, props.card.fieldKey))
 const currentRecord = computed(() => filterDashboardRecordsByYear(props.dataset.records, selectedYear.value)[0])
 const previousYear = computed(() => findDashboardPreviousYear(props.dataset.records, selectedYear.value))
 const previousRecord = computed(() => filterDashboardRecordsByYear(props.dataset.records, previousYear.value)[0])
@@ -54,6 +53,10 @@ const delta = computed(() => {
 })
 
 const valueLabel = computed(() => {
+  if (!props.dataset.available) {
+    return 'Dataset tidak tersedia'
+  }
+
   return value.value === null ? 'Data belum tersedia' : formatter.format(value.value)
 })
 
@@ -83,7 +86,7 @@ const trendMeta = computed(() => {
   if (delta.value > 0) {
     return {
       icon: 'i-lucide-trending-up',
-      color: props.badgeColor ?? 'success'
+      color: props.card.badgeColor
     }
   }
 
@@ -107,9 +110,9 @@ const trendMeta = computed(() => {
       <div class="flex w-full items-start justify-between gap-3">
         <div class="min-w-0">
           <div class="flex items-center gap-2">
-            <UIcon :name="icon" class="size-4 shrink-0 text-[var(--app-foreground-soft)]" />
+            <UIcon :name="card.icon" class="size-4 shrink-0 text-[var(--app-foreground-soft)]" />
             <h2 class="truncate text-sm font-semibold text-[var(--app-foreground)]">
-              {{ dataset.definition.name }}
+              {{ card.title }}
             </h2>
           </div>
         </div>
@@ -145,6 +148,9 @@ const trendMeta = computed(() => {
 
       <p v-if="comparisonLine" class="text-xs leading-5 text-[var(--app-foreground-muted)]">
         {{ comparisonLine }}
+      </p>
+      <p v-else-if="!dataset.available" class="text-xs leading-5 text-[var(--app-foreground-muted)]">
+        Dataset tidak tersedia untuk dashboard ini.
       </p>
       <p v-else-if="selectedYear" class="text-xs leading-5 text-[var(--app-foreground-muted)]">
         {{ value === null ? `Data tahun ${selectedYear} belum tersedia.` : 'Belum ada data pembanding.' }}

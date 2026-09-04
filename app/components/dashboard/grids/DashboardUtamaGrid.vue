@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { DashboardUtamaPayload } from '~~/shared/dashboard'
 
-import IkpWidget from '../widgets/utama/IkpWidget.vue'
-import PphKetersediaanWidget from '../widgets/utama/PphKetersediaanWidget.vue'
-import PphKonsumsiWidget from '../widgets/utama/PphKonsumsiWidget.vue'
+import { dashboardUtamaKpiCardDefinitions, dashboardUtamaStatusCardDefinition } from '~~/shared/dashboard'
+
+import CompactKpiWidget from '../widgets/utama/CompactKpiWidget.vue'
 import StatusKetahananPanganWidget from '../widgets/utama/StatusKetahananPanganWidget.vue'
 
 const props = defineProps<{
@@ -18,13 +18,20 @@ const props = defineProps<{
     :class="pending ? 'opacity-75 transition-opacity' : ''"
   >
     <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      <IkpWidget :dataset="props.payload.datasets.IKP_TAHUNAN" />
-      <PphKetersediaanWidget :dataset="props.payload.datasets.PPH_KETERSEDIAAN_TAHUNAN" />
-      <PphKonsumsiWidget :dataset="props.payload.datasets.PPH_KONSUMSI_TAHUNAN" />
+      <CompactKpiWidget
+        v-for="card in dashboardUtamaKpiCardDefinitions"
+        :key="card.key"
+        :card="card"
+        :dataset="props.payload.cards[card.key]"
+      />
     </section>
 
     <section>
-      <StatusKetahananPanganWidget :dataset="props.payload.datasets.STATUS_KETAHANAN_PANGAN_TAHUNAN" />
+      <StatusKetahananPanganWidget
+        v-if="dashboardUtamaStatusCardDefinition"
+        :card="dashboardUtamaStatusCardDefinition"
+        :dataset="props.payload.cards[dashboardUtamaStatusCardDefinition.key]"
+      />
     </section>
   </div>
 </template>

@@ -10,6 +10,7 @@ import {
 } from '~~/auth/permissions'
 import {
   formatDatasetPeriod,
+  getDatasetPeriodCompleteness,
   getDatasetMode,
   getDatasetPeriodRange,
   getDatasetPeriodicity,
@@ -54,6 +55,19 @@ type OwnedDatasetRow = {
     readonly name: string
     readonly description: string | null
   }
+}
+
+type DatasetPeriodProgress = {
+  readonly complete: number
+  readonly total: number
+}
+
+type DatasetPeriodCoverage = {
+  readonly datasetId: string
+  readonly mode: ReturnType<typeof getDatasetMode>
+  readonly regionLevel: string | null
+  readonly periodDates: readonly string[]
+  readonly periodDateSet: ReadonlySet<string>
 }
 
 type DatasetPermissionContext = {
@@ -106,18 +120,136 @@ function getPermissionFlags(user: ScopedUser, archivedAt?: Date | null) {
   }
 }
 
-function serializeOwnedDataset(dataset: OwnedDatasetRow, user: ScopedUser, isSuperAdmin: boolean) {
+function serializeOwnedDataset(
+  dataset: OwnedDatasetRow,
+  user: ScopedUser,
+  isSuperAdmin: boolean,
+  periodProgress: DatasetPeriodProgress = { complete: 0, total: 0 }
+) {
   const serializedDataset = serializeDataset(dataset)
   const permissions = getPermissionFlags(user, dataset.archivedAt)
 
   return {
     ...serializedDataset,
+    periodProgress,
     regionLevel: getDatasetRegionLevel(dataset.dataConfig),
     permissions: {
       ...permissions,
       isSuperAdmin
     }
   }
+}
+
+async function getDatasetPeriodProgress(datasets: readonly OwnedDatasetRow[]) {
+  const referenceDate = new Date()
+  const coverages: DatasetPeriodCoverage[] = datasets.map((dataset) => {
+    const periodDates = getDatasetPeriodRange(dataset.dataConfig, referenceDate)
+
+    return {
+      datasetId: dataset.id,
+      mode: getDatasetMode(dataset.dataConfig),
+      regionLevel: getDatasetRegionLevel(dataset.dataConfig),
+      periodDates,
+      periodDateSet: new Set(periodDates)
+    }
+  })
+  const regionalCoverages = coverages.filter(coverage => coverage.mode === 'REGIONAL')
+  const tabularCoverages = coverages.filter(coverage => coverage.mode === 'TABULAR')
+  const regionalDatasetIds = regionalCoverages.map(coverage => coverage.datasetId)
+  const tabularDatasetIds = tabularCoverages.map(coverage => coverage.datasetId)
+  const regionLevels = Array.from(
+    new Set(
+      regionalCoverages
+        .map(coverage => coverage.regionLevel)
+        .filter((level): level is string => !!level)
+    )
+  )
+  const allPeriodDates = coverages.flatMap(coverage => coverage.periodDates)
+  const periodDateFilter = allPeriodDates.length > 0
+    ? {
+        gte: new Date(`${allPeriodDates.reduce((earliest, periodDate) => periodDate < earliest ? periodDate : earliest)}T00:00:00.000Z`),
+        lte: new Date(`${allPeriodDates.reduce((latest, periodDate) => periodDate > latest ? periodDate : latest)}T00:00:00.000Z`)
+      }
+    : undefined
+
+  const [regionalAggregates, tabularAggregates, regionCounts] = await Promise.all([
+    regionalDatasetIds.length > 0 && periodDateFilter
+      ? db.datasetRecord.groupBy({
+          by: ['datasetId', 'periodDate'],
+          where: {
+            datasetId: { in: regionalDatasetIds },
+            periodDate: periodDateFilter
+          },
+          _count: {
+            _all: true
+          }
+        })
+      : Promise.resolve([]),
+    tabularDatasetIds.length > 0 && periodDateFilter
+      ? db.datasetTableRecord.groupBy({
+          by: ['datasetId', 'periodDate'],
+          where: {
+            datasetId: { in: tabularDatasetIds },
+            periodDate: periodDateFilter
+          },
+          _count: {
+            _all: true
+          }
+        })
+      : Promise.resolve([]),
+    regionLevels.length > 0
+      ? db.region.groupBy({
+          by: ['level'],
+          where: {
+            OR: regionLevels.map(level => getSumbawaBaratRegionScopeWhere(level))
+          },
+          _count: {
+            _all: true
+          }
+        })
+      : Promise.resolve([])
+  ])
+  const expectedRegionCountByLevel = new Map(
+    regionCounts.map(region => [region.level, region._count._all])
+  )
+  const regionalPeriodsByDataset = new Map<string, Array<{ periodDate: string, recordCount: number }>>()
+
+  for (const aggregate of regionalAggregates) {
+    const periods = regionalPeriodsByDataset.get(aggregate.datasetId) ?? []
+    periods.push({
+      periodDate: aggregate.periodDate.toISOString().slice(0, 10),
+      recordCount: aggregate._count._all
+    })
+    regionalPeriodsByDataset.set(aggregate.datasetId, periods)
+  }
+
+  const tabularPeriodsByDataset = new Map<string, Set<string>>()
+
+  for (const aggregate of tabularAggregates) {
+    const periods = tabularPeriodsByDataset.get(aggregate.datasetId) ?? new Set<string>()
+    periods.add(aggregate.periodDate.toISOString().slice(0, 10))
+    tabularPeriodsByDataset.set(aggregate.datasetId, periods)
+  }
+
+  return new Map(
+    coverages.map((coverage) => {
+      const total = coverage.periodDates.length
+      let complete = 0
+
+      if (coverage.mode === 'TABULAR') {
+        const periodsWithRows = tabularPeriodsByDataset.get(coverage.datasetId) ?? new Set<string>()
+        complete = coverage.periodDates.filter(periodDate => periodsWithRows.has(periodDate)).length
+      } else if (coverage.mode === 'REGIONAL') {
+        const expectedRegionCount = expectedRegionCountByLevel.get(coverage.regionLevel ?? '') ?? 0
+        complete = (regionalPeriodsByDataset.get(coverage.datasetId) ?? []).filter((period) => {
+          return coverage.periodDateSet.has(period.periodDate)
+            && getDatasetPeriodCompleteness(period.recordCount, expectedRegionCount) === 'Lengkap'
+        }).length
+      }
+
+      return [coverage.datasetId, { complete, total } satisfies DatasetPeriodProgress]
+    })
+  )
 }
 
 async function getScopedBidangIdsForUser(user: ScopedUser, highestRole: AppRoleSlug) {
@@ -229,10 +361,16 @@ export async function listDataManagementOptionsForUser(user: ScopedUser) {
       }
     }
   })
+  const periodProgressByDatasetId = await getDatasetPeriodProgress(ownedDatasets)
 
   for (const dataset of ownedDatasets) {
     datasetsByBidang[dataset.ownerBidangId]?.push(
-      serializeOwnedDataset(dataset, user, scope.isSuperAdmin)
+      serializeOwnedDataset(
+        dataset,
+        user,
+        scope.isSuperAdmin,
+        periodProgressByDatasetId.get(dataset.id)
+      )
     )
   }
 

@@ -2,6 +2,7 @@
 import type { DashboardDatasetBundle, DashboardNeracaTimeSeriesCardDefinition } from '~~/shared/dashboard'
 
 import {
+  formatDashboardValue,
   getDashboardAvailablePeriods,
   getDashboardDatasetField,
   readDashboardRecordNumber
@@ -11,7 +12,7 @@ type ChartPoint = Record<string, unknown> & {
   index: number
   availability: number
   need: number
-  balance: number
+  periodLabel: string
 }
 
 const props = defineProps<{
@@ -23,38 +24,158 @@ const emit = defineEmits<{
   'open-detail': [periodDate: string | null]
 }>()
 
-const formatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 const selectedPeriod = ref('')
 const availablePeriods = computed(() => getDashboardAvailablePeriods(props.dataset.definition.coverage, props.card))
-const fields = computed(() => props.card.fieldKeys.map(fieldKey => ({
-  key: fieldKey,
-  field: getDashboardDatasetField(props.dataset.definition.dataSchema, fieldKey)
-})))
 const recordsByPeriod = computed(() => new Map(props.dataset.records.map(record => [record.periodDate, record])))
 const selectedRecord = computed(() => recordsByPeriod.value.get(selectedPeriod.value))
-const metrics = computed(() => fields.value.map(({ key, field }) => ({
-  key,
-  label: field?.label ?? key,
-  unit: field?.unit,
-  value: readDashboardRecordNumber(selectedRecord.value, key)
-})))
-const chartData = computed<ChartPoint[]>(() => availablePeriods.value
-  .slice()
-  .reverse()
-  .map((periodDate, index) => {
-    const record = recordsByPeriod.value.get(periodDate)
 
-    return {
-      index,
-      availability: readDashboardRecordNumber(record, 'total_ketersediaan') ?? Number.NaN,
-      need: readDashboardRecordNumber(record, 'total_kebutuhan') ?? Number.NaN,
-      balance: readDashboardRecordNumber(record, 'neraca') ?? Number.NaN
+watch(availablePeriods, (periods) => {
+  if (!periods.length) {
+    selectedPeriod.value = ''
+    return
+  }
+
+  if (!periods.includes(selectedPeriod.value)) {
+    selectedPeriod.value = periods[0] ?? ''
+  }
+}, { immediate: true })
+
+const metricConfigs = [{
+  key: 'total_ketersediaan',
+  label: 'Ketersediaan',
+  unit: 'Ton'
+}, {
+  key: 'total_kebutuhan',
+  label: 'Kebutuhan',
+  unit: 'Ton'
+}, {
+  key: 'neraca',
+  label: 'Neraca',
+  unit: 'Ton'
+}, {
+  key: 'ketahanan_stok',
+  label: 'Ketahanan Stok',
+  unit: 'Hari'
+}] as const
+
+function readMetricValue(fieldKey: string) {
+  return readDashboardRecordNumber(selectedRecord.value, fieldKey)
+}
+
+function formatShortMonth(periodDate: string) {
+  if (!periodDate) {
+    return ''
+  }
+
+  const [yearString = '', monthString = '1'] = periodDate.split('-')
+  const year = Number(yearString)
+  const month = Number(monthString)
+
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    return periodDate
+  }
+
+  return new Intl.DateTimeFormat('id-ID', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(new Date(Date.UTC(year, month - 1, 1)))
+}
+
+const metrics = computed(() => metricConfigs.map((config) => {
+  const field = getDashboardDatasetField(props.dataset.definition.dataSchema, config.key)
+  const value = readMetricValue(config.key)
+  const base = value === null ? null : formatDashboardValue(value, field)
+  const display = value !== null && config.key === 'neraca' && value > 0 ? `+${base}` : base
+
+  let status: 'Surplus' | 'Defisit' | 'Seimbang' | null = null
+  let statusColor: 'success' | 'error' | 'neutral' | null = null
+
+  if (config.key === 'neraca' && value !== null) {
+    status = value > 0 ? 'Surplus' : value < 0 ? 'Defisit' : 'Seimbang'
+    statusColor = value > 0 ? 'success' : value < 0 ? 'error' : 'neutral'
+  }
+
+  return {
+    key: config.key,
+    label: config.label,
+    unit: config.unit,
+    value,
+    display,
+    status,
+    statusColor
+  }
+}))
+
+/** Full chronological monthly projection horizon (not truncated by the selected month). */
+const chartPeriods = computed(() => availablePeriods.value.slice().reverse())
+
+const chartData = computed<ChartPoint[]>(() => chartPeriods.value.map((periodDate, index) => {
+  const record = recordsByPeriod.value.get(periodDate)
+
+  return {
+    index,
+    availability: readDashboardRecordNumber(record, 'total_ketersediaan') ?? Number.NaN,
+    need: readDashboardRecordNumber(record, 'total_kebutuhan') ?? Number.NaN,
+    periodLabel: formatShortMonth(periodDate)
+  }
+}))
+
+const selectedChartIndex = computed(() => {
+  if (!selectedPeriod.value) {
+    return null
+  }
+
+  const index = chartPeriods.value.indexOf(selectedPeriod.value)
+  return index >= 0 ? index : null
+})
+const selectedChartLabel = computed<string | undefined>(() => selectedPeriod.value
+  ? formatShortMonth(selectedPeriod.value) || undefined
+  : undefined)
+
+const chartTickValues = computed(() => {
+  const values: number[] = []
+
+  chartPeriods.value.forEach((periodDate, index) => {
+    const month = periodDate.slice(5, 7)
+
+    if (month === '01' || month === '07') {
+      values.push(index)
     }
-  }))
+  })
+
+  const lastIndex = chartPeriods.value.length - 1
+
+  if (lastIndex >= 0 && !values.includes(lastIndex)) {
+    values.push(lastIndex)
+  }
+
+  return values
+})
+
 const getIndex = (point: Record<string, unknown>) => Number(point.index)
 const getAvailability = (point: Record<string, unknown>) => Number(point.availability)
 const getNeed = (point: Record<string, unknown>) => Number(point.need)
-const getBalance = (point: Record<string, unknown>) => Number(point.balance)
+const chartSeries = computed(() => ([{
+  key: 'availability',
+  label: 'Ketersediaan',
+  y: getAvailability,
+  color: '#2563eb'
+}, {
+  key: 'need',
+  label: 'Kebutuhan',
+  y: getNeed,
+  color: '#d97706'
+}]))
+const yTickFormatter = (tick: number | Date) => new Intl.NumberFormat('id-ID', {
+  maximumFractionDigits: 2
+}).format(typeof tick === 'number' ? tick : tick.getTime())
+
+function formatChartTick(tick: number | Date) {
+  const index = typeof tick === 'number' ? Math.round(tick) : Number.NaN
+  const periodDate = Number.isFinite(index) ? chartPeriods.value[index] ?? '' : ''
+  return formatShortMonth(periodDate)
+}
 </script>
 
 <template>
@@ -84,26 +205,40 @@ const getBalance = (point: Record<string, unknown>) => Number(point.balance)
           <p class="text-xs text-[var(--app-foreground-muted)]">
             {{ metric.label }}
           </p>
-          <p class="mt-1 text-lg font-semibold tabular-nums text-[var(--app-foreground)]">
-            {{ metric.value === null ? 'Data belum tersedia' : formatter.format(metric.value) }}
+
+          <p v-if="metric.value !== null" class="mt-1 text-lg font-semibold tabular-nums text-[var(--app-foreground)]">
+            {{ metric.display }}
+            <span class="ml-1 text-sm font-medium text-[var(--app-foreground-muted)]">
+              {{ metric.unit }}
+            </span>
           </p>
-          <p v-if="metric.unit" class="text-xs text-[var(--app-foreground-muted)]">
-            {{ metric.unit }}
+          <p v-else class="mt-1 text-sm text-[var(--app-foreground-muted)]">
+            Data belum tersedia
           </p>
+
+          <UBadge
+            v-if="metric.status && metric.statusColor"
+            :color="metric.statusColor"
+            variant="subtle"
+            class="mt-1"
+          >
+            {{ metric.status }}
+          </UBadge>
         </div>
       </div>
+
       <ChartsLineChart
         :data="chartData"
         :x="getIndex"
-        :series="[
-          { key: 'availability', label: 'Total Ketersediaan', y: getAvailability, color: '#2563eb' },
-          { key: 'need', label: 'Total Kebutuhan', y: getNeed, color: '#d97706' },
-          { key: 'balance', label: 'Neraca', y: getBalance, color: '#16a34a' }
-        ]"
+        :series="chartSeries"
         :height="220"
-        :x-tick-format="(tick) => availablePeriods.slice().reverse()[Number(tick)] ?? ''"
-        :y-tick-format="(tick) => formatter.format(Number(tick))"
-        :aria-label="`Tren ${card.title}`"
+        :x-tick-values="chartTickValues"
+        :x-tick-format="formatChartTick"
+        :y-tick-format="yTickFormatter"
+        :vertical-line-value="selectedChartIndex"
+        :vertical-line-label="selectedChartLabel"
+        vertical-line-color="#94a3b8"
+        aria-label="Grafik Ketersediaan dibanding Kebutuhan"
       />
     </div>
 

@@ -22,6 +22,10 @@ const props = withDefaults(defineProps<{
   showLegend?: boolean
   showTooltip?: boolean
   ariaLabel?: string
+  /** Optional vertical reference line drawn at the given x value (chart coordinate). */
+  verticalLineValue?: number | null
+  verticalLineLabel?: string
+  verticalLineColor?: string
 }>(), {
   title: undefined,
   description: undefined,
@@ -36,7 +40,10 @@ const props = withDefaults(defineProps<{
   yDomain: undefined,
   showLegend: true,
   showTooltip: true,
-  ariaLabel: undefined
+  ariaLabel: undefined,
+  verticalLineValue: null,
+  verticalLineLabel: undefined,
+  verticalLineColor: undefined
 })
 </script>
 

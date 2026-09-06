@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VisAxis, VisLine, VisTooltip, VisXYContainer } from '@unovis/vue'
+import { VisAxis, VisLine, VisPlotline, VisTooltip, VisXYContainer } from '@unovis/vue'
 import { computed } from 'vue'
 import type { ChartAccessor, CartesianChartSeries } from './shared'
 import { buildLegendItems, resolveChartColor, useUnovisStyles } from './shared'
@@ -27,6 +27,10 @@ const props = withDefaults(defineProps<{
   showLegend?: boolean
   showTooltip?: boolean
   ariaLabel?: string
+  /** Optional vertical reference line drawn at the given x value (chart coordinate). */
+  verticalLineValue?: number | null
+  verticalLineLabel?: string
+  verticalLineColor?: string
 }>(), {
   title: undefined,
   description: undefined,
@@ -41,7 +45,10 @@ const props = withDefaults(defineProps<{
   yDomain: undefined,
   showLegend: true,
   showTooltip: true,
-  ariaLabel: undefined
+  ariaLabel: undefined,
+  verticalLineValue: null,
+  verticalLineLabel: undefined,
+  verticalLineColor: undefined
 })
 
 const normalizedSeries = computed(() => {
@@ -80,6 +87,17 @@ const legendItems = computed(() => buildLegendItems(props.series))
         :x="x"
         :y="item.y"
         :color="item.colorAccessor"
+      />
+
+      <VisPlotline
+        v-if="verticalLineValue !== null && verticalLineValue !== undefined && Number.isFinite(verticalLineValue)"
+        axis="x"
+        :value="verticalLineValue"
+        :color="verticalLineColor ?? '#64748b'"
+        :line-width="1.5"
+        :line-style="[4, 4]"
+        :label-text="verticalLineLabel"
+        label-size="11"
       />
 
       <VisAxis

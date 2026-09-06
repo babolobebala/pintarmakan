@@ -8,7 +8,7 @@ import type {
 import { dashboardProduksiCardDefinitions } from '~~/shared/dashboard'
 
 import DashboardCardDetailModal from '../DashboardCardDetailModal.vue'
-import DashboardCardRenderer from '../DashboardCardRenderer.vue'
+import DashboardProduksiSummaryCard from '../widgets/produksi/DashboardProduksiSummaryCard.vue'
 
 const props = defineProps<{
   payload: DashboardProduksiPayload
@@ -34,7 +34,7 @@ function openDetail(card: DashboardProduksiCardDefinition, periodDate: string | 
     :class="pending ? 'opacity-75 transition-opacity' : ''"
   >
     <section class="grid gap-3 md:grid-cols-2">
-      <DashboardCardRenderer
+      <DashboardProduksiSummaryCard
         v-for="card in dashboardProduksiCardDefinitions"
         :key="card.key"
         :card="card"

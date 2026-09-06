@@ -155,7 +155,12 @@ function formatFieldValue(data: Record<string, unknown>, field: {
                 <p class="text-xs font-medium tracking-[0.14em] text-muted uppercase">
                   Status sebelumnya
                 </p>
-                <UBadge class="mt-1" color="neutral" variant="subtle" size="sm">
+                <UBadge
+                  class="mt-1"
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                >
                   {{ entry.status }}
                 </UBadge>
               </div>
@@ -170,7 +175,9 @@ function formatFieldValue(data: Record<string, unknown>, field: {
                     :key="field.key"
                     class="rounded-lg bg-elevated/45 px-2.5 py-2"
                   >
-                    <dt class="text-xs text-muted">{{ field.label }}</dt>
+                    <dt class="text-xs text-muted">
+                      {{ field.label }}
+                    </dt>
                     <dd class="mt-0.5 break-words text-sm text-highlighted">
                       {{ formatFieldValue(entry.data, field) }}
                     </dd>

@@ -274,6 +274,7 @@ export const dashboardCardDefinitions = [
     mode: 'REGIONAL',
     periodicity: 'TAHUNAN',
     regionLevel: 'KECAMATAN',
+    displayEndPeriod: '2025-01-01',
     selectableFieldKeys: ['luas_panen', 'hasil_per_hektar', 'produksi'],
     defaultFieldKey: 'produksi'
   },
@@ -285,6 +286,7 @@ export const dashboardCardDefinitions = [
     mode: 'REGIONAL',
     periodicity: 'TAHUNAN',
     regionLevel: 'KECAMATAN',
+    displayEndPeriod: '2025-01-01',
     selectableFieldKeys: ['luas_panen', 'hasil_per_hektar', 'produksi'],
     defaultFieldKey: 'produksi'
   },
@@ -296,6 +298,7 @@ export const dashboardCardDefinitions = [
     mode: 'REGIONAL',
     periodicity: 'TAHUNAN',
     regionLevel: 'KECAMATAN',
+    displayEndPeriod: '2025-01-01',
     selectableFields: 'schema-numeric'
   },
   {
@@ -306,6 +309,7 @@ export const dashboardCardDefinitions = [
     mode: 'REGIONAL',
     periodicity: 'TAHUNAN',
     regionLevel: 'KECAMATAN',
+    displayEndPeriod: '2025-01-01',
     selectableFields: 'schema-numeric'
   },
   {
@@ -316,6 +320,7 @@ export const dashboardCardDefinitions = [
     mode: 'REGIONAL',
     periodicity: 'TAHUNAN',
     regionLevel: 'KECAMATAN',
+    displayEndPeriod: '2025-01-01',
     selectableFields: 'schema-numeric'
   },
   {
@@ -326,6 +331,7 @@ export const dashboardCardDefinitions = [
     mode: 'REGIONAL',
     periodicity: 'TAHUNAN',
     regionLevel: 'KECAMATAN',
+    displayEndPeriod: '2025-01-01',
     selectableFields: 'schema-numeric'
   },
   createNeracaCard('proyeksi-neraca-beras', 'PROYEKSI_NERACA_BERAS_TAHUNAN', 'Proyeksi Neraca Beras'),
@@ -459,6 +465,106 @@ export const dashboardProduksiCardDefinitions = dashboardProduksiCardKeys.map((k
 
   return definition
 }) as readonly DashboardProduksiCardDefinition[]
+
+/**
+ * Dashboard Produksi Pangan front presentation.
+ *
+ * Every Produksi card is rendered as an annual aggregate of the Dataset's
+ * Kecamatan records for the selected year. Detailed Kecamatan rows remain
+ * available through the canonical shared detail modal. Aggregation happens on
+ * the already-loaded, bounded Dashboard payload (no extra queries).
+ */
+export type DashboardProduksiSummaryAggregation
+  = | {
+    readonly kind: 'field'
+    readonly fieldKey: string
+  }
+  | {
+    readonly kind: 'schema-numeric'
+  }
+
+export type DashboardProduksiSummaryRowDefinition = {
+  readonly key: string
+  readonly label: string
+  readonly unit: string
+  readonly aggregation: DashboardProduksiSummaryAggregation
+}
+
+export type DashboardProduksiSummaryCardDescriptor = {
+  /** Canonical card owning the Dataset bundle and the shared detail modal context. */
+  readonly cardKey: DashboardProduksiCardKey
+  readonly rows: readonly DashboardProduksiSummaryRowDefinition[]
+}
+
+export const dashboardProduksiSummaryCards: readonly DashboardProduksiSummaryCardDescriptor[] = [{
+  cardKey: 'produksi-padi',
+  rows: [
+    {
+      key: 'luas-panen',
+      label: 'Luas Panen',
+      unit: 'Ha',
+      aggregation: { kind: 'field', fieldKey: 'luas_panen' }
+    },
+    {
+      key: 'produksi',
+      label: 'Produksi',
+      unit: 'Ton',
+      aggregation: { kind: 'field', fieldKey: 'produksi' }
+    }
+  ]
+}, {
+  cardKey: 'produksi-jagung',
+  rows: [
+    {
+      key: 'luas-panen',
+      label: 'Luas Panen',
+      unit: 'Ha',
+      aggregation: { kind: 'field', fieldKey: 'luas_panen' }
+    },
+    {
+      key: 'produksi',
+      label: 'Produksi',
+      unit: 'Ton',
+      aggregation: { kind: 'field', fieldKey: 'produksi' }
+    }
+  ]
+}, {
+  cardKey: 'produksi-daging-hewan-ternak',
+  rows: [{
+    key: 'total',
+    label: 'Total Produksi Daging',
+    unit: 'Kg',
+    aggregation: { kind: 'schema-numeric' }
+  }]
+}, {
+  cardKey: 'produksi-telur-unggas',
+  rows: [{
+    key: 'total',
+    label: 'Total Produksi Telur',
+    unit: 'Butir',
+    aggregation: { kind: 'schema-numeric' }
+  }]
+}, {
+  cardKey: 'produksi-buah-buahan',
+  rows: [{
+    key: 'total',
+    label: 'Total Produksi Buah-Buahan',
+    unit: 'Kuintal',
+    aggregation: { kind: 'schema-numeric' }
+  }]
+}, {
+  cardKey: 'produksi-sayur-sayuran',
+  rows: [{
+    key: 'total',
+    label: 'Total Produksi Sayur-Sayuran',
+    unit: 'Kuintal',
+    aggregation: { kind: 'schema-numeric' }
+  }]
+}]
+
+export function getDashboardProduksiSummaryCard(cardKey: DashboardProduksiCardKey) {
+  return dashboardProduksiSummaryCards.find(card => card.cardKey === cardKey) ?? null
+}
 
 /** Dashboard Proyeksi Pangan composition: the 12 canonical Neraca cards in catalog order. */
 export const dashboardProyeksiCardKeys = [

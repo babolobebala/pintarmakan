@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import type {
   DashboardCardDetailContext,
-  DashboardProduksiCardDefinition,
-  DashboardProduksiPayload
+  DashboardProyeksiCardDefinition,
+  DashboardProyeksiPayload
 } from '~~/shared/dashboard'
 
-import { dashboardProduksiCardDefinitions } from '~~/shared/dashboard'
+import { dashboardProyeksiCardDefinitions } from '~~/shared/dashboard'
 
 import DashboardCardDetailModal from '../DashboardCardDetailModal.vue'
 import DashboardCardRenderer from '../DashboardCardRenderer.vue'
 
 const props = defineProps<{
-  payload: DashboardProduksiPayload
+  payload: DashboardProyeksiPayload
   pending?: boolean
 }>()
 
 const detailOpen = ref(false)
 const selectedDetail = shallowRef<DashboardCardDetailContext | null>(null)
 
-function openDetail(card: DashboardProduksiCardDefinition, periodDate: string | null) {
+function openDetail(card: DashboardProyeksiCardDefinition, periodDate: string | null) {
   selectedDetail.value = {
     card,
     dataset: props.payload.cards[card.key],
@@ -33,9 +33,13 @@ function openDetail(card: DashboardProduksiCardDefinition, periodDate: string | 
     class="space-y-3"
     :class="pending ? 'opacity-75 transition-opacity' : ''"
   >
+    <p class="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-[var(--app-foreground-soft)]">
+      Proyeksi Neraca Pangan
+    </p>
+
     <section class="grid gap-3 md:grid-cols-2">
       <DashboardCardRenderer
-        v-for="card in dashboardProduksiCardDefinitions"
+        v-for="card in dashboardProyeksiCardDefinitions"
         :key="card.key"
         :card="card"
         :dataset="props.payload.cards[card.key]"

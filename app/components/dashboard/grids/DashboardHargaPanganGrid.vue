@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import type {
   DashboardCardDetailContext,
-  DashboardProduksiCardDefinition,
-  DashboardProduksiPayload
+  DashboardHargaPanganCardDefinition,
+  DashboardHargaPanganPayload
 } from '~~/shared/dashboard'
 
-import { dashboardProduksiCardDefinitions } from '~~/shared/dashboard'
+import { dashboardHargaPanganCardDefinitions } from '~~/shared/dashboard'
 
 import DashboardCardDetailModal from '../DashboardCardDetailModal.vue'
 import DashboardCardRenderer from '../DashboardCardRenderer.vue'
 
 const props = defineProps<{
-  payload: DashboardProduksiPayload
+  payload: DashboardHargaPanganPayload
   pending?: boolean
 }>()
 
 const detailOpen = ref(false)
 const selectedDetail = shallowRef<DashboardCardDetailContext | null>(null)
 
-function openDetail(card: DashboardProduksiCardDefinition, periodDate: string | null) {
+function openDetail(card: DashboardHargaPanganCardDefinition, periodDate: string | null) {
   selectedDetail.value = {
     card,
     dataset: props.payload.cards[card.key],
@@ -33,9 +33,9 @@ function openDetail(card: DashboardProduksiCardDefinition, periodDate: string | 
     class="space-y-3"
     :class="pending ? 'opacity-75 transition-opacity' : ''"
   >
-    <section class="grid gap-3 md:grid-cols-2">
+    <section class="grid gap-3">
       <DashboardCardRenderer
-        v-for="card in dashboardProduksiCardDefinitions"
+        v-for="card in dashboardHargaPanganCardDefinitions"
         :key="card.key"
         :card="card"
         :dataset="props.payload.cards[card.key]"

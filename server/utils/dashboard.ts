@@ -1,24 +1,34 @@
 import type {
-  DashboardUtamaCardDefinition,
+  DashboardCardDefinition,
+  DashboardCardKey,
   DashboardDatasetBundle,
+  DashboardDatasetCoverage,
   DashboardDatasetDefinition,
   DashboardDatasetRecord,
+  DashboardDatasetTableRecord,
+  DashboardHargaPanganPayload,
   DashboardKey,
   DashboardPayload,
   DashboardProduksiPayload,
+  DashboardProyeksiPayload,
   DashboardUtamaPayload
 } from '~~/shared/dashboard'
 
 import {
+  dashboardHargaPanganCardDefinitions,
+  dashboardProduksiCardDefinitions,
+  dashboardProyeksiCardDefinitions,
+  dashboardUtamaCardDefinitions,
+  isDashboardCardDefinitionCompatible,
+  isDashboardCardDisplayCoverageCompatible
+} from '~~/shared/dashboard'
+import {
+  getDatasetSource,
   validateDatasetConfigDefinition,
   validateDatasetSchemaDefinition
 } from '~~/shared/datasets'
-import { dashboardUtamaCardDefinitions } from '~~/shared/dashboard'
 import { db } from '~~/server/utils/db'
-
-const dashboardUtamaDatasetIds = [...new Set(
-  dashboardUtamaCardDefinitions.map(card => card.datasetId)
-)]
+import { sumbawaBaratRegionId } from '~~/server/utils/region-scope'
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -37,41 +47,68 @@ function getLatestUpdatedAt(dates: Date[]) {
   return new Date(timestamp || Date.now())
 }
 
-function createFallbackDefinition(card: DashboardUtamaCardDefinition): DashboardDatasetDefinition {
+function createFallbackDefinition(card: DashboardCardDefinition): DashboardDatasetDefinition {
   return {
     id: card.datasetId,
     name: card.title,
-    dataSchema: {}
+    dataSchema: {},
+    source: null,
+    coverage: null,
+    mode: null,
+    regionLevel: null
   }
 }
 
-function isDashboardCardDatasetSupported(
-  card: DashboardUtamaCardDefinition,
-  definition: {
-    dataSchema: unknown
-    dataConfig: unknown
-    archivedAt: Date | null
-  } | undefined
-) {
+type DashboardDatasetRow = {
+  dataSchema: unknown
+  dataConfig: unknown
+  archivedAt: Date | null
+}
+
+function getDashboardCardDatasetContract(
+  card: DashboardCardDefinition,
+  definition: DashboardDatasetRow | undefined
+): {
+  coverage: DashboardDatasetCoverage
+  mode: DashboardDatasetDefinition['mode']
+  regionLevel: DashboardDatasetDefinition['regionLevel']
+} | null {
   if (!definition || definition.archivedAt) {
-    return false
+    return null
   }
 
   try {
     const dataConfig = validateDatasetConfigDefinition(definition.dataConfig)
     const dataSchema = validateDatasetSchemaDefinition(definition.dataSchema)
+    const regionMatches = card.mode === 'TABULAR'
+      ? dataConfig.mode === 'TABULAR'
+      : dataConfig.mode === 'REGIONAL' && dataConfig.regionLevel === card.regionLevel
+    const coverage = {
+      periodicity: dataConfig.periodicity,
+      startPeriod: dataConfig.startPeriod,
+      endPeriod: dataConfig.endPeriod ?? null
+    }
 
-    return dataConfig.mode === card.mode
-      && dataConfig.periodicity === card.periodicity
-      && dataConfig.regionLevel === card.regionLevel
-      && dataSchema.fields.some(field => field.key === card.fieldKey)
+    if (
+      !regionMatches
+      || dataConfig.periodicity !== card.periodicity
+      || !isDashboardCardDefinitionCompatible(card, dataSchema)
+      || !isDashboardCardDisplayCoverageCompatible(card, coverage)
+    ) {
+      return null
+    }
+
+    return {
+      coverage,
+      mode: dataConfig.mode,
+      regionLevel: dataConfig.mode === 'REGIONAL' ? dataConfig.regionLevel : null
+    }
   } catch {
-    return false
+    return null
   }
 }
 
 function serializeRecord(record: {
-  datasetId: string
   regionId: string
   periodDate: Date
   data: unknown
@@ -92,14 +129,41 @@ function serializeRecord(record: {
   }
 }
 
-async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
-  const [datasetDefinitions, datasetRecords] = await Promise.all([
+function serializeTableRecord(record: {
+  periodDate: Date
+  data: unknown
+}): DashboardDatasetTableRecord {
+  return {
+    periodDate: toIsoDate(record.periodDate),
+    year: toRecordYear(record.periodDate),
+    data: isJsonObject(record.data) ? record.data : {}
+  }
+}
+
+/**
+ * Resolves only the requested card definitions in two bounded queries: one for
+ * REGIONAL records and one for TABULAR records. Future dashboard compositions
+ * can choose any catalog subset without introducing per-card loading.
+ */
+async function loadDashboardCardBundles(
+  requestedCards: readonly DashboardCardDefinition[]
+) {
+  const datasetIds = [...new Set(requestedCards.map(card => card.datasetId))]
+  const regionalDatasetIds = [...new Set(
+    requestedCards.filter(card => card.mode === 'REGIONAL').map(card => card.datasetId)
+  )]
+  const tabularDatasetIds = [...new Set(
+    requestedCards.filter(card => card.mode === 'TABULAR').map(card => card.datasetId)
+  )]
+  const kabupatenDatasetIds = new Set(
+    requestedCards
+      .filter(card => card.mode === 'REGIONAL' && card.regionLevel === 'KABUPATEN')
+      .map(card => card.datasetId)
+  )
+
+  const [datasetDefinitions, regionalRecords, tabularRecords] = await Promise.all([
     db.dataset.findMany({
-      where: {
-        id: {
-          in: dashboardUtamaDatasetIds
-        }
-      },
+      where: { id: { in: datasetIds } },
       select: {
         id: true,
         name: true,
@@ -109,86 +173,126 @@ async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
         updatedAt: true
       }
     }),
-    db.datasetRecord.findMany({
-      where: {
-        datasetId: {
-          in: dashboardUtamaDatasetIds
-        },
-        status: 'PUBLISHED',
-        dataset: {
-          archivedAt: null
-        }
-      },
-      orderBy: [{
-        periodDate: 'desc'
-      }, {
-        regionId: 'asc'
-      }],
-      select: {
-        datasetId: true,
-        regionId: true,
-        periodDate: true,
-        data: true,
-        updatedAt: true,
-        region: {
+    regionalDatasetIds.length
+      ? db.datasetRecord.findMany({
+          where: {
+            datasetId: { in: regionalDatasetIds },
+            dataset: { archivedAt: null }
+          },
+          orderBy: [{ periodDate: 'desc' }, { regionId: 'asc' }],
           select: {
-            name: true,
-            parent: {
+            datasetId: true,
+            regionId: true,
+            periodDate: true,
+            data: true,
+            updatedAt: true,
+            region: {
               select: {
-                name: true
+                name: true,
+                parent: { select: { name: true } }
               }
             }
           }
-        }
-      }
-    })
+        })
+      : Promise.resolve([]),
+    tabularDatasetIds.length
+      ? db.datasetTableRecord.findMany({
+          where: {
+            datasetId: { in: tabularDatasetIds },
+            dataset: { archivedAt: null }
+          },
+          orderBy: { periodDate: 'desc' },
+          select: {
+            datasetId: true,
+            periodDate: true,
+            data: true,
+            updatedAt: true
+          }
+        })
+      : Promise.resolve([])
   ])
 
   const definitionMap = new Map(datasetDefinitions.map(definition => [definition.id, definition]))
-  const recordsByDataset = new Map<string, DashboardDatasetRecord[]>()
-  const supportedDatasetIds = new Set(
-    dashboardUtamaCardDefinitions
-      .filter(card => isDashboardCardDatasetSupported(card, definitionMap.get(card.datasetId)))
+  const contractByCard = new Map<DashboardCardKey, ReturnType<typeof getDashboardCardDatasetContract>>(
+    requestedCards.map(card => [card.key, getDashboardCardDatasetContract(card, definitionMap.get(card.datasetId))])
+  )
+  const supportedRegionalDatasetIds = new Set(
+    requestedCards
+      .filter(card => card.mode === 'REGIONAL' && contractByCard.get(card.key))
       .map(card => card.datasetId)
   )
+  const supportedTabularDatasetIds = new Set(
+    requestedCards
+      .filter(card => card.mode === 'TABULAR' && contractByCard.get(card.key))
+      .map(card => card.datasetId)
+  )
+  const recordsByDataset = new Map<string, DashboardDatasetRecord[]>()
+  const tableRecordsByDataset = new Map<string, DashboardDatasetTableRecord[]>()
 
-  for (const record of datasetRecords) {
-    if (!supportedDatasetIds.has(record.datasetId)) {
+  for (const record of regionalRecords) {
+    if (
+      !supportedRegionalDatasetIds.has(record.datasetId)
+      || (kabupatenDatasetIds.has(record.datasetId) && record.regionId !== sumbawaBaratRegionId)
+    ) {
       continue
     }
 
-    const collection = recordsByDataset.get(record.datasetId) ?? []
-    collection.push(serializeRecord(record))
-    recordsByDataset.set(record.datasetId, collection)
+    const records = recordsByDataset.get(record.datasetId) ?? []
+    records.push(serializeRecord(record))
+    recordsByDataset.set(record.datasetId, records)
   }
 
-  const cards = Object.fromEntries(
-    dashboardUtamaCardDefinitions.map((card) => {
-      const definition = definitionMap.get(card.datasetId)
-      const available = isDashboardCardDatasetSupported(card, definition)
+  for (const record of tabularRecords) {
+    if (!supportedTabularDatasetIds.has(record.datasetId)) {
+      continue
+    }
 
-      return [card.key, {
-        definition: definition
-          ? {
-              id: definition.id,
-              name: definition.name,
-              dataSchema: definition.dataSchema
-            }
-          : createFallbackDefinition(card),
-        records: available ? recordsByDataset.get(card.datasetId) ?? [] : [],
-        available
-      } satisfies DashboardDatasetBundle]
+    const records = tableRecordsByDataset.get(record.datasetId) ?? []
+    records.push(serializeTableRecord(record))
+    tableRecordsByDataset.set(record.datasetId, records)
+  }
+
+  const bundles = new Map<DashboardCardKey, DashboardDatasetBundle>()
+
+  for (const card of requestedCards) {
+    const definition = definitionMap.get(card.datasetId)
+    const contract = contractByCard.get(card.key) ?? null
+    const available = contract !== null
+
+    bundles.set(card.key, {
+      definition: definition
+        ? {
+            id: definition.id,
+            name: definition.name,
+            dataSchema: definition.dataSchema,
+            source: getDatasetSource(definition.dataConfig),
+            coverage: contract?.coverage ?? null,
+            mode: contract?.mode ?? null,
+            regionLevel: contract?.regionLevel ?? null
+          }
+        : createFallbackDefinition(card),
+      records: available && card.mode === 'REGIONAL'
+        ? recordsByDataset.get(card.datasetId) ?? []
+        : [],
+      tableRecords: available && card.mode === 'TABULAR'
+        ? tableRecordsByDataset.get(card.datasetId) ?? []
+        : [],
+      available
     })
-  ) as DashboardUtamaPayload['cards']
+  }
 
-  const updatedAt = getLatestUpdatedAt([
-    ...datasetDefinitions
-      .filter(definition => supportedDatasetIds.has(definition.id))
-      .map(definition => definition.updatedAt),
-    ...datasetRecords
-      .filter(record => supportedDatasetIds.has(record.datasetId))
-      .map(record => record.updatedAt)
-  ])
+  return {
+    bundles,
+    updatedAt: getLatestUpdatedAt([
+      ...datasetDefinitions.map(definition => definition.updatedAt),
+      ...regionalRecords.map(record => record.updatedAt),
+      ...tabularRecords.map(record => record.updatedAt)
+    ])
+  }
+}
+
+async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
+  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardUtamaCardDefinitions)
 
   return {
     key: 'utama',
@@ -197,47 +301,57 @@ async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
       title: 'Dashboard Ketahanan Pangan',
       updatedAt: updatedAt.toISOString()
     },
-    cards
+    cards: Object.fromEntries(
+      dashboardUtamaCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
+    ) as DashboardUtamaPayload['cards']
   }
 }
 
-function getDashboardProduksiPayload(): DashboardProduksiPayload {
+async function loadDashboardProduksiPayload(): Promise<DashboardProduksiPayload> {
+  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardProduksiCardDefinitions)
+
   return {
     key: 'produksi-pangan',
-    kind: 'produksi',
+    kind: 'produksi-pangan',
     meta: {
       title: 'Dashboard Produksi Pangan',
-      updatedAt: new Date().toISOString()
+      updatedAt: updatedAt.toISOString()
     },
-    widgets: [{
-      id: 'produksi-padi',
-      title: 'Produksi Padi',
-      value: 'Placeholder',
-      note: 'Menunggu integrasi dataset produksi padi.',
-      icon: 'i-lucide-wheat',
-      badge: 'Dummy'
-    }, {
-      id: 'produksi-jagung',
-      title: 'Produksi Jagung',
-      value: 'Placeholder',
-      note: 'Menunggu integrasi dataset jagung.',
-      icon: 'i-lucide-chart-column',
-      badge: 'Dummy'
-    }, {
-      id: 'hortikultura',
-      title: 'Produksi Hortikultura',
-      value: 'Placeholder',
-      note: 'Ruang ini disiapkan untuk agregasi hortikultura.',
-      icon: 'i-lucide-sprout',
-      badge: 'Dummy'
-    }, {
-      id: 'tren-produksi',
-      title: 'Tren Produksi',
-      value: 'Widget dummy',
-      note: 'Panel lebar untuk chart atau peta produksi di tahap berikutnya.',
-      icon: 'i-lucide-chart-no-axes-combined',
-      badge: 'Dummy'
-    }]
+    cards: Object.fromEntries(
+      dashboardProduksiCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
+    ) as DashboardProduksiPayload['cards']
+  }
+}
+
+async function loadDashboardProyeksiPayload(): Promise<DashboardProyeksiPayload> {
+  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardProyeksiCardDefinitions)
+
+  return {
+    key: 'proyeksi-pangan',
+    kind: 'proyeksi-pangan',
+    meta: {
+      title: 'Dashboard Proyeksi Pangan',
+      updatedAt: updatedAt.toISOString()
+    },
+    cards: Object.fromEntries(
+      dashboardProyeksiCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
+    ) as DashboardProyeksiPayload['cards']
+  }
+}
+
+async function loadDashboardHargaPanganPayload(): Promise<DashboardHargaPanganPayload> {
+  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardHargaPanganCardDefinitions)
+
+  return {
+    key: 'harga-pangan-harian',
+    kind: 'harga-pangan-harian',
+    meta: {
+      title: 'Dashboard Harga Pangan Harian',
+      updatedAt: updatedAt.toISOString()
+    },
+    cards: Object.fromEntries(
+      dashboardHargaPanganCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
+    ) as DashboardHargaPanganPayload['cards']
   }
 }
 
@@ -246,6 +360,10 @@ export async function getDashboardPayload(dashboard: DashboardKey): Promise<Dash
     case 'utama':
       return loadDashboardUtamaPayload()
     case 'produksi-pangan':
-      return getDashboardProduksiPayload()
+      return loadDashboardProduksiPayload()
+    case 'proyeksi-pangan':
+      return loadDashboardProyeksiPayload()
+    case 'harga-pangan-harian':
+      return loadDashboardHargaPanganPayload()
   }
 }

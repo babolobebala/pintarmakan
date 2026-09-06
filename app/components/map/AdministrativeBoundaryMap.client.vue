@@ -49,6 +49,12 @@ type LeafletPathStyle = {
 
 type LeafletGeoJsonFeatureLayerInstance = {
   bindPopup: (content: string) => LeafletGeoJsonFeatureLayerInstance
+  bindTooltip: (content: string, options?: {
+    direction?: string
+    sticky?: boolean
+    opacity?: number
+    className?: string
+  }) => LeafletGeoJsonFeatureLayerInstance
   on: (event: string, handler: () => void) => LeafletGeoJsonFeatureLayerInstance
   setStyle: (style: LeafletPathStyle) => LeafletGeoJsonFeatureLayerInstance
   openPopup: () => LeafletGeoJsonFeatureLayerInstance
@@ -108,6 +114,8 @@ const props = withDefaults(defineProps<{
   noDataColor?: string
   noDataLabel?: string
   popupYear?: string | number | null
+  showDesaTooltips?: boolean
+  stopInteractionPropagation?: boolean
 }>(), {
   title: undefined,
   description: undefined,
@@ -120,7 +128,9 @@ const props = withDefaults(defineProps<{
   valueColorMap: () => ({}),
   noDataColor: '#e2e8f0',
   noDataLabel: 'Data belum tersedia',
-  popupYear: null
+  popupYear: null,
+  showDesaTooltips: false,
+  stopInteractionPropagation: false
 })
 
 const mapEl = useTemplateRef('mapEl')
@@ -152,7 +162,8 @@ const renderSignature = computed(() => {
     desaValues: props.desaValues,
     valueColorMap: props.valueColorMap,
     noDataColor: props.noDataColor,
-    noDataLabel: props.noDataLabel
+    noDataLabel: props.noDataLabel,
+    showDesaTooltips: props.showDesaTooltips
   })
 })
 
@@ -169,6 +180,12 @@ useHead({
 
 function getLeaflet() {
   return (window as unknown as { L?: LeafletNamespace }).L
+}
+
+function handleInteractionEvent(event: Event) {
+  if (props.stopInteractionPropagation) {
+    event.stopPropagation()
+  }
 }
 
 function normalizeName(value: string | null | undefined) {
@@ -285,15 +302,18 @@ function getDesaStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
 
   const featureRegionId = getFeatureRegionId(feature)
   const record = desaValueMap.value.get(featureRegionId)
-  const fillColor = record?.valueKey ? props.valueColorMap[record.valueKey] : props.noDataColor
+  const fillColor = record?.valueKey
+    ? props.valueColorMap[record.valueKey] ?? props.noDataColor
+    : props.noDataColor
+  const hasValueColor = Boolean(record?.valueKey && props.valueColorMap[record.valueKey])
 
   return {
-    color: record?.valueKey ? '#334155' : '#94a3b8',
+    color: hasValueColor ? fillColor : '#94a3b8',
     weight: 1.05,
     opacity: 0.88,
     fillColor,
-    fillOpacity: record?.valueKey ? 0.62 : 0.35,
-    dashArray: record?.valueKey ? undefined : '4 4'
+    fillOpacity: hasValueColor ? 0.62 : 0.35,
+    dashArray: hasValueColor ? undefined : '4 4'
   }
 }
 
@@ -314,13 +334,16 @@ function buildDesaPopupContent(feature: LeafletGeoJsonFeature) {
   const popupDesaName = record?.label || desaName
   const popupKecamatanName = record?.parentLabel || kecamatanName
   const valueLabel = record?.valueLabel || props.noDataLabel
+  const valueColor = record?.valueKey
+    ? props.valueColorMap[record.valueKey] ?? props.noDataColor
+    : props.noDataColor
   const yearLine = props.popupYear ? `<div><strong>Tahun:</strong> ${props.popupYear}</div>` : ''
 
   return `
     <div style="min-width: 190px; font-family: sans-serif; line-height: 1.45;">
       <div><strong>Desa:</strong> ${popupDesaName}</div>
       <div><strong>Kecamatan:</strong> ${popupKecamatanName}</div>
-      <div><strong>Prioritas:</strong> ${valueLabel}</div>
+      <div><strong>Prioritas:</strong> <span style="display: inline-block; border-radius: 999px; background: ${valueColor}; padding: 1px 7px;">${valueLabel}</span></div>
       ${yearLine}
     </div>
   `
@@ -331,10 +354,9 @@ function getHoverStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
 
   return {
     ...baseStyle,
-    color: '#0f172a',
-    weight: (baseStyle.weight ?? 1.1) + 0.45,
+    weight: (baseStyle.weight ?? 1.1) + 0.75,
     opacity: 1,
-    fillOpacity: Math.min((baseStyle.fillOpacity ?? 0) + 0.08, 0.82)
+    fillOpacity: Math.min((baseStyle.fillOpacity ?? 0) + 0.16, 0.82)
   }
 }
 
@@ -446,6 +468,15 @@ async function renderMap() {
         layer.setStyle(baseStyle)
         layer.bindPopup(buildDesaPopupContent(feature))
 
+        if (props.showDesaTooltips) {
+          layer.bindTooltip(buildDesaPopupContent(feature), {
+            direction: 'top',
+            sticky: true,
+            opacity: 0.96,
+            className: 'administrative-boundary-tooltip'
+          })
+        }
+
         layer.on('mouseover', () => {
           layer.setStyle(getHoverStyle(feature))
         })
@@ -517,7 +548,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div
+    class="space-y-4"
+    @click="handleInteractionEvent"
+    @mousedown="handleInteractionEvent"
+    @pointerdown="handleInteractionEvent"
+    @dblclick="handleInteractionEvent"
+    @touchstart="handleInteractionEvent"
+    @wheel="handleInteractionEvent"
+    @keydown="handleInteractionEvent"
+  >
     <div v-if="title || description" class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <p class="text-sm font-medium text-highlighted">

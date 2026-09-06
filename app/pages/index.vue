@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import DashboardSelector from '~/components/dashboard/DashboardSelector.vue'
+import DashboardHargaPanganGrid from '~/components/dashboard/grids/DashboardHargaPanganGrid.vue'
 import DashboardProduksiGrid from '~/components/dashboard/grids/DashboardProduksiGrid.vue'
+import DashboardProyeksiGrid from '~/components/dashboard/grids/DashboardProyeksiGrid.vue'
 import DashboardUtamaGrid from '~/components/dashboard/grids/DashboardUtamaGrid.vue'
 
 import { appPermissions } from '~~/auth/permissions'
@@ -83,7 +85,19 @@ async function updateDashboard(dashboard: (typeof options)[number]['key']) {
     />
 
     <DashboardProduksiGrid
-      v-else-if="dashboardData?.kind === 'produksi'"
+      v-else-if="dashboardData?.kind === 'produksi-pangan'"
+      :payload="dashboardData"
+      :pending="pending"
+    />
+
+    <DashboardProyeksiGrid
+      v-else-if="dashboardData?.kind === 'proyeksi-pangan'"
+      :payload="dashboardData"
+      :pending="pending"
+    />
+
+    <DashboardHargaPanganGrid
+      v-else-if="dashboardData?.kind === 'harga-pangan-harian'"
       :payload="dashboardData"
       :pending="pending"
     />

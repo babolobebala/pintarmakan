@@ -2,46 +2,62 @@
 import type { DashboardDatasetBundle, DashboardKpiCardDefinition } from '~~/shared/dashboard'
 
 import {
-  filterDashboardRecordsByYear,
-  findDashboardPreviousYear,
-  getDashboardAvailableYears,
+  getDashboardAvailablePeriods,
   getDashboardDatasetField,
-  readDashboardRecordNumber,
-  resolveDashboardDefaultYear
+  getDashboardPreviousPeriod,
+  readDashboardRecordNumber
 } from '~~/shared/dashboard'
+import { formatDatasetPeriod } from '~~/shared/datasets'
 
 const props = defineProps<{
   card: DashboardKpiCardDefinition
   dataset: DashboardDatasetBundle
 }>()
 
+const emit = defineEmits<{
+  'open-detail': [periodDate: string | null]
+}>()
+
 const formatter = new Intl.NumberFormat('id-ID', {
   maximumFractionDigits: 2
 })
 
-const availableYears = computed(() => getDashboardAvailableYears(props.dataset.records))
-const yearOptions = computed(() => availableYears.value.map(year => String(year)))
-const selectedYearValue = ref('')
+const availablePeriods = computed(() => getDashboardAvailablePeriods(props.dataset.definition.coverage, props.card))
+const periodOptions = computed(() => availablePeriods.value.map(periodDate => ({
+  value: periodDate,
+  label: formatDatasetPeriod(props.dataset.definition.coverage?.periodicity ?? null, periodDate)
+})))
+const selectedPeriodValue = ref('')
 
-watch(yearOptions, (options) => {
-  if (!options.length) {
-    selectedYearValue.value = ''
+watch(availablePeriods, (periods) => {
+  if (!periods.length) {
+    selectedPeriodValue.value = ''
     return
   }
 
-  if (!options.includes(selectedYearValue.value)) {
-    selectedYearValue.value = String(resolveDashboardDefaultYear(props.dataset.records) ?? '')
+  if (!periods.includes(selectedPeriodValue.value)) {
+    selectedPeriodValue.value = periods[0] ?? ''
   }
 }, { immediate: true })
 
-const selectedYear = computed(() => {
-  return selectedYearValue.value ? Number(selectedYearValue.value) : null
-})
-
 const field = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, props.card.fieldKey))
-const currentRecord = computed(() => filterDashboardRecordsByYear(props.dataset.records, selectedYear.value)[0])
-const previousYear = computed(() => findDashboardPreviousYear(props.dataset.records, selectedYear.value))
-const previousRecord = computed(() => filterDashboardRecordsByYear(props.dataset.records, previousYear.value)[0])
+const selectedPeriodDate = computed(() => selectedPeriodValue.value || null)
+const selectedPeriodLabel = computed(() => selectedPeriodDate.value
+  ? formatDatasetPeriod(props.dataset.definition.coverage?.periodicity ?? null, selectedPeriodDate.value)
+  : null)
+const currentRecord = computed(() => props.dataset.records.find(
+  record => record.periodDate === selectedPeriodDate.value
+))
+const previousPeriodDate = computed(() => getDashboardPreviousPeriod(
+  availablePeriods.value,
+  selectedPeriodDate.value
+))
+const previousPeriodLabel = computed(() => previousPeriodDate.value
+  ? formatDatasetPeriod(props.dataset.definition.coverage?.periodicity ?? null, previousPeriodDate.value)
+  : null)
+const previousRecord = computed(() => props.dataset.records.find(
+  record => record.periodDate === previousPeriodDate.value
+))
 const value = computed(() => readDashboardRecordNumber(currentRecord.value, field.value?.key ?? null))
 const previousValue = computed(() => readDashboardRecordNumber(previousRecord.value, field.value?.key ?? null))
 const delta = computed(() => {
@@ -61,12 +77,12 @@ const valueLabel = computed(() => {
 })
 
 const comparisonLine = computed(() => {
-  if (delta.value === null || previousYear.value === null || previousValue.value === null) {
+  if (delta.value === null || previousPeriodLabel.value === null || previousValue.value === null) {
     return null
   }
 
   const prefix = delta.value > 0 ? '+' : ''
-  return `${prefix}${formatter.format(delta.value)} dari ${previousYear.value} (${formatter.format(previousValue.value)})`
+  return `${prefix}${formatter.format(delta.value)} dari ${previousPeriodLabel.value} (${formatter.format(previousValue.value)})`
 })
 
 const deltaBadgeLabel = computed(() => {
@@ -105,7 +121,11 @@ const trendMeta = computed(() => {
 </script>
 
 <template>
-  <DashboardWidget>
+  <DashboardWidget
+    interactive
+    :activation-label="`Buka detail ${card.title}`"
+    @activate="emit('open-detail', selectedPeriodDate)"
+  >
     <template #header>
       <div class="flex w-full items-start justify-between gap-3">
         <div class="min-w-0">
@@ -117,15 +137,19 @@ const trendMeta = computed(() => {
           </div>
         </div>
 
-        <USelectMenu
-          v-model="selectedYearValue"
-          :items="yearOptions"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          class="w-24 shrink-0"
-          :disabled="!yearOptions.length"
-        />
+        <div @click.stop @keydown.stop>
+          <USelectMenu
+            v-model="selectedPeriodValue"
+            :items="periodOptions"
+            value-key="value"
+            label-key="label"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            class="w-24 shrink-0"
+            :disabled="!periodOptions.length"
+          />
+        </div>
       </div>
     </template>
 
@@ -152,11 +176,11 @@ const trendMeta = computed(() => {
       <p v-else-if="!dataset.available" class="text-xs leading-5 text-[var(--app-foreground-muted)]">
         Dataset tidak tersedia untuk dashboard ini.
       </p>
-      <p v-else-if="selectedYear" class="text-xs leading-5 text-[var(--app-foreground-muted)]">
-        {{ value === null ? `Data tahun ${selectedYear} belum tersedia.` : 'Belum ada data pembanding.' }}
+      <p v-else-if="selectedPeriodLabel" class="text-xs leading-5 text-[var(--app-foreground-muted)]">
+        {{ value === null ? `Data ${selectedPeriodLabel} belum tersedia.` : 'Belum ada data pembanding.' }}
       </p>
       <p v-else class="text-xs leading-5 text-[var(--app-foreground-muted)]">
-        Belum ada data tahunan.
+        Periode Dataset belum tersedia.
       </p>
     </div>
   </DashboardWidget>

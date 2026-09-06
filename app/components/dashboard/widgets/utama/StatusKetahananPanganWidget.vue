@@ -1,63 +1,68 @@
 <script setup lang="ts">
-import type { DashboardDatasetBundle, DashboardStatusPriorityCardDefinition } from '~~/shared/dashboard'
+import type { DashboardDatasetBundle, DashboardDistributionCardDefinition } from '~~/shared/dashboard'
 
 import {
-  filterDashboardRecordsByYear,
-  getDashboardAvailableYears,
+  getDashboardAvailablePeriods,
   getDashboardDatasetField,
-  readDashboardRecordText,
-  resolveDashboardDefaultYear
+  readDashboardRecordText
 } from '~~/shared/dashboard'
+import { formatDatasetPeriod } from '~~/shared/datasets'
 
-const priorityPalette = [
-  '#f59e0b',
-  '#84cc16',
-  '#22c55e',
-  '#14b8a6',
-  '#0ea5e9',
-  '#8b5cf6'
+const priorityLegend = [
+  { valueKey: '1', code: 'P1', category: 'Sangat rentan', color: '#D73027' },
+  { valueKey: '2', code: 'P2', category: 'Rentan', color: '#FC8D59' },
+  { valueKey: '3', code: 'P3', category: 'Cukup rentan', color: '#FEE08B' },
+  { valueKey: '4', code: 'P4', category: 'Cukup tahan', color: '#D9EF8B' },
+  { valueKey: '5', code: 'P5', category: 'Tahan', color: '#91CF60' },
+  { valueKey: '6', code: 'P6', category: 'Sangat tahan', color: '#1A9850' }
 ] as const
+const priorityByValueKey = new Map<string, (typeof priorityLegend)[number]>(
+  priorityLegend.map(item => [item.valueKey, item])
+)
+const valueColorMap = Object.fromEntries(priorityLegend.map(item => [item.valueKey, item.color]))
+const ALL_KECAMATAN = '__ALL__'
 
 const props = defineProps<{
-  card: DashboardStatusPriorityCardDefinition
+  card: DashboardDistributionCardDefinition
   dataset: DashboardDatasetBundle
 }>()
 
-const availableYears = computed(() => getDashboardAvailableYears(props.dataset.records))
-const yearOptions = computed(() => availableYears.value.map(year => String(year)))
-const selectedYearValue = ref('')
+const emit = defineEmits<{
+  'open-detail': [periodDate: string | null]
+}>()
 
-watch(yearOptions, (options) => {
-  if (!options.length) {
-    selectedYearValue.value = ''
-    return
-  }
-
-  if (!options.includes(selectedYearValue.value)) {
-    selectedYearValue.value = String(resolveDashboardDefaultYear(props.dataset.records) ?? '')
-  }
-}, { immediate: true })
-
-const selectedYear = computed(() => {
-  return selectedYearValue.value ? Number(selectedYearValue.value) : null
-})
+const availablePeriods = computed(() => getDashboardAvailablePeriods(props.dataset.definition.coverage, props.card))
+const selectedPeriodValue = ref('')
+const selectedKecamatan = ref(ALL_KECAMATAN)
 
 const priorityField = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, props.card.fieldKey))
-const filteredRecords = computed(() => filterDashboardRecordsByYear(props.dataset.records, selectedYear.value))
-const allPriorityKeys = computed(() => {
-  return Array.from(new Set(
-    props.dataset.records
-      .map(record => readDashboardRecordText(record, priorityField.value?.key ?? null))
-      .filter((value): value is string => !!value)
-  )).sort((left, right) => Number(left) - Number(right))
-})
+const selectedPeriodDate = computed(() => selectedPeriodValue.value || null)
+const selectedPeriodLabel = computed(() => selectedPeriodDate.value
+  ? formatDatasetPeriod(props.dataset.definition.coverage?.periodicity ?? null, selectedPeriodDate.value)
+  : null)
+const periodRecords = computed(() => props.dataset.records.filter(
+  record => record.periodDate === selectedPeriodDate.value
+))
+const kecamatanOptions = computed(() => {
+  const kecamatanNames = [...new Set(periodRecords.value
+    .map(record => record.parentRegionName)
+    .filter((name): name is string => Boolean(name)))]
+    .sort((left, right) => left.localeCompare(right, 'id-ID'))
 
-const valueColorMap = computed(() => {
-  return allPriorityKeys.value.reduce<Record<string, string>>((map, key, index) => {
-    map[key] = priorityPalette[index % priorityPalette.length] ?? priorityPalette[0]
-    return map
-  }, {})
+  return [{
+    label: 'Semua Kecamatan',
+    value: ALL_KECAMATAN
+  }, ...kecamatanNames.map(name => ({ label: name, value: name }))]
 })
+const filteredRecords = computed(() => selectedKecamatan.value === ALL_KECAMATAN
+  ? periodRecords.value
+  : periodRecords.value.filter(record => record.parentRegionName === selectedKecamatan.value))
+
+watch(kecamatanOptions, (options) => {
+  if (!options.some(option => option.value === selectedKecamatan.value)) {
+    selectedKecamatan.value = ALL_KECAMATAN
+  }
+}, { immediate: true })
 
 const countsByPriority = computed(() => {
   const counts = new Map<string, number>()
@@ -72,19 +77,17 @@ const countsByPriority = computed(() => {
     counts.set(priorityKey, (counts.get(priorityKey) ?? 0) + 1)
   }
 
-  return Array.from(counts.entries())
-    .sort(([left], [right]) => Number(left) - Number(right))
-    .map(([key, count]) => ({
-      key,
-      count,
-      label: `Prioritas ${key}`,
-      shortLabel: `P${key}`,
-      color: valueColorMap.value[key] ?? priorityPalette[0]
-    }))
+  return priorityLegend.map(item => ({
+    key: item.valueKey,
+    count: counts.get(item.valueKey) ?? 0,
+    label: `${item.code} · ${item.category}`,
+    shortLabel: item.code,
+    color: item.color
+  }))
 })
 
 const summaryItems = computed(() => {
-  if (selectedYear.value === null) {
+  if (!selectedPeriodDate.value || filteredRecords.value.length === 0) {
     return []
   }
 
@@ -97,20 +100,25 @@ const summaryItems = computed(() => {
 const desaValues = computed(() => {
   return filteredRecords.value.map((record) => {
     const priorityKey = readDashboardRecordText(record, priorityField.value?.key ?? null)
+    const priority = priorityByValueKey.get(priorityKey ?? '')
 
     return {
       regionId: record.regionId,
       label: record.regionName,
       parentLabel: record.parentRegionName,
-      valueKey: priorityKey,
-      valueLabel: priorityKey ? `Prioritas ${priorityKey}` : 'Data belum tersedia'
+      valueKey: priority?.valueKey ?? null,
+      valueLabel: priority ? `${priority.code} · ${priority.category}` : 'Data belum tersedia'
     }
   })
 })
 </script>
 
 <template>
-  <DashboardWidget>
+  <DashboardWidget
+    interactive
+    :activation-label="`Buka detail ${card.title}`"
+    @activate="emit('open-detail', selectedPeriodDate)"
+  >
     <template #header>
       <div class="flex w-full flex-col gap-2">
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -123,15 +131,24 @@ const desaValues = computed(() => {
             </div>
           </div>
 
-          <USelectMenu
-            v-model="selectedYearValue"
-            :items="yearOptions"
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            class="w-24 shrink-0"
-            :disabled="!yearOptions.length"
-          />
+          <div class="flex flex-wrap items-center gap-1" @click.stop @keydown.stop>
+            <USelectMenu
+              v-model="selectedKecamatan"
+              :items="kecamatanOptions"
+              value-key="value"
+              label-key="label"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              class="w-44"
+              aria-label="Pilih kecamatan"
+            />
+            <DashboardPeriodSelector
+              v-model="selectedPeriodValue"
+              :periodicity="card.periodicity"
+              :periods="availablePeriods"
+            />
+          </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 text-xs text-[var(--app-foreground-muted)]">
@@ -145,7 +162,11 @@ const desaValues = computed(() => {
             </span>
           </template>
           <span v-else class="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-muted)] px-2.5 py-1">
-            {{ dataset.available ? 'Belum ada data tahunan.' : 'Dataset tidak tersedia.' }}
+            {{ dataset.available
+              ? selectedPeriodLabel
+                ? `Data ${selectedPeriodLabel} belum tersedia.`
+                : 'Periode Dataset belum tersedia.'
+              : 'Dataset tidak tersedia.' }}
           </span>
         </div>
       </div>
@@ -156,7 +177,10 @@ const desaValues = computed(() => {
         map-height="500px"
         :desa-values="desaValues"
         :value-color-map="valueColorMap"
-        :popup-year="selectedYear"
+        :selected-kecamatan="selectedKecamatan === ALL_KECAMATAN ? null : selectedKecamatan"
+        :popup-year="selectedPeriodLabel"
+        show-desa-tooltips
+        stop-interaction-propagation
         no-data-color="#e2e8f0"
         no-data-label="Data belum tersedia"
       />
@@ -165,12 +189,17 @@ const desaValues = computed(() => {
         <span
           v-for="item in countsByPriority"
           :key="item.key"
-          class="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-muted)] px-2.5 py-1 text-[var(--app-foreground-muted)]"
+          class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[var(--app-foreground-muted)]"
+          :style="{ borderColor: item.color, backgroundColor: `${item.color}1A` }"
         >
           <span class="size-2 rounded-full" :style="{ backgroundColor: item.color }" />
           {{ item.label }}
         </span>
       </div>
     </div>
+
+    <template #footer>
+      <DashboardCardSource :source="dataset.definition.source" />
+    </template>
   </DashboardWidget>
 </template>

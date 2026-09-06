@@ -6,6 +6,7 @@ import type {
 } from '~/types'
 
 import AppPageIntro from '~/components/AppPageIntro.vue'
+import DatasetWorkbookImportModal from '~/components/data-records/DatasetWorkbookImportModal.vue'
 import PeriodMatrixModal from '~/components/data-records/PeriodMatrixModal.vue'
 import TabularPeriodModal from '~/components/data-records/TabularPeriodModal.vue'
 import { appPermissions } from '~~/auth/permissions'
@@ -78,6 +79,9 @@ const periodSearch = ref('')
 const selectedPeriod = ref<DatasetPeriodOverviewItem | null>(null)
 const periodModalOpen = ref(false)
 const tabularPeriodModalOpen = ref(false)
+const workbookImportOpen = ref(false)
+const periodWorkspaceRefreshKey = ref(0)
+const workbookImportRequestedFromPeriod = ref(false)
 const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
   dateStyle: 'medium',
   timeStyle: 'short'
@@ -90,6 +94,11 @@ const yearFormatter = new Intl.DateTimeFormat('id-ID', {
 const periodicity = computed(() => dataset.value?.periodicity ?? null)
 const isRegionalDataset = computed(() => dataset.value?.mode === 'REGIONAL')
 const isTabularDataset = computed(() => dataset.value?.mode === 'TABULAR')
+const canImportWorkbook = computed(() => {
+  const permissions = dataset.value?.permissions
+
+  return !dataset.value?.archivedAt && !!permissions && (permissions.canCreate || permissions.canUpdate)
+})
 const years = computed(() => {
   return Array.from(
     new Set(
@@ -256,7 +265,7 @@ function formatPeriod(periodDate: string) {
 function getPeriodCompleteness(period: { recordCount: number }) {
   const label = getDatasetPeriodCompleteness(
     period.recordCount,
-    periodOverview.value.expectedRegionCount
+    periodOverview.value.expectedRegionCount ?? 0
   )
 
   return {
@@ -298,6 +307,38 @@ async function retryPeriodOverview() {
 
 function refreshPeriodOverviewAfterBulkSave() {
   void refreshPeriodOverview()
+}
+
+function requestWorkbookImportFromPeriod() {
+  workbookImportRequestedFromPeriod.value = true
+  workbookImportOpen.value = true
+}
+
+function openDatasetWorkbookImport() {
+  workbookImportRequestedFromPeriod.value = false
+  workbookImportOpen.value = true
+}
+
+function handleWorkbookImported() {
+  refreshPeriodOverviewAfterBulkSave()
+
+  if (workbookImportRequestedFromPeriod.value) {
+    periodWorkspaceRefreshKey.value += 1
+    workbookImportRequestedFromPeriod.value = false
+  }
+}
+
+function downloadDatasetWorkbook(kind: 'template' | 'export') {
+  if (!dataset.value || !import.meta.client) {
+    return
+  }
+
+  const endpoint = kind === 'template'
+    ? '/api/dataset-workbook-template'
+    : '/api/dataset-workbook-export'
+  const query = new URLSearchParams({ datasetId: dataset.value.id })
+
+  window.open(`${endpoint}?${query.toString()}`, '_blank', 'noopener')
 }
 </script>
 
@@ -388,14 +429,44 @@ function refreshPeriodOverviewAfterBulkSave() {
               </div>
             </div>
           </div>
-          <UButton
-            to="/kelola-data"
-            label="Pilih dataset lain"
-            icon="i-lucide-list"
-            color="neutral"
-            variant="outline"
-            size="sm"
-          />
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              v-if="canImportWorkbook"
+              label="Import"
+              icon="i-lucide-upload"
+              class="cursor-pointer"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="openDatasetWorkbookImport"
+            />
+            <UButton
+              label="Export data"
+              icon="i-lucide-download"
+              class="cursor-pointer"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="downloadDatasetWorkbook('export')"
+            />
+            <UButton
+              label="Unduh template"
+              icon="i-lucide-file-down"
+              class="cursor-pointer"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="downloadDatasetWorkbook('template')"
+            />
+            <UButton
+              to="/kelola-data"
+              label="Pilih dataset lain"
+              icon="i-lucide-list"
+              color="neutral"
+              variant="outline"
+              size="sm"
+            />
+          </div>
         </div>
       </section>
 
@@ -596,7 +667,9 @@ function refreshPeriodOverviewAfterBulkSave() {
       :dataset-id="dataset?.id ?? ''"
       :period-date="selectedPeriod?.periodDate ?? null"
       :period-label="selectedPeriod ? formatPeriod(selectedPeriod.periodDate) : ''"
+      :refresh-key="periodWorkspaceRefreshKey"
       @saved="refreshPeriodOverviewAfterBulkSave"
+      @request-import="requestWorkbookImportFromPeriod"
     />
     <TabularPeriodModal
       v-if="isTabularDataset"
@@ -604,7 +677,15 @@ function refreshPeriodOverviewAfterBulkSave() {
       :dataset-id="dataset?.id ?? ''"
       :period-date="selectedPeriod?.periodDate ?? null"
       :period-label="selectedPeriod ? formatPeriod(selectedPeriod.periodDate) : ''"
+      :refresh-key="periodWorkspaceRefreshKey"
       @saved="refreshPeriodOverviewAfterBulkSave"
+      @request-import="requestWorkbookImportFromPeriod"
+    />
+    <DatasetWorkbookImportModal
+      v-if="dataset"
+      v-model:open="workbookImportOpen"
+      :dataset="dataset"
+      @imported="handleWorkbookImported"
     />
   </div>
 </template>

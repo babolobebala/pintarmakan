@@ -21,6 +21,10 @@ import {
   type DatasetSpreadsheetRegionContext
 } from '#server/utils/dataset-period-spreadsheet-regions'
 import { resolveDatasetPeriodSpreadsheetFieldHeaders } from '#server/utils/dataset-period-spreadsheet-headers'
+import {
+  resolveDatasetImportWorkbookSheets,
+  resolveDatasetPeriodImportWorksheet
+} from '#server/utils/dataset-period-import-workbook'
 
 const nodeRequire = createRequire(import.meta.url)
 const XLSX = nodeRequire('xlsx') as typeof import('xlsx')
@@ -74,7 +78,10 @@ function isEmptyRow(row: readonly unknown[]) {
   return row.every(cell => !getCellText(cell))
 }
 
-function getImportRows(file: ImportFile) {
+function getImportRows(file: ImportFile, options?: {
+  readonly dataConfig: unknown
+  readonly expectedPeriodDate: string
+}) {
   const filename = file.filename?.trim() || ''
   const extension = filename.toLowerCase().split('.').pop()
 
@@ -103,8 +110,14 @@ function getImportRows(file: ImportFile) {
     })
   }
 
-  const firstSheetName = workbook.SheetNames[0]
-  const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null
+  const sheetName = extension === 'xlsx' && options
+    ? resolveDatasetPeriodImportWorksheet(
+      options.dataConfig,
+      workbook,
+      options.expectedPeriodDate
+    ).sheetName
+    : workbook.SheetNames[0]
+  const worksheet = sheetName ? workbook.Sheets[sheetName] : null
 
   if (!worksheet) {
     throw createError({
@@ -142,16 +155,16 @@ function getImportRows(file: ImportFile) {
 
   const dataRows = sheetRows.slice(1)
 
-  if (dataRows.length > maxImportRows) {
+  const nonEmptyRows = dataRows
+    .map((row, index) => ({ row, rowNumber: index + 2 }))
+    .filter(({ row }) => !isEmptyRow(row))
+
+  if (nonEmptyRows.length > maxImportRows) {
     throw createError({
       statusCode: 400,
       statusMessage: `File maksimal berisi ${maxImportRows} baris data.`
     })
   }
-
-  const nonEmptyRows = dataRows
-    .map((row, index) => ({ row, rowNumber: index + 2 }))
-    .filter(({ row }) => !isEmptyRow(row))
 
   if (nonEmptyRows.length === 0) {
     throw createError({
@@ -586,7 +599,18 @@ export async function prepareDatasetPeriodRecordImport(user: ScopedUser, options
   if (periodRangeError) {
     throw createError({ statusCode: 400, statusMessage: periodRangeError })
   }
-  const { headers, rows: sourceRows } = getImportRows(options.file)
+  let spreadsheet: ReturnType<typeof getImportRows>
+
+  try {
+    spreadsheet = getImportRows(options.file, {
+      dataConfig: dataset.dataConfig,
+      expectedPeriodDate: periodDate
+    })
+  } catch (error) {
+    throw createError({ statusCode: 400, statusMessage: getErrorMessage(error) })
+  }
+
+  const { headers, rows: sourceRows } = spreadsheet
   const fields = getDatasetSchemaFields(dataset.dataSchema)
   const identityHeaders = getDatasetPeriodSpreadsheetIdentityHeaders(dataset.regionLevel)
   const missingHeaders = identityHeaders.filter(header => !headers.includes(header))
@@ -755,4 +779,176 @@ export async function commitDatasetPeriodRecordImport(user: ScopedUser, options:
   })
 
   return { ...prepared.preview, ...result }
+}
+
+function readDatasetWorkbookImport(file: ImportFile): WorkBook {
+  const filename = file.filename?.trim() || ''
+
+  if (!filename.toLowerCase().endsWith('.xlsx')) {
+    throw createError({ statusCode: 400, statusMessage: 'Import banyak periode hanya mendukung file XLSX.' })
+  }
+
+  if (file.data.byteLength === 0 || file.data.byteLength > maxImportFileBytes) {
+    throw createError({ statusCode: 400, statusMessage: 'Ukuran file harus lebih dari 0 dan maksimal 5 MB.' })
+  }
+
+  try {
+    return XLSX.read(file.data, { type: 'array', raw: false })
+  } catch {
+    throw createError({ statusCode: 400, statusMessage: 'File tidak dapat dibaca sebagai XLSX yang valid.' })
+  }
+}
+
+function createDatasetWorkbookSheetFile(workbook: WorkBook, sheetName: string, filename: string): ImportFile {
+  const worksheet = workbook.Sheets[sheetName]
+
+  if (!worksheet) {
+    throw createError({ statusCode: 400, statusMessage: `Worksheet ${sheetName} tidak ditemukan.` })
+  }
+
+  const periodWorkbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(periodWorkbook, worksheet, sheetName)
+
+  return {
+    filename,
+    data: XLSX.write(periodWorkbook, { bookType: 'xlsx', type: 'buffer' }) as Buffer
+  }
+}
+
+function countDatasetWorkbookSheetRows(workbook: WorkBook, sheetName: string) {
+  const worksheet = workbook.Sheets[sheetName]
+
+  if (!worksheet) {
+    return 0
+  }
+
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+    header: 1,
+    defval: '',
+    raw: false,
+    blankrows: true
+  })
+
+  return rows.slice(1).filter(row => !isEmptyRow(row)).length
+}
+
+export async function prepareDatasetWorkbookRecordImport(user: ScopedUser, options: {
+  readonly datasetId: string
+  readonly file: ImportFile
+}) {
+  const datasetContext = await assertDatasetPermissionForUser(user, {
+    datasetId: options.datasetId.trim(),
+    action: 'read'
+  })
+  const dataset = datasetContext.dataset
+
+  if (dataset.archivedAt) {
+    throw createError({ statusCode: 409, statusMessage: 'Dataset is archived and read-only.' })
+  }
+
+  const workbook = readDatasetWorkbookImport(options.file)
+  let resolvedSheets: ReturnType<typeof resolveDatasetImportWorkbookSheets>
+
+  try {
+    resolvedSheets = resolveDatasetImportWorkbookSheets(dataset.dataConfig, workbook)
+  } catch (error) {
+    throw createError({ statusCode: 400, statusMessage: getErrorMessage(error) })
+  }
+
+  const oversizedSheet = resolvedSheets.find(
+    sheet => countDatasetWorkbookSheetRows(workbook, sheet.sheetName) > maxImportRows
+  )
+
+  if (oversizedSheet) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Worksheet ${oversizedSheet.sheetName} maksimal berisi ${maxImportRows} baris data.`
+    })
+  }
+
+  const filename = options.file.filename?.trim() || 'dataset.xlsx'
+  const sheets = [] as Array<{
+    sheetName: string
+    periodDate: string
+    prepared: Awaited<ReturnType<typeof prepareDatasetPeriodRecordImport>>
+  }>
+
+  for (const sheet of resolvedSheets) {
+    const prepared = await prepareDatasetPeriodRecordImport(user, {
+      datasetId: dataset.id,
+      periodDate: sheet.periodDate,
+      file: createDatasetWorkbookSheetFile(workbook, sheet.sheetName, filename)
+    })
+    sheets.push({ ...sheet, prepared })
+  }
+
+  const previews = sheets.map(sheet => ({
+    sheetName: sheet.sheetName,
+    periodDate: sheet.periodDate,
+    ...sheet.prepared.preview
+  }))
+
+  return {
+    datasetId: dataset.id,
+    sheets,
+    preview: {
+      totalRows: previews.reduce((total, preview) => total + preview.totalRows, 0),
+      validRows: previews.reduce((total, preview) => total + preview.validRows, 0),
+      invalidRows: previews.reduce((total, preview) => total + preview.invalidRows, 0),
+      createRows: previews.reduce((total, preview) => total + preview.createRows, 0),
+      updateRows: previews.reduce((total, preview) => total + preview.updateRows, 0),
+      unchangedRows: previews.reduce((total, preview) => total + preview.unchangedRows, 0),
+      skippedRows: previews.reduce((total, preview) => total + (preview.skippedRows ?? 0), 0),
+      sheets: previews
+    }
+  }
+}
+
+export async function commitDatasetWorkbookRecordImport(user: ScopedUser, options: {
+  readonly datasetId: string
+  readonly file: ImportFile
+}) {
+  const prepared = await prepareDatasetWorkbookRecordImport(user, options)
+
+  if (prepared.preview.invalidRows > 0) {
+    throw createError({ statusCode: 400, statusMessage: 'Import memiliki baris tidak valid. Perbaiki file lalu lakukan pratinjau kembali.' })
+  }
+
+  try {
+    const results = await db.$transaction(async (transaction) => {
+      const committedSheets = [] as Array<{ sheetName: string, periodDate: string, created: number, updated: number, unchanged: number }>
+
+      for (const sheet of prepared.sheets) {
+        const rows = sheet.prepared.rows
+          .filter(row => row.meaningful && row.errors.length === 0)
+          .map(row => ({ regionId: row.regionId, data: row.data }))
+        const result = rows.length === 0
+          ? { created: 0, updated: 0, unchanged: 0 }
+          : await commitDatasetPeriodRows(user, {
+              datasetId: prepared.datasetId,
+              periodDate: sheet.periodDate,
+              rows,
+              source: 'dataset_import',
+              transaction
+            })
+
+        committedSheets.push({ ...sheet, ...result })
+      }
+
+      return committedSheets
+    }, { isolationLevel: 'Serializable' })
+
+    return {
+      ...prepared.preview,
+      created: results.reduce((total, result) => total + result.created, 0),
+      updated: results.reduce((total, result) => total + result.updated, 0),
+      unchanged: results.reduce((total, result) => total + result.unchanged, 0)
+    }
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && (error.code === 'P2002' || error.code === 'P2034')) {
+      throw createError({ statusCode: 409, statusMessage: 'Data Dataset berubah oleh pengguna lain. Muat ulang lalu coba lagi.' })
+    }
+
+    throw error
+  }
 }

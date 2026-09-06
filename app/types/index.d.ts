@@ -285,3 +285,43 @@ export interface DatasetTableRecordImportResult extends DatasetTableRecordImport
   updated: number
   unchanged: number
 }
+
+export type DatasetWorkbookImportAction = 'CREATE' | 'UPDATE' | 'UNCHANGED' | 'SKIPPED' | null
+
+export interface DatasetWorkbookImportPreviewRow {
+  rowNumber: number
+  action: DatasetWorkbookImportAction
+  errors: string[]
+  regionName?: string
+  recordId?: string
+}
+
+export interface DatasetWorkbookImportSheetPreview {
+  sheetName: string
+  periodDate: string
+  totalRows: number
+  validRows: number
+  invalidRows: number
+  createRows: number
+  updateRows: number
+  unchangedRows: number
+  skippedRows?: number
+  rows: DatasetWorkbookImportPreviewRow[]
+}
+
+export interface DatasetWorkbookImportPreview {
+  totalRows: number
+  validRows: number
+  invalidRows: number
+  createRows: number
+  updateRows: number
+  unchangedRows: number
+  skippedRows?: number
+  sheets: DatasetWorkbookImportSheetPreview[]
+}
+
+export interface DatasetWorkbookImportResult extends DatasetWorkbookImportPreview {
+  created: number
+  updated: number
+  unchanged: number
+}

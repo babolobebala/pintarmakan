@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import TabularImportPanel from './TabularImportPanel.vue'
-
 import type {
   DatasetPeriodWorkspaceField,
   DatasetTablePeriodWorkspaceResponse,
@@ -17,11 +15,13 @@ type FieldErrors = Record<string, string[]>
 const props = defineProps<{
   datasetId: string
   periodDate: string
+  refreshKey?: number
 }>()
 
 const emit = defineEmits<{
   close: []
   saved: []
+  requestImport: []
 }>()
 
 const requestFetch = useRequestFetch()
@@ -33,8 +33,6 @@ const workspaceError = ref('')
 const editor = ref<RowEditor | null>(null)
 const fieldErrors = ref<FieldErrors>({})
 const pendingDeleteRecordId = ref<string | null>(null)
-const importFileInput = ref<HTMLInputElement | null>(null)
-const importFile = ref<File | null>(null)
 
 const fields = computed(() => workspace.value?.dataset.fields ?? [])
 const rows = computed(() => workspace.value?.rows ?? [])
@@ -271,33 +269,6 @@ async function deleteRow(row: DatasetTablePeriodWorkspaceRow) {
   }
 }
 
-function openImportPicker() {
-  if (importFileInput.value) {
-    importFileInput.value.value = ''
-  }
-
-  importFileInput.value?.click()
-}
-
-function handleImportFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  importFile.value = input.files?.[0] ?? null
-}
-
-function clearImport() {
-  importFile.value = null
-
-  if (importFileInput.value) {
-    importFileInput.value.value = ''
-  }
-}
-
-async function handleImported() {
-  clearImport()
-  await loadWorkspace()
-  emit('saved')
-}
-
 function downloadSpreadsheet(kind: 'template' | 'export') {
   if (!workspace.value || !import.meta.client) {
     return
@@ -314,10 +285,9 @@ function downloadSpreadsheet(kind: 'template' | 'export') {
   window.open(`${endpoint}?${query.toString()}`, '_blank', 'noopener')
 }
 
-watch([() => props.datasetId, () => props.periodDate], () => {
+watch([() => props.datasetId, () => props.periodDate, () => props.refreshKey], () => {
   closeEditor()
   pendingDeleteRecordId.value = null
-  clearImport()
   void loadWorkspace()
 })
 
@@ -380,7 +350,7 @@ await loadWorkspace()
           variant="outline"
           size="sm"
           class="cursor-pointer"
-          @click="openImportPicker"
+          @click="emit('requestImport')"
         />
         <UButton
           label="Export data"
@@ -401,25 +371,6 @@ await loadWorkspace()
           @click="downloadSpreadsheet('template')"
         />
       </div>
-
-      <input
-        ref="importFileInput"
-        type="file"
-        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        class="hidden"
-        @change="handleImportFile"
-      >
-
-      <TabularImportPanel
-        v-if="importFile"
-        v-model:file="importFile"
-        class="mt-3 rounded-lg border border-default p-3"
-        :dataset="workspace.dataset"
-        :period-date="workspace.periodDate"
-        @cancel="clearImport"
-        @imported="handleImported"
-        @replace-file="openImportPicker"
-      />
 
       <form v-if="editor" class="space-y-4 rounded-xl border border-default bg-elevated/25 p-4" @submit.prevent="saveEditor">
         <div class="flex items-center justify-between gap-3">

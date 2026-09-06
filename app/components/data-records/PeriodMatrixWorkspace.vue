@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import ImportPanel from './ImportPanel.vue'
-
 import type {
   DatasetPeriodWorkspaceField,
   DatasetPeriodWorkspaceResponse,
@@ -31,11 +29,13 @@ type FieldErrors = Record<string, Record<string, string[]>>
 const props = defineProps<{
   datasetId: string
   periodDate: string
+  refreshKey?: number
 }>()
 
 const emit = defineEmits<{
   close: []
   saved: []
+  requestImport: []
 }>()
 
 const requestFetch = useRequestFetch()
@@ -44,8 +44,6 @@ const workspace = ref<DatasetPeriodWorkspaceResponse | null>(null)
 const rows = ref<MatrixRow[]>([])
 const loading = ref(false)
 const saving = ref(false)
-const periodImportInput = ref<HTMLInputElement | null>(null)
-const periodImportFile = ref<File | null>(null)
 const workspaceError = ref('')
 const rowErrors = ref<RowError[]>([])
 const fieldErrors = ref<FieldErrors>({})
@@ -525,33 +523,6 @@ function getBulkRowErrors(error: unknown) {
   })
 }
 
-async function handlePeriodImport() {
-  clearPeriodImport()
-  await loadWorkspace()
-  emit('saved')
-}
-
-function openPeriodImportPicker() {
-  if (periodImportInput.value) {
-    periodImportInput.value.value = ''
-  }
-
-  periodImportInput.value?.click()
-}
-
-function handlePeriodImportFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  periodImportFile.value = input.files?.[0] ?? null
-}
-
-function clearPeriodImport() {
-  periodImportFile.value = null
-
-  if (periodImportInput.value) {
-    periodImportInput.value.value = ''
-  }
-}
-
 function downloadPeriodSpreadsheet(kind: 'template' | 'export') {
   if (!workspace.value || !import.meta.client) {
     return
@@ -632,7 +603,7 @@ async function saveChanges() {
   }
 }
 
-watch([() => props.datasetId, () => props.periodDate], () => {
+watch([() => props.datasetId, () => props.periodDate, () => props.refreshKey], () => {
   resetRegionFilters()
   void loadWorkspace()
 })
@@ -679,14 +650,6 @@ await loadWorkspace()
         </UBadge>
       </div>
 
-      <input
-        ref="periodImportInput"
-        type="file"
-        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        class="hidden"
-        @change="handlePeriodImportFile"
-      >
-
       <div class="mt-3 flex flex-wrap items-center gap-2">
         <UButton
           v-if="!isArchived && (canCreate || canUpdate)"
@@ -696,7 +659,7 @@ await loadWorkspace()
           color="neutral"
           variant="outline"
           size="sm"
-          @click="openPeriodImportPicker"
+          @click="emit('requestImport')"
         />
         <UButton
           label="Export data"
@@ -717,18 +680,6 @@ await loadWorkspace()
           @click="downloadPeriodSpreadsheet('template')"
         />
       </div>
-
-      <ImportPanel
-        v-if="periodImportFile"
-        v-model:file="periodImportFile"
-        class="mt-3 rounded-lg border border-default p-3"
-        :dataset="workspace.dataset"
-        :period-date="workspace.periodDate"
-        :show-picker="false"
-        @cancel="clearPeriodImport"
-        @imported="handlePeriodImport"
-        @replace-file="openPeriodImportPicker"
-      />
 
       <div
         v-if="hasRegionFilters"

@@ -2,6 +2,7 @@ import { createRequire } from 'node:module'
 
 import { getDatasetTablePeriodSpreadsheetFieldLabels } from '#server/utils/dataset-table-period-spreadsheet-headers'
 import { getTabularDatasetPeriodWorkspaceForUser } from '#server/utils/dataset-table-records'
+import { formatDatasetPeriodSheetName } from '~~/shared/datasets'
 
 const nodeRequire = createRequire(import.meta.url)
 const XLSX = nodeRequire('xlsx') as typeof import('xlsx')
@@ -52,7 +53,11 @@ export async function createDatasetTablePeriodSpreadsheet(user: ScopedUser, opti
   const workbook = XLSX.utils.book_new()
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Data')
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    formatDatasetPeriodSheetName(workspace.dataset.periodicity, workspace.periodDate)
+  )
 
   const prefix = options.mode === 'template' ? 'template-' : ''
   const filename = `${prefix}${slugifyFilename(workspace.dataset.name)}-${workspace.periodDate}.xlsx`

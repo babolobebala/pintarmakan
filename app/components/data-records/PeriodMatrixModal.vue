@@ -5,10 +5,12 @@ defineProps<{
   datasetId: string
   periodDate: string | null
   periodLabel: string
+  refreshKey?: number
 }>()
 
 const emit = defineEmits<{
   saved: []
+  requestImport: []
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
@@ -25,8 +27,10 @@ const open = defineModel<boolean>('open', { default: false })
       <PeriodMatrixWorkspace
         :dataset-id="datasetId"
         :period-date="periodDate ?? ''"
+        :refresh-key="refreshKey"
         @close="open = false"
         @saved="emit('saved')"
+        @request-import="emit('requestImport')"
       />
     </template>
   </UModal>

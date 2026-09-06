@@ -851,6 +851,55 @@ export function normalizeDatasetPeriodInput(periodicity: DatasetReadablePeriodic
   }
 }
 
+/** Formats a stored canonical period date as the exact XLSX worksheet name. */
+export function formatDatasetPeriodSheetName(
+  periodicity: DatasetReadablePeriodicity | null,
+  periodDate: string | Date
+) {
+  const canonicalPeriodDate = validateCanonicalDatasetPeriodDate(
+    periodicity,
+    typeof periodDate === 'string'
+      ? periodDate
+      : periodDate.toISOString().slice(0, 10)
+  )
+
+  switch (periodicity) {
+    case 'TAHUNAN':
+      return canonicalPeriodDate.slice(0, 4)
+    case 'TRIWULANAN':
+      return `${canonicalPeriodDate.slice(0, 4)}-Q${Math.floor((Number(canonicalPeriodDate.slice(5, 7)) - 1) / 3) + 1}`
+    case 'BULANAN':
+      return canonicalPeriodDate.slice(0, 7)
+    case 'HARIAN':
+      return canonicalPeriodDate
+    default:
+      throw new Error('Dataset periodicity is not supported.')
+  }
+}
+
+/** Resolves only the exact canonical worksheet names used by Dataset XLSX imports. */
+export function resolveDatasetPeriodSheetName(
+  periodicity: DatasetReadablePeriodicity | null,
+  sheetName: unknown
+) {
+  const value = typeof sheetName === 'string' ? sheetName : ''
+  const pattern = periodicity === 'TAHUNAN'
+    ? /^\d{4}$/
+    : periodicity === 'TRIWULANAN'
+      ? /^\d{4}-Q[1-4]$/
+      : periodicity === 'BULANAN'
+        ? /^\d{4}-\d{2}$/
+        : periodicity === 'HARIAN'
+          ? /^\d{4}-\d{2}-\d{2}$/
+          : null
+
+  if (!pattern || !pattern.test(value)) {
+    throw new Error('Nama worksheet harus menggunakan format periode Dataset yang canonical.')
+  }
+
+  return normalizeDatasetPeriodInput(periodicity, value)
+}
+
 function normalizeDatasetPeriodDate(periodicity: CanonicalDatasetPeriodicity, value: string) {
   const [year, month] = value.split('-')
 

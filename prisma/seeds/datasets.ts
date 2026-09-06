@@ -65,6 +65,12 @@ const cpmFields = [
   { key: 'kecamatan', label: 'Kecamatan', type: 'string', required: false },
   { key: 'desa', label: 'Desa', type: 'string', required: false },
   {
+    key: 'nama_perusahaan',
+    label: 'Nama Perusahaan',
+    type: 'string',
+    required: false
+  },
+  {
     key: 'nama_pemilik',
     label: 'Nama Pemilik',
     type: 'string',

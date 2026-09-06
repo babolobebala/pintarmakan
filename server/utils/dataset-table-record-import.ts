@@ -13,6 +13,10 @@ import {
   resolveTabularDatasetPeriod
 } from '#server/utils/dataset-table-records'
 import { resolveDatasetTablePeriodSpreadsheetHeaders } from '#server/utils/dataset-table-period-spreadsheet-headers'
+import {
+  resolveDatasetImportWorkbookSheets,
+  resolveDatasetPeriodImportWorksheet
+} from '#server/utils/dataset-period-import-workbook'
 import { db } from '#server/utils/db'
 
 const nodeRequire = createRequire(import.meta.url)
@@ -165,7 +169,10 @@ function getRawValueForField(field: DatasetSchemaField, value: unknown): unknown
   }
 }
 
-function readSpreadsheetFile(file: ImportFile): {
+function readSpreadsheetFile(file: ImportFile, options?: {
+  readonly dataConfig: unknown
+  readonly expectedPeriodDate: string
+}): {
   headers: readonly string[]
   rows: readonly unknown[][]
 } {
@@ -197,8 +204,14 @@ function readSpreadsheetFile(file: ImportFile): {
     })
   }
 
-  const firstSheetName = workbook.SheetNames[0]
-  const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null
+  const sheetName = extension === 'xlsx' && options
+    ? resolveDatasetPeriodImportWorksheet(
+      options.dataConfig,
+      workbook,
+      options.expectedPeriodDate
+    ).sheetName
+    : workbook.SheetNames[0]
+  const worksheet = sheetName ? workbook.Sheets[sheetName] : null
 
   if (!worksheet) {
     throw createError({
@@ -229,7 +242,9 @@ function readSpreadsheetFile(file: ImportFile): {
 
   const dataRows = sheetRows.slice(1)
 
-  if (dataRows.length > maxImportRows) {
+  const nonEmptyRows = dataRows.filter(row => !isEmptyRow(row))
+
+  if (nonEmptyRows.length > maxImportRows) {
     throw createError({
       statusCode: 400,
       statusMessage: `File maksimal berisi ${maxImportRows} baris data.`
@@ -238,7 +253,7 @@ function readSpreadsheetFile(file: ImportFile): {
 
   return {
     headers,
-    rows: dataRows.filter(row => !isEmptyRow(row))
+    rows: nonEmptyRows
   }
 }
 
@@ -322,7 +337,18 @@ export async function prepareDatasetTableRecordImport(user: ScopedUser, options:
     })
   }
 
-  const { headers, rows: rawRows } = readSpreadsheetFile(options.file)
+  let spreadsheet: ReturnType<typeof readSpreadsheetFile>
+
+  try {
+    spreadsheet = readSpreadsheetFile(options.file, {
+      dataConfig: dataset.dataConfig,
+      expectedPeriodDate: periodDate
+    })
+  } catch (error) {
+    throw createError({ statusCode: 400, statusMessage: getErrorMessage(error) })
+  }
+
+  const { headers, rows: rawRows } = spreadsheet
   const fields = getDatasetSchemaFields(dataset.dataSchema)
   const layout = resolveDatasetTablePeriodSpreadsheetHeaders(fields, headers)
   const preparedSourceRows = buildSourceRows(fields, layout, rawRows)
@@ -462,6 +488,11 @@ export async function commitDatasetTableRecordImport(user: ScopedUser, options: 
   readonly datasetId: string
   readonly periodDate: string
   readonly file: ImportFile
+  readonly transaction?: {
+    readonly datasetTableRecord: typeof db.datasetTableRecord
+    readonly datasetTableRecordHistory: typeof db.datasetTableRecordHistory
+    readonly auditLog: typeof db.auditLog
+  }
 }) {
   const prepared = await prepareDatasetTableRecordImport(user, options)
 
@@ -486,8 +517,10 @@ export async function commitDatasetTableRecordImport(user: ScopedUser, options: 
   const needsCreatePermission = rowsToWrite.some(row => row.action === 'CREATE')
   const needsUpdatePermission = rowsToWrite.some(row => row.action === 'UPDATE')
 
+  const tx = options.transaction ?? db
+
   try {
-    const result = await db.$transaction(async (tx) => {
+    const commit = async () => {
       if (needsCreatePermission) {
         await getTabularDatasetPermissionContextForUser(user, {
           datasetId: prepared.datasetId,
@@ -620,7 +653,10 @@ export async function commitDatasetTableRecordImport(user: ScopedUser, options: 
       }
 
       return { created, updated, unchanged }
-    }, { isolationLevel: 'Serializable' })
+    }
+    const result = options.transaction
+      ? await commit()
+      : await db.$transaction(commit, { isolationLevel: 'Serializable' })
 
     return {
       ...prepared.preview,
@@ -632,6 +668,172 @@ export async function commitDatasetTableRecordImport(user: ScopedUser, options: 
         statusCode: 409,
         statusMessage: 'Data periode berubah oleh pengguna lain. Muat ulang ruang kerja lalu coba lagi.'
       })
+    }
+
+    throw error
+  }
+}
+
+function readDatasetTableWorkbookImport(file: ImportFile): WorkBook {
+  const filename = file.filename?.trim() || ''
+
+  if (!filename.toLowerCase().endsWith('.xlsx')) {
+    throw createError({ statusCode: 400, statusMessage: 'Import banyak periode hanya mendukung file XLSX.' })
+  }
+
+  if (file.data.byteLength === 0 || file.data.byteLength > maxImportFileBytes) {
+    throw createError({ statusCode: 400, statusMessage: 'Ukuran file harus lebih dari 0 dan maksimal 5 MB.' })
+  }
+
+  try {
+    return XLSX.read(file.data, { type: 'array', raw: true })
+  } catch {
+    throw createError({ statusCode: 400, statusMessage: 'File tidak dapat dibaca sebagai XLSX yang valid.' })
+  }
+}
+
+function createDatasetTableWorkbookSheetFile(workbook: WorkBook, sheetName: string, filename: string): ImportFile {
+  const worksheet = workbook.Sheets[sheetName]
+
+  if (!worksheet) {
+    throw createError({ statusCode: 400, statusMessage: `Worksheet ${sheetName} tidak ditemukan.` })
+  }
+
+  const periodWorkbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(periodWorkbook, worksheet, sheetName)
+
+  return {
+    filename,
+    data: XLSX.write(periodWorkbook, { bookType: 'xlsx', type: 'buffer' }) as Buffer
+  }
+}
+
+function countDatasetTableWorkbookSheetRows(workbook: WorkBook, sheetName: string) {
+  const worksheet = workbook.Sheets[sheetName]
+
+  if (!worksheet) {
+    return 0
+  }
+
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+    header: 1,
+    defval: '',
+    raw: true,
+    blankrows: true
+  })
+
+  return rows.slice(1).filter(row => !isEmptyRow(row)).length
+}
+
+export async function prepareDatasetTableWorkbookImport(user: ScopedUser, options: {
+  readonly datasetId: string
+  readonly file: ImportFile
+}) {
+  const context = await getTabularDatasetPermissionContextForUser(user, {
+    datasetId: options.datasetId.trim(),
+    action: 'read'
+  })
+  const dataset = context.dataset
+
+  if (dataset.archivedAt) {
+    throw createError({ statusCode: 409, statusMessage: 'Dataset is archived and read-only.' })
+  }
+
+  const workbook = readDatasetTableWorkbookImport(options.file)
+  let resolvedSheets: ReturnType<typeof resolveDatasetImportWorkbookSheets>
+
+  try {
+    resolvedSheets = resolveDatasetImportWorkbookSheets(dataset.dataConfig, workbook)
+  } catch (error) {
+    throw createError({ statusCode: 400, statusMessage: getErrorMessage(error) })
+  }
+
+  const oversizedSheet = resolvedSheets.find(
+    sheet => countDatasetTableWorkbookSheetRows(workbook, sheet.sheetName) > maxImportRows
+  )
+
+  if (oversizedSheet) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Worksheet ${oversizedSheet.sheetName} maksimal berisi ${maxImportRows} baris data.`
+    })
+  }
+
+  const filename = options.file.filename?.trim() || 'dataset.xlsx'
+  const sheets = [] as Array<{
+    sheetName: string
+    periodDate: string
+    file: ImportFile
+    prepared: Awaited<ReturnType<typeof prepareDatasetTableRecordImport>>
+  }>
+
+  for (const sheet of resolvedSheets) {
+    const file = createDatasetTableWorkbookSheetFile(workbook, sheet.sheetName, filename)
+    const prepared = await prepareDatasetTableRecordImport(user, {
+      datasetId: dataset.id,
+      periodDate: sheet.periodDate,
+      file
+    })
+    sheets.push({ ...sheet, file, prepared })
+  }
+
+  const previews = sheets.map(sheet => ({
+    sheetName: sheet.sheetName,
+    periodDate: sheet.periodDate,
+    ...sheet.prepared.preview
+  }))
+
+  return {
+    datasetId: dataset.id,
+    sheets,
+    preview: {
+      totalRows: previews.reduce((total, preview) => total + preview.totalRows, 0),
+      validRows: previews.reduce((total, preview) => total + preview.validRows, 0),
+      invalidRows: previews.reduce((total, preview) => total + preview.invalidRows, 0),
+      createRows: previews.reduce((total, preview) => total + preview.createRows, 0),
+      updateRows: previews.reduce((total, preview) => total + preview.updateRows, 0),
+      unchangedRows: previews.reduce((total, preview) => total + preview.unchangedRows, 0),
+      sheets: previews
+    }
+  }
+}
+
+export async function commitDatasetTableWorkbookImport(user: ScopedUser, options: {
+  readonly datasetId: string
+  readonly file: ImportFile
+}) {
+  const prepared = await prepareDatasetTableWorkbookImport(user, options)
+
+  if (prepared.preview.invalidRows > 0) {
+    throw createError({ statusCode: 400, statusMessage: 'Import memiliki baris tidak valid. Perbaiki file lalu lakukan pratinjau kembali.' })
+  }
+
+  try {
+    const results = await db.$transaction(async (transaction) => {
+      const committedSheets = [] as Array<{ created: number, updated: number, unchanged: number }>
+
+      for (const sheet of prepared.sheets) {
+        const result = await commitDatasetTableRecordImport(user, {
+          datasetId: prepared.datasetId,
+          periodDate: sheet.periodDate,
+          file: sheet.file,
+          transaction
+        })
+        committedSheets.push(result)
+      }
+
+      return committedSheets
+    }, { isolationLevel: 'Serializable' })
+
+    return {
+      ...prepared.preview,
+      created: results.reduce((total, result) => total + result.created, 0),
+      updated: results.reduce((total, result) => total + result.updated, 0),
+      unchanged: results.reduce((total, result) => total + result.unchanged, 0)
+    }
+  } catch (error) {
+    if (isDatasetTransactionConflict(error)) {
+      throw createError({ statusCode: 409, statusMessage: 'Data Dataset berubah oleh pengguna lain. Muat ulang lalu coba lagi.' })
     }
 
     throw error

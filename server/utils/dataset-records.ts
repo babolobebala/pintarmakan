@@ -492,7 +492,7 @@ export async function listDatasetPeriodOverviewForUser(user: ScopedUser, dataset
       datasetId,
       mode,
       expectedRegionCount: null,
-      periods: periodDates.map(periodDate => {
+      periods: periodDates.map((periodDate) => {
         const aggregate = aggregatesByPeriod.get(periodDate)
 
         return {
@@ -551,7 +551,7 @@ export async function listDatasetPeriodOverviewForUser(user: ScopedUser, dataset
     datasetId,
     mode,
     expectedRegionCount,
-    periods: periodDates.map(periodDate => {
+    periods: periodDates.map((periodDate) => {
       const aggregate = aggregatesByPeriod.get(periodDate)
 
       return {
@@ -598,7 +598,7 @@ export async function getDatasetPeriodWorkspaceForUser(user: ScopedUser, options
     regionLevel
       ? db.region.findMany({
           where: getSumbawaBaratRegionScopeWhere(regionLevel),
-          orderBy: [{ parent: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
+          orderBy: { id: 'asc' },
           select: {
             id: true,
             name: true,
@@ -798,7 +798,12 @@ export async function commitDatasetPeriodRows(user: ScopedUser, options: {
   readonly datasetId: string
   readonly periodDate: string
   readonly rows: readonly { readonly regionId: string, readonly data: unknown }[]
-  readonly source: 'bulk_entry' | 'period_import'
+  readonly source: 'bulk_entry' | 'period_import' | 'dataset_import'
+  readonly transaction?: {
+    readonly datasetRecord: typeof db.datasetRecord
+    readonly datasetRecordHistory: typeof db.datasetRecordHistory
+    readonly auditLog: typeof db.auditLog
+  }
 }) {
   const datasetContext = await assertDatasetPermissionForUser(user, {
     datasetId: options.datasetId,
@@ -900,8 +905,10 @@ export async function commitDatasetPeriodRows(user: ScopedUser, options: {
     throw createError({ statusCode: 400, statusMessage: 'Sebagian baris tidak valid.', data: { rowErrors } })
   }
 
+  const tx = options.transaction ?? db
+
   try {
-    return await db.$transaction(async (tx) => {
+    const commit = async () => {
       const existingRecords = await tx.datasetRecord.findMany({
         where: {
           datasetId: dataset.id,
@@ -1010,7 +1017,11 @@ export async function commitDatasetPeriodRows(user: ScopedUser, options: {
       }
 
       return { created, updated, unchanged }
-    }, { isolationLevel: 'Serializable' })
+    }
+
+    return options.transaction
+      ? await commit()
+      : await db.$transaction(commit, { isolationLevel: 'Serializable' })
   } catch (error) {
     if (isDatasetTransactionConflict(error)) {
       throw createError({ statusCode: 409, statusMessage: 'Data periode berubah oleh pengguna lain. Muat ulang matriks lalu coba lagi.' })

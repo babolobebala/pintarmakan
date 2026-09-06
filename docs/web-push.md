@@ -17,3 +17,4 @@ Then set:
 - `VAPID_SUBJECT`
 
 Use a `mailto:` or `https:` subject value, for example `mailto:admin@example.com`.
+ 

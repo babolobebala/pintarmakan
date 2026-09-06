@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-cpanel-${{ github.ref }}
   cancel-in-progress: true
@@ -50,9 +53,20 @@ jobs:
         run: |
           set -eu
 
-          test -n "${VAPID_PUBLIC_KEY}" || { echo "Missing VAPID_PUBLIC_KEY in build environment"; exit 1; }
-          test -n "${VAPID_PRIVATE_KEY}" || { echo "Missing VAPID_PRIVATE_KEY in build environment"; exit 1; }
-          test -n "${VAPID_SUBJECT}" || { echo "Missing VAPID_SUBJECT in build environment"; exit 1; }
+          test -n "${VAPID_PUBLIC_KEY}" || {
+            echo "Missing VAPID_PUBLIC_KEY in build environment"
+            exit 1
+          }
+
+          test -n "${VAPID_PRIVATE_KEY}" || {
+            echo "Missing VAPID_PRIVATE_KEY in build environment"
+            exit 1
+          }
+
+          test -n "${VAPID_SUBJECT}" || {
+            echo "Missing VAPID_SUBJECT in build environment"
+            exit 1
+          }
 
           printf '%s' "${VAPID_PUBLIC_KEY}" | grep -Eq '^[A-Za-z0-9_-]+$' || {
             echo "VAPID_PUBLIC_KEY is present but not valid URL-safe base64"
@@ -71,14 +85,27 @@ jobs:
 
       - name: Prepare release bundle
         run: |
+          set -eu
+
+          rm -rf .deploy/release
           mkdir -p .deploy/release
+
           printf '%s\n' "${GITHUB_SHA}" > DEPLOY_COMMIT
+
           cp -R .output .deploy/release/.output
-          find .deploy/release/.output -type f -name "*.map" -delete
+
+          find .deploy/release/.output \
+            -type f \
+            -name "*.map" \
+            -delete
+
           cp app.cjs .deploy/release/app.cjs
           cp package.json .deploy/release/package.json
+          cp pnpm-lock.yaml .deploy/release/pnpm-lock.yaml
           cp DEPLOY_COMMIT .deploy/release/DEPLOY_COMMIT
-          tar -czf .deploy/cpanel-release.tar.gz -C .deploy/release .
+
+          tar -czf .deploy/cpanel-release.tar.gz \
+            -C .deploy/release .
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
@@ -103,12 +130,16 @@ jobs:
         env:
           SSH_HOST_SECRET: ${{ secrets.SSH_HOST }}
           SSH_HOST_VAR: ${{ vars.SSH_HOST }}
+
           SSH_USERNAME_SECRET: ${{ secrets.SSH_USERNAME }}
           SSH_USERNAME_VAR: ${{ vars.SSH_USERNAME }}
+
           SSH_PORT_SECRET: ${{ secrets.SSH_PORT }}
           SSH_PORT_VAR: ${{ vars.SSH_PORT }}
+
           SSH_PRIVATE_KEY_SECRET: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_PRIVATE_KEY_VAR: ${{ vars.SSH_PRIVATE_KEY }}
+
           APP_PATH_SECRET: ${{ secrets.APP_PATH }}
           APP_PATH_VAR: ${{ vars.APP_PATH }}
         run: |
@@ -120,10 +151,25 @@ jobs:
           SSH_PRIVATE_KEY_VALUE="${SSH_PRIVATE_KEY_SECRET:-${SSH_PRIVATE_KEY_VAR:-}}"
           APP_PATH_VALUE="${APP_PATH_SECRET:-${APP_PATH_VAR:-}}"
 
-          test -n "$SSH_HOST_VALUE" || { echo "Missing SSH_HOST secret or variable"; exit 1; }
-          test -n "$SSH_USERNAME_VALUE" || { echo "Missing SSH_USERNAME secret or variable"; exit 1; }
-          test -n "$SSH_PRIVATE_KEY_VALUE" || { echo "Missing SSH_PRIVATE_KEY secret or variable"; exit 1; }
-          test -n "$APP_PATH_VALUE" || { echo "Missing APP_PATH secret or variable"; exit 1; }
+          test -n "$SSH_HOST_VALUE" || {
+            echo "Missing SSH_HOST secret or variable"
+            exit 1
+          }
+
+          test -n "$SSH_USERNAME_VALUE" || {
+            echo "Missing SSH_USERNAME secret or variable"
+            exit 1
+          }
+
+          test -n "$SSH_PRIVATE_KEY_VALUE" || {
+            echo "Missing SSH_PRIVATE_KEY secret or variable"
+            exit 1
+          }
+
+          test -n "$APP_PATH_VALUE" || {
+            echo "Missing APP_PATH secret or variable"
+            exit 1
+          }
 
           {
             echo "SSH_HOST=$SSH_HOST_VALUE"
@@ -137,46 +183,112 @@ jobs:
 
       - name: Add server host key
         run: |
+          set -eu
+
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${SSH_PORT}" "${SSH_HOST}" >> ~/.ssh/known_hosts
+
+          ssh-keyscan \
+            -p "${SSH_PORT}" \
+            "${SSH_HOST}" \
+            >> ~/.ssh/known_hosts
+
+      - name: Prepare application directory
+        run: |
+          set -eu
+
+          ssh \
+            -i .deploy/id_ed25519 \
+            -p "${SSH_PORT}" \
+            "${SSH_USERNAME}@${SSH_HOST}" \
+            "mkdir -p '${APP_PATH}'"
 
       - name: Upload release archive
-        env:
-          SSH_HOST: ${{ env.SSH_HOST }}
-          SSH_USERNAME: ${{ env.SSH_USERNAME }}
-          SSH_PORT: ${{ env.SSH_PORT }}
-          APP_PATH: ${{ env.APP_PATH }}
         run: |
           set -eu
-          scp -i .deploy/id_ed25519 -P "${SSH_PORT}" .deploy/cpanel-release.tar.gz \
+
+          scp \
+            -i .deploy/id_ed25519 \
+            -P "${SSH_PORT}" \
+            .deploy/cpanel-release.tar.gz \
             "${SSH_USERNAME}@${SSH_HOST}:${APP_PATH}/release.tar.gz"
 
-      - name: Extract archive and restart app
-        env:
-          SSH_HOST: ${{ env.SSH_HOST }}
-          SSH_USERNAME: ${{ env.SSH_USERNAME }}
-          SSH_PORT: ${{ env.SSH_PORT }}
-          APP_PATH: ${{ env.APP_PATH }}
+      - name: Extract archive, install dependencies and restart app
         run: |
           set -eu
-          ssh -i .deploy/id_ed25519 -p "${SSH_PORT}" "${SSH_USERNAME}@${SSH_HOST}" <<EOF
+
+          ssh \
+            -i .deploy/id_ed25519 \
+            -p "${SSH_PORT}" \
+            "${SSH_USERNAME}@${SSH_HOST}" <<EOF
           set -eu
+
           APP_PATH="${APP_PATH}"
           RELEASE_DIR="\$APP_PATH/.release"
 
+          mkdir -p "\$APP_PATH"
           mkdir -p "\$APP_PATH/tmp"
+
           rm -rf "\$RELEASE_DIR"
           mkdir -p "\$RELEASE_DIR"
 
-          tar -xzf "\$APP_PATH/release.tar.gz" -C "\$RELEASE_DIR"
+          echo "Extracting release..."
+
+          tar -xzf \
+            "\$APP_PATH/release.tar.gz" \
+            -C "\$RELEASE_DIR"
+
+          echo "Replacing application files..."
 
           rm -rf "\$APP_PATH/.output"
-          mv -f "\$RELEASE_DIR/.output" "\$APP_PATH/.output"
-          mv -f "\$RELEASE_DIR/app.cjs" "\$APP_PATH/app.cjs"
-          mv -f "\$RELEASE_DIR/package.json" "\$APP_PATH/package.json"
-          mv -f "\$RELEASE_DIR/DEPLOY_COMMIT" "\$APP_PATH/DEPLOY_COMMIT"
+
+          mv -f \
+            "\$RELEASE_DIR/.output" \
+            "\$APP_PATH/.output"
+
+          mv -f \
+            "\$RELEASE_DIR/app.cjs" \
+            "\$APP_PATH/app.cjs"
+
+          mv -f \
+            "\$RELEASE_DIR/package.json" \
+            "\$APP_PATH/package.json"
+
+          mv -f \
+            "\$RELEASE_DIR/pnpm-lock.yaml" \
+            "\$APP_PATH/pnpm-lock.yaml"
+
+          mv -f \
+            "\$RELEASE_DIR/DEPLOY_COMMIT" \
+            "\$APP_PATH/DEPLOY_COMMIT"
 
           rm -rf "\$RELEASE_DIR"
           rm -f "\$APP_PATH/release.tar.gz"
+
+          echo "Activating cPanel Node.js environment..."
+
+          source /home/dkpd5534/nodevenv/smartfood/24/bin/activate
+
+          cd "\$APP_PATH"
+
+          echo "Node version:"
+          node --version
+
+          echo "pnpm version:"
+          pnpm --version
+
+          echo "Installing production dependencies..."
+
+          CI=true pnpm install \
+            --prod \
+            --frozen-lockfile
+
+          echo "Validating runtime dependencies..."
+
+          node -e "require.resolve('xlsx'); console.log('xlsx runtime dependency OK')"
+
+          echo "Restarting application..."
+
           touch "\$APP_PATH/tmp/restart.txt"
+
+          echo "Deployment complete."
           EOF

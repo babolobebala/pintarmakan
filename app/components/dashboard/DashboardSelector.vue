@@ -40,7 +40,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([props.options.map(option =>
       variant="subtle"
       size="sm"
       :loading="pending"
-      class="w-full justify-between rounded-[calc(var(--radius-panel)+0.05rem)] px-3 py-2 text-left shadow-sm sm:w-64"
+      class="w-full cursor-pointer justify-between rounded-[calc(var(--radius-panel)+0.05rem)] px-3 py-2 text-left shadow-sm sm:w-64"
       :ui="{
         base: 'justify-between',
         label: 'truncate'

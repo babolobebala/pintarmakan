@@ -38,14 +38,18 @@ watch(selectedPeriod, syncSelectedPeriod)
       v-if="periodicity === 'HARIAN'"
       v-model="selectedPeriod"
       type="date"
-      size="xs"
+      leading-icon="i-lucide-calendar-days"
+      size="sm"
       color="neutral"
-      variant="ghost"
-      class="w-36"
+      variant="outline"
+      class="min-w-44 max-w-full"
       :min="oldestPeriod"
       :max="newestPeriod"
       :disabled="!periods.length"
       aria-label="Pilih periode harian"
+      :ui="{
+        base: 'min-h-9 cursor-pointer shadow-xs hover:bg-elevated focus-visible:ring-2 focus-visible:ring-primary/40'
+      }"
     />
     <USelectMenu
       v-else
@@ -53,12 +57,19 @@ watch(selectedPeriod, syncSelectedPeriod)
       :items="options"
       value-key="value"
       label-key="label"
-      size="xs"
+      leading-icon="i-lucide-calendar-days"
+      size="sm"
       color="neutral"
-      variant="ghost"
-      class="w-32"
+      variant="outline"
+      class="min-w-36 max-w-full"
       :disabled="!options.length"
       :aria-label="periodicity === 'BULANAN' ? 'Pilih bulan' : 'Pilih tahun'"
+      :ui="{
+        base: 'min-h-9 cursor-pointer shadow-xs hover:bg-elevated focus-visible:ring-2 focus-visible:ring-primary/40',
+        value: 'font-medium whitespace-nowrap',
+        trailingIcon: 'text-muted',
+        item: 'cursor-pointer'
+      }"
     />
   </div>
 </template>

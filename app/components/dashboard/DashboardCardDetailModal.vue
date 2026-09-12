@@ -79,7 +79,7 @@ function downloadAllPeriods() {
   }
 
   const query = new URLSearchParams({ datasetId: props.context.dataset.definition.id })
-  window.open(`/api/dataset-workbook-export?${query.toString()}`, '_blank', 'noopener')
+  window.open(`/api/dataset-dashboard-flat-export?${query.toString()}`, '_blank', 'noopener')
 }
 
 function regionRecord(row: DashboardDatasetRecord | DashboardDatasetTableRecord) {

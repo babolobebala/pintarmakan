@@ -266,9 +266,12 @@ jobs:
 
           echo "Activating cPanel Node.js environment..."
 
-          source /home/dkpd5534/nodevenv/smartfood/24/bin/activate
+          # cPanel/CloudLinux activation script is not compatible with bash nounset.
+          set +u
+          source /home/***/nodevenv/smartfood/24/bin/activate
+          set -u
 
-          cd "\$APP_PATH"
+          cd "$APP_PATH"
 
           echo "Node version:"
           node --version

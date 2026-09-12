@@ -158,7 +158,7 @@ const breakdownCards = computed<BreakdownCard[]>(() => [{
         :color="activeView === 'production' ? 'primary' : 'neutral'"
         :variant="activeView === 'production' ? 'solid' : 'ghost'"
         :aria-pressed="activeView === 'production'"
-        class="flex-1 sm:flex-none"
+        class="flex-1 sm:flex-none cursor-pointer"
         @click="activeView = 'production'"
       >
         Produksi Aktual
@@ -168,7 +168,7 @@ const breakdownCards = computed<BreakdownCard[]>(() => [{
         :color="activeView === 'projection' ? 'primary' : 'neutral'"
         :variant="activeView === 'projection' ? 'solid' : 'ghost'"
         :aria-pressed="activeView === 'projection'"
-        class="flex-1 sm:flex-none"
+        class="flex-1 sm:flex-none cursor-pointer"
         @click="activeView = 'projection'"
       >
         Proyeksi Neraca

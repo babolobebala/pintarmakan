@@ -26,7 +26,7 @@ import {
   validateDatasetSchemaDefinition
 } from '~~/shared/datasets'
 import { db } from '~~/server/utils/db'
-import { sumbawaBaratRegionId } from '~~/server/utils/region-scope'
+import { getSumbawaBaratRegionScopeWhere, sumbawaBaratRegionId } from '~~/server/utils/region-scope'
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -158,8 +158,9 @@ async function loadDashboardCardBundles(
       .filter(card => card.mode === 'REGIONAL' && card.regionLevel === 'KABUPATEN')
       .map(card => card.datasetId)
   )
+  const needsCanonicalKecamatanNames = requestedCards.some(card => card.type === 'TABULAR_MONTH_SERIES')
 
-  const [datasetDefinitions, regionalRecords, tabularRecords] = await Promise.all([
+  const [datasetDefinitions, regionalRecords, tabularRecords, kecamatanRegions] = await Promise.all([
     db.dataset.findMany({
       where: { id: { in: datasetIds } },
       select: {
@@ -206,6 +207,13 @@ async function loadDashboardCardBundles(
             data: true,
             updatedAt: true
           }
+        })
+      : Promise.resolve([]),
+    needsCanonicalKecamatanNames
+      ? db.region.findMany({
+          where: getSumbawaBaratRegionScopeWhere('KECAMATAN'),
+          select: { name: true },
+          orderBy: { name: 'asc' }
         })
       : Promise.resolve([])
   ])
@@ -274,6 +282,9 @@ async function loadDashboardCardBundles(
         : [],
       tableRecords: available && card.mode === 'TABULAR'
         ? tableRecordsByDataset.get(card.datasetId) ?? []
+        : [],
+      canonicalKecamatanNames: card.type === 'TABULAR_MONTH_SERIES'
+        ? kecamatanRegions.map(region => region.name)
         : [],
       available
     })

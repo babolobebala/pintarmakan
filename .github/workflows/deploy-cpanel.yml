@@ -45,6 +45,9 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Typecheck
+        run: pnpm run typecheck
+
       - name: Validate Web Push build environment
         env:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY || vars.VAPID_PUBLIC_KEY }}
@@ -83,6 +86,29 @@ jobs:
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || vars.VAPID_SUBJECT }}
         run: pnpm run build
 
+      - name: Validate production bundle
+        run: |
+          set -eu
+
+          test -d .output || {
+            echo ".output directory is missing"
+            exit 1
+          }
+
+          test -f .output/server/index.mjs || {
+            echo ".output/server/index.mjs is missing"
+            exit 1
+          }
+
+          test -f app.cjs || {
+            echo "app.cjs is missing"
+            exit 1
+          }
+
+          node --check .output/server/index.mjs
+
+          echo "Production bundle validated"
+
       - name: Prepare release bundle
         run: |
           set -eu
@@ -90,22 +116,21 @@ jobs:
           rm -rf .deploy/release
           mkdir -p .deploy/release
 
-          printf '%s\n' "${GITHUB_SHA}" > DEPLOY_COMMIT
+          printf '%s\n' "${GITHUB_SHA}" > .deploy/release/DEPLOY_COMMIT
 
           cp -R .output .deploy/release/.output
+          cp app.cjs .deploy/release/app.cjs
+          cp package.json .deploy/release/package.json
 
           find .deploy/release/.output \
             -type f \
             -name "*.map" \
             -delete
 
-          cp app.cjs .deploy/release/app.cjs
-          cp package.json .deploy/release/package.json
-          cp pnpm-lock.yaml .deploy/release/pnpm-lock.yaml
-          cp DEPLOY_COMMIT .deploy/release/DEPLOY_COMMIT
-
           tar -czf .deploy/cpanel-release.tar.gz \
             -C .deploy/release .
+
+          echo "Release bundle prepared"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
@@ -200,7 +225,7 @@ jobs:
             -i .deploy/id_ed25519 \
             -p "${SSH_PORT}" \
             "${SSH_USERNAME}@${SSH_HOST}" \
-            "mkdir -p '${APP_PATH}'"
+            "mkdir -p '${APP_PATH}' '${APP_PATH}/tmp'"
 
       - name: Upload release archive
         run: |
@@ -212,7 +237,7 @@ jobs:
             .deploy/cpanel-release.tar.gz \
             "${SSH_USERNAME}@${SSH_HOST}:${APP_PATH}/release.tar.gz"
 
-      - name: Extract archive, install dependencies and restart app
+      - name: Extract archive and restart app
         run: |
           set -eu
 
@@ -225,6 +250,8 @@ jobs:
           APP_PATH="${APP_PATH}"
           RELEASE_DIR="\$APP_PATH/.release"
 
+          echo "Preparing release directory..."
+
           mkdir -p "\$APP_PATH"
           mkdir -p "\$APP_PATH/tmp"
 
@@ -236,6 +263,33 @@ jobs:
           tar -xzf \
             "\$APP_PATH/release.tar.gz" \
             -C "\$RELEASE_DIR"
+
+          echo "Validating extracted release..."
+
+          test -d "\$RELEASE_DIR/.output" || {
+            echo "Release .output directory is missing"
+            exit 1
+          }
+
+          test -f "\$RELEASE_DIR/.output/server/index.mjs" || {
+            echo "Release Nitro server entry is missing"
+            exit 1
+          }
+
+          test -f "\$RELEASE_DIR/app.cjs" || {
+            echo "Release app.cjs is missing"
+            exit 1
+          }
+
+          test -f "\$RELEASE_DIR/package.json" || {
+            echo "Release package.json is missing"
+            exit 1
+          }
+
+          test -f "\$RELEASE_DIR/DEPLOY_COMMIT" || {
+            echo "Release DEPLOY_COMMIT is missing"
+            exit 1
+          }
 
           echo "Replacing application files..."
 
@@ -254,40 +308,24 @@ jobs:
             "\$APP_PATH/package.json"
 
           mv -f \
-            "\$RELEASE_DIR/pnpm-lock.yaml" \
-            "\$APP_PATH/pnpm-lock.yaml"
-
-          mv -f \
             "\$RELEASE_DIR/DEPLOY_COMMIT" \
             "\$APP_PATH/DEPLOY_COMMIT"
+
+          echo "Cleaning temporary deployment files..."
 
           rm -rf "\$RELEASE_DIR"
           rm -f "\$APP_PATH/release.tar.gz"
 
-          echo "Activating cPanel Node.js environment..."
+          echo "Validating deployed application..."
 
-          # cPanel/CloudLinux activation script is not compatible with bash nounset.
-          set +u
-          source /home/***/nodevenv/smartfood/24/bin/activate
-          set -u
+          test -d "\$APP_PATH/.output"
+          test -f "\$APP_PATH/.output/server/index.mjs"
+          test -f "\$APP_PATH/app.cjs"
+          test -f "\$APP_PATH/package.json"
+          test -f "\$APP_PATH/DEPLOY_COMMIT"
 
-          cd "$APP_PATH"
-
-          echo "Node version:"
-          node --version
-
-          echo "pnpm version:"
-          pnpm --version
-
-          echo "Installing production dependencies..."
-
-          CI=true pnpm install \
-            --prod \
-            --frozen-lockfile
-
-          echo "Validating runtime dependencies..."
-
-          node -e "require.resolve('xlsx'); console.log('xlsx runtime dependency OK')"
+          echo "Deployed commit:"
+          cat "\$APP_PATH/DEPLOY_COMMIT"
 
           echo "Restarting application..."
 

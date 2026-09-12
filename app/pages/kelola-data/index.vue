@@ -43,10 +43,22 @@ const bidangSelectItems = computed(() => [
 const allDatasets = computed(() =>
   Object.values(optionsResponse.value.datasetsByBidang).flat()
 )
+const q = ref('')
 const datasets = computed(() => {
   return selectedBidangId.value === allBidangsValue
     ? allDatasets.value
     : (optionsResponse.value.datasetsByBidang[selectedBidangId.value] ?? [])
+})
+const filteredDatasets = computed(() => {
+  const search = q.value.trim().toLowerCase()
+
+  if (!search) {
+    return datasets.value
+  }
+
+  return datasets.value.filter(dataset =>
+    dataset.name.toLowerCase().includes(search)
+  )
 })
 const UButton = resolveComponent('UButton')
 const datasetCountLabel = computed(
@@ -200,27 +212,40 @@ function formatRegionLevelLabel(value: string | null) {
       class="overflow-hidden rounded-2xl border border-default bg-default"
     >
       <div
-        class="flex flex-col gap-4 border-b border-default px-4 py-4 lg:flex-row lg:items-end lg:justify-between"
+        class="flex flex-col gap-4 border-b border-default px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
       >
-        <div class="flex flex-wrap items-center gap-2">
-          <h2 class="text-lg font-semibold text-highlighted">
-            Dataset
-          </h2>
-          <UBadge color="neutral" variant="subtle" size="sm">
-            {{ datasetCountLabel }}
-          </UBadge>
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-lg font-semibold text-highlighted">
+              Dataset
+            </h2>
+            <UBadge color="neutral" variant="subtle" size="sm">
+              {{ datasetCountLabel }}
+            </UBadge>
+          </div>
+          <p class="text-sm text-muted">
+            Pilih dataset untuk melihat cakupan dan mengelola data berdasarkan periode.
+          </p>
         </div>
-        <USelectMenu
-          v-if="
-            optionsStatus !== 'pending' && !optionsError && bidangs.length > 0
-          "
-          v-model="selectedBidangId"
-          :items="bidangSelectItems"
-          value-key="id"
-          label-key="name"
-          placeholder="Filter bidang"
-          class="w-full lg:w-56"
-        />
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <UInput
+            v-model="q"
+            icon="i-lucide-search"
+            placeholder="Cari dataset..."
+            class="w-full cursor-pointer sm:w-72"
+          />
+          <USelectMenu
+            v-if="
+              optionsStatus !== 'pending' && !optionsError && bidangs.length > 0
+            "
+            v-model="selectedBidangId"
+            :items="bidangSelectItems"
+            value-key="id"
+            label-key="name"
+            placeholder="Filter bidang"
+            class="w-full sm:w-56"
+          />
+        </div>
       </div>
 
       <div v-if="optionsStatus === 'pending'" class="space-y-3 px-4 py-6">
@@ -258,7 +283,7 @@ function formatRegionLevelLabel(value: string | null) {
       </div>
       <div v-else class="overflow-x-auto">
         <UTable
-          :data="datasets"
+          :data="filteredDatasets"
           :columns="columns"
           :initial-state="{ sorting: [{ id: 'name', desc: false }] }"
           :ui="{

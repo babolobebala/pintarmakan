@@ -717,6 +717,7 @@ export const dashboardProyeksiCardDefinitions = dashboardProyeksiCardKeys.map((k
 
 /** Produksi dan Ketersediaan combines the approved actual and projection sections in one bounded payload. */
 export const dashboardIndicatorCardKeys: Readonly<Partial<Record<DashboardIndicatorKey, readonly DashboardCardKey[]>>> = {
+  'stok-pangan': [...dashboardCpmCardKeys],
   'produksi-ketersediaan': [...dashboardProduksiCardKeys, ...dashboardProyeksiCardKeys]
 }
 
@@ -781,6 +782,8 @@ export interface DashboardDatasetBundle {
   definition: DashboardDatasetDefinition
   records: DashboardDatasetRecord[]
   tableRecords: DashboardDatasetTableRecord[]
+  /** Exact canonical KSB Kecamatan names supplied for TABULAR map resolution. */
+  canonicalKecamatanNames: string[]
   available: boolean
 }
 

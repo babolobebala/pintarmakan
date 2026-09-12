@@ -114,11 +114,7 @@ const desaValues = computed(() => {
 </script>
 
 <template>
-  <DashboardWidget
-    interactive
-    :activation-label="`Buka detail ${card.title}`"
-    @activate="emit('open-detail', selectedPeriodDate)"
-  >
+  <DashboardWidget compact>
     <template #header>
       <div class="flex w-full flex-col gap-2">
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -174,23 +170,23 @@ const desaValues = computed(() => {
 
     <div class="space-y-3">
       <MapAdministrativeBoundaryMap
-        map-height="500px"
+        map-height="clamp(300px, 30vw, 380px)"
         :desa-values="desaValues"
         :value-color-map="valueColorMap"
         :selected-kecamatan="selectedKecamatan === ALL_KECAMATAN ? null : selectedKecamatan"
         :popup-year="selectedPeriodLabel"
         show-desa-tooltips
         stop-interaction-propagation
+        frozen
         no-data-color="#e2e8f0"
         no-data-label="Data belum tersedia"
       />
 
-      <div v-if="countsByPriority.length" class="flex flex-wrap items-center gap-2 text-xs">
+      <div v-if="countsByPriority.length" class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:grid-cols-3">
         <span
           v-for="item in countsByPriority"
           :key="item.key"
-          class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[var(--app-foreground-muted)]"
-          :style="{ borderColor: item.color, backgroundColor: `${item.color}1A` }"
+          class="inline-flex min-w-0 items-center gap-1.5 text-[var(--app-foreground-muted)]"
         >
           <span class="size-2 rounded-full" :style="{ backgroundColor: item.color }" />
           {{ item.label }}
@@ -199,7 +195,18 @@ const desaValues = computed(() => {
     </div>
 
     <template #footer>
-      <DashboardCardSource :source="dataset.definition.source" />
+      <div class="flex items-center justify-between gap-3">
+        <DashboardCardSource :source="dataset.definition.source" />
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          trailing-icon="i-lucide-arrow-right"
+          @click="emit('open-detail', selectedPeriodDate)"
+        >
+          Lihat detail
+        </UButton>
+      </div>
     </template>
   </DashboardWidget>
 </template>

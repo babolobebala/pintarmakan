@@ -8,7 +8,7 @@ definePageMeta({
 await navigateTo({
   path: '/',
   query: {
-    indicator: 'produksi-pangan'
+    dashboard: 'produksi-ketersediaan'
   }
 }, {
   replace: true

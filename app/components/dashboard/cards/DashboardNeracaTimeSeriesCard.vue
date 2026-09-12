@@ -5,6 +5,7 @@ import {
   formatDashboardValue,
   getDashboardAvailablePeriods,
   getDashboardDatasetField,
+  getDashboardNeracaStatus,
   readDashboardRecordNumber
 } from '~~/shared/dashboard'
 
@@ -88,12 +89,12 @@ const metrics = computed(() => metricConfigs.map((config) => {
   const base = value === null ? null : formatDashboardValue(value, field)
   const display = value !== null && config.key === 'neraca' && value > 0 ? `+${base}` : base
 
-  let status: 'Surplus' | 'Defisit' | 'Seimbang' | null = null
+  let status = null
   let statusColor: 'success' | 'error' | 'neutral' | null = null
 
-  if (config.key === 'neraca' && value !== null) {
-    status = value > 0 ? 'Surplus' : value < 0 ? 'Defisit' : 'Seimbang'
-    statusColor = value > 0 ? 'success' : value < 0 ? 'error' : 'neutral'
+  if (config.key === 'neraca') {
+    status = getDashboardNeracaStatus(value)
+    statusColor = status === 'Surplus' ? 'success' : status === 'Defisit' ? 'error' : status === 'Seimbang' ? 'neutral' : null
   }
 
   return {

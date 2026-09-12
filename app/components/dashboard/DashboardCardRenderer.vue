@@ -64,9 +64,15 @@ const emit = defineEmits<{
     @open-detail="emit('open-detail', $event)"
   />
   <DashboardNeracaTimeSeriesCard
-    v-else
+    v-else-if="card.type === 'NERACA_TIME_SERIES'"
     :card="card"
     :dataset="dataset"
     @open-detail="emit('open-detail', $event)"
+  />
+  <UAlert
+    v-else
+    color="warning"
+    variant="subtle"
+    title="Kartu dashboard belum memiliki renderer."
   />
 </template>

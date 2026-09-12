@@ -68,6 +68,11 @@ const currentValue = computed(() => readDashboardRecordNumber(
   findRecord(selectedPeriod.value),
   props.descriptor.fieldKey
 ))
+const isCppd = computed(() => props.descriptor.key === 'cppd')
+const cppdValues = computed(() => ({
+  pengadaan: readDashboardRecordNumber(findRecord(selectedPeriod.value), 'pengadaan'),
+  penyaluran: readDashboardRecordNumber(findRecord(selectedPeriod.value), 'penyaluran')
+}))
 const previousPeriod = computed(() => getDashboardPreviousPeriod(
   availablePeriods.value,
   selectedPeriod.value || null
@@ -100,7 +105,7 @@ const deltaLabel = computed(() => delta.value === null
   ? null
   : `${delta.value > 0 ? '+' : ''}${formatNumber(delta.value)}`)
 
-const comparisonLine = computed(() => deltaLabel.value && previousPeriodLabel.value && previousValue.value !== null
+const comparisonLine = computed(() => showTrend.value && deltaLabel.value && previousPeriodLabel.value && previousValue.value !== null
   ? `${deltaLabel.value} dari ${previousPeriodLabel.value}`
   : null)
 
@@ -175,11 +180,7 @@ function activate() {
 </script>
 
 <template>
-  <DashboardWidget
-    interactive
-    :activation-label="`Buka detail ${descriptor.title}`"
-    @activate="activate"
-  >
+  <DashboardWidget compact>
     <template #header>
       <div class="flex w-full items-start justify-between gap-2">
         <div class="flex min-w-0 items-center gap-2">
@@ -198,6 +199,9 @@ function activate() {
 
     <div class="flex items-center gap-3">
       <div class="min-w-0 flex-1 space-y-1.5">
+        <p v-if="isCppd" class="text-xs text-[var(--app-foreground-muted)]">
+          Stok Akhir
+        </p>
         <div class="flex flex-wrap items-center gap-2">
           <p
             class="min-w-0 font-semibold tracking-tight text-[var(--app-foreground)]"
@@ -206,7 +210,7 @@ function activate() {
             {{ valueLabel }}
           </p>
           <UBadge
-            v-if="trendMeta && deltaLabel"
+            v-if="showTrend && trendMeta && deltaLabel"
             :color="trendMeta.color"
             variant="subtle"
           >
@@ -219,7 +223,17 @@ function activate() {
           {{ field.unit }}
         </p>
 
-        <p class="text-xs leading-5 text-[var(--app-foreground-muted)]">
+        <template v-if="isCppd && currentValue !== null">
+          <div class="grid grid-cols-2 gap-2 pt-1 text-xs">
+            <p class="text-[var(--app-foreground-muted)]">
+              Pengadaan <span class="ml-1 font-medium tabular-nums text-[var(--app-foreground)]">{{ cppdValues.pengadaan === null ? '—' : `${formatNumber(cppdValues.pengadaan)} Ton` }}</span>
+            </p>
+            <p class="text-[var(--app-foreground-muted)]">
+              Penyaluran <span class="ml-1 font-medium tabular-nums text-[var(--app-foreground)]">{{ cppdValues.penyaluran === null ? '—' : `${formatNumber(cppdValues.penyaluran)} Ton` }}</span>
+            </p>
+          </div>
+        </template>
+        <p v-else class="text-xs leading-5 text-[var(--app-foreground-muted)]">
           {{ comparisonLine ?? statusText }}
         </p>
       </div>
@@ -242,7 +256,18 @@ function activate() {
     </div>
 
     <template #footer>
-      <DashboardCardSource :source="dataset.definition.source" />
+      <div class="flex items-center justify-between gap-3">
+        <DashboardCardSource :source="dataset.definition.source" />
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          trailing-icon="i-lucide-arrow-right"
+          @click="activate"
+        >
+          Lihat detail
+        </UButton>
+      </div>
     </template>
   </DashboardWidget>
 </template>

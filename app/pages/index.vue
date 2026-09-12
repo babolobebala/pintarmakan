@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import DashboardSelector from '~/components/dashboard/DashboardSelector.vue'
-import DashboardHargaPanganGrid from '~/components/dashboard/grids/DashboardHargaPanganGrid.vue'
 import DashboardProduksiGrid from '~/components/dashboard/grids/DashboardProduksiGrid.vue'
-import DashboardProyeksiGrid from '~/components/dashboard/grids/DashboardProyeksiGrid.vue'
 import DashboardUtamaGrid from '~/components/dashboard/grids/DashboardUtamaGrid.vue'
 
 import { appPermissions } from '~~/auth/permissions'
@@ -32,6 +30,12 @@ async function updateDashboard(dashboard: (typeof options)[number]['key']) {
       <div class="min-w-0">
         <p class="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-[var(--app-foreground-soft)]">
           Dashboard
+        </p>
+        <h1 class="mt-1 text-xl font-semibold tracking-tight text-[var(--app-foreground)] sm:text-2xl">
+          {{ dashboardData?.meta.title ?? options.find(option => option.key === activeDashboard)?.label }}
+        </h1>
+        <p v-if="activeDashboard === 'dashboard-utama'" class="mt-1 text-sm text-[var(--app-foreground-muted)]">
+          Ringkasan kondisi pangan Kabupaten Sumbawa Barat
         </p>
       </div>
 
@@ -78,26 +82,25 @@ async function updateDashboard(dashboard: (typeof options)[number]['key']) {
       </div>
     </section>
 
+    <section
+      v-else-if="dashboardData?.kind === 'empty'"
+      class="rounded-[calc(var(--radius-shell)-0.55rem)] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-10"
+    >
+      <UEmpty
+        icon="i-lucide-layout-panel-top"
+        title="Belum ada indikator yang dikonfigurasi pada kelompok ini."
+        variant="naked"
+      />
+    </section>
+
     <DashboardUtamaGrid
-      v-else-if="dashboardData?.kind === 'utama'"
+      v-else-if="dashboardData?.kind === 'dashboard-utama'"
       :payload="dashboardData"
       :pending="pending"
     />
 
     <DashboardProduksiGrid
-      v-else-if="dashboardData?.kind === 'produksi-pangan'"
-      :payload="dashboardData"
-      :pending="pending"
-    />
-
-    <DashboardProyeksiGrid
-      v-else-if="dashboardData?.kind === 'proyeksi-pangan'"
-      :payload="dashboardData"
-      :pending="pending"
-    />
-
-    <DashboardHargaPanganGrid
-      v-else-if="dashboardData?.kind === 'harga-pangan-harian'"
+      v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'produksi-ketersediaan'"
       :payload="dashboardData"
       :pending="pending"
     />

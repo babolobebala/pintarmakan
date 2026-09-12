@@ -10,29 +10,68 @@ import type {
   DatasetSchemaField
 } from '~~/shared/datasets'
 
-export const dashboardOptions = [{
-  key: 'utama',
-  label: 'Dashboard Utama',
-  description: 'IKP, PPH, dan status ketahanan pangan desa.',
-  icon: 'i-lucide-layout-dashboard'
+export const dashboardIndicatorOptions = [{
+  key: 'produksi-ketersediaan',
+  label: 'Produksi dan Ketersediaan',
+  icon: 'i-lucide-wheat'
 }, {
-  key: 'produksi-pangan',
-  label: 'Dashboard Produksi Pangan',
-  description: 'Produksi padi, jagung, daging, telur, buah, dan sayur per kecamatan.',
-  icon: 'i-lucide-chart-column-big'
+  key: 'stok-pangan',
+  label: 'Stok Pangan',
+  icon: 'i-lucide-package'
 }, {
-  key: 'proyeksi-pangan',
-  label: 'Dashboard Proyeksi Pangan',
-  description: 'Proyeksi neraca pangan 12 komoditas strategis.',
-  icon: 'i-lucide-chart-line'
+  key: 'cadangan-pangan-pemerintah',
+  label: 'Cadangan Pangan Pemerintah',
+  icon: 'i-lucide-warehouse'
 }, {
-  key: 'harga-pangan-harian',
-  label: 'Dashboard Harga Pangan Harian',
-  description: 'Perkembangan harga pangan harian.',
+  key: 'harga-pangan',
+  label: 'Harga Pangan',
   icon: 'i-lucide-trending-up'
+}, {
+  key: 'distribusi-pasokan',
+  label: 'Distribusi dan Pasokan',
+  icon: 'i-lucide-truck'
+}, {
+  key: 'konsumsi-pph',
+  label: 'Konsumsi dan PPH',
+  icon: 'i-lucide-utensils'
+}, {
+  key: 'keamanan-pangan',
+  label: 'Keamanan Pangan',
+  icon: 'i-lucide-shield-check'
+}, {
+  key: 'kerawanan-pangan',
+  label: 'Kerawanan Pangan',
+  icon: 'i-lucide-triangle-alert'
+}, {
+  key: 'wilayah-kelompok-rentan',
+  label: 'Wilayah dan Kelompok Rentan',
+  icon: 'i-lucide-map-pinned'
+}, {
+  key: 'data-pendukung',
+  label: 'Data Pendukung',
+  icon: 'i-lucide-database'
 }] as const
 
-export type DashboardKey = (typeof dashboardOptions)[number]['key']
+export type DashboardIndicatorKey = (typeof dashboardIndicatorOptions)[number]['key']
+export type DashboardViewKey = 'dashboard-utama' | DashboardIndicatorKey
+/** @deprecated Use DashboardViewKey for selector/API state and DashboardIndicatorKey for the ten canonical groups. */
+export type DashboardKey = DashboardViewKey
+
+export const dashboardOptions = [{
+  key: 'dashboard-utama',
+  label: 'Dashboard Utama',
+  icon: 'i-lucide-layout-dashboard'
+}, ...dashboardIndicatorOptions] as const
+
+export function getDashboardOption(key: DashboardViewKey) {
+  const option = dashboardOptions.find(option => option.key === key)
+
+  if (!option) {
+    throw new Error(`Dashboard indicator option not found: ${key}`)
+  }
+
+  return option
+}
 
 export type DashboardCardKey
   = | 'ikp'
@@ -40,7 +79,9 @@ export type DashboardCardKey
     | 'status-ketahanan-pangan'
     | 'cppd'
     | 'harga-pangan'
+    | 'cpm-gabah'
     | 'cpm-jagung'
+    | 'lumbung-pangan'
     | 'produksi-padi'
     | 'produksi-jagung'
     | 'produksi-daging-hewan-ternak'
@@ -138,7 +179,7 @@ export type DashboardRegionalMetricCardDefinition = DashboardRegionalCardBaseDef
 }
 
 export type DashboardTabularMonthSeriesCardDefinition = DashboardTabularCardBaseDefinition & {
-  readonly key: 'cpm-jagung'
+  readonly key: 'cpm-gabah' | 'cpm-jagung'
   readonly type: 'TABULAR_MONTH_SERIES'
   readonly periodicity: 'TAHUNAN'
   readonly monthFieldKeys: readonly [
@@ -146,6 +187,12 @@ export type DashboardTabularMonthSeriesCardDefinition = DashboardTabularCardBase
     'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
   ]
   readonly aggregation: 'SUM_MEANINGFUL_VALUES'
+}
+
+export type DashboardTabularSummaryCardDefinition = DashboardTabularCardBaseDefinition & {
+  readonly key: 'lumbung-pangan'
+  readonly type: 'TABULAR_SUMMARY'
+  readonly periodicity: 'TAHUNAN'
 }
 
 export type DashboardNeracaTimeSeriesCardDefinition = DashboardRegionalCardBaseDefinition & {
@@ -169,6 +216,7 @@ export type DashboardCardDefinition
     | DashboardFieldTimeSeriesCardDefinition
     | DashboardRegionalMetricCardDefinition
     | DashboardTabularMonthSeriesCardDefinition
+    | DashboardTabularSummaryCardDefinition
     | DashboardNeracaTimeSeriesCardDefinition
 
 const neracaFieldKeys = [
@@ -209,6 +257,27 @@ export const dashboardCardDefinitions = [
     fieldKey: 'ikp',
     icon: 'i-lucide-badge-info',
     badgeColor: 'success'
+  },
+  {
+    key: 'cpm-gabah',
+    datasetId: 'CPM_GABAH_TAHUNAN',
+    title: 'Cadangan Pangan Masyarakat (CPM) - Gabah',
+    type: 'TABULAR_MONTH_SERIES',
+    mode: 'TABULAR',
+    periodicity: 'TAHUNAN',
+    monthFieldKeys: [
+      'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+      'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+    ],
+    aggregation: 'SUM_MEANINGFUL_VALUES'
+  },
+  {
+    key: 'lumbung-pangan',
+    datasetId: 'LUMBUNG_PANGAN_TAHUNAN',
+    title: 'Lumbung Pangan',
+    type: 'TABULAR_SUMMARY',
+    mode: 'TABULAR',
+    periodicity: 'TAHUNAN'
   },
   {
     key: 'pph',
@@ -358,12 +427,46 @@ export function getDashboardCardDefinition(key: DashboardCardKey) {
   return cardDefinitionMap.get(key) ?? null
 }
 
+export function getDashboardIndicatorCardDefinitions(indicator: DashboardIndicatorKey) {
+  return (dashboardIndicatorCardKeys[indicator] ?? []).map((key) => {
+    const definition = getDashboardCardDefinition(key)
+
+    if (!definition) {
+      throw new Error(`Dashboard card definition not found: ${key}`)
+    }
+
+    return definition
+  })
+}
+
 /** The current grid's deliberately small, curated subset. */
 export const dashboardUtamaCardKeys = [
   'ikp',
   'pph',
   'cppd',
-  'status-ketahanan-pangan'
+  'status-ketahanan-pangan',
+  'harga-pangan',
+  'cpm-gabah',
+  'cpm-jagung',
+  'lumbung-pangan',
+  'produksi-padi',
+  'produksi-jagung',
+  'produksi-daging-hewan-ternak',
+  'produksi-telur-unggas',
+  'produksi-buah-buahan',
+  'produksi-sayur-sayuran',
+  'proyeksi-neraca-beras',
+  'proyeksi-neraca-jagung-pipilan-kering',
+  'proyeksi-neraca-kedelai-biji-kering',
+  'proyeksi-neraca-bawang-merah',
+  'proyeksi-neraca-bawang-putih',
+  'proyeksi-neraca-cabai-besar',
+  'proyeksi-neraca-cabai-rawit',
+  'proyeksi-neraca-daging-sapi-kerbau',
+  'proyeksi-neraca-daging-ayam',
+  'proyeksi-neraca-telur-ayam-ras',
+  'proyeksi-neraca-gula-pasir-konsumsi',
+  'proyeksi-neraca-minyak-goreng'
 ] as const
 
 export type DashboardUtamaCardKey = (typeof dashboardUtamaCardKeys)[number]
@@ -435,11 +538,26 @@ export const dashboardUtamaSummaryCards: readonly DashboardUtamaSummaryCardDescr
   key: 'cppd',
   cardKey: 'cppd',
   fieldKey: 'stok_akhir',
-  title: 'Cadangan Pangan Pemerintah Daerah (CPPD)',
+  title: 'Cadangan Pangan Pemerintah',
   icon: 'i-lucide-warehouse',
   showTrend: false,
   unitSuffix: 'Ton'
 }]
+
+export const dashboardCpmCardKeys = ['cpm-gabah', 'cpm-jagung'] as const
+export type DashboardCpmCardKey = (typeof dashboardCpmCardKeys)[number]
+
+export const dashboardCpmCardDefinitions = dashboardCpmCardKeys.map((key) => {
+  const definition = getDashboardCardDefinition(key)
+
+  if (!definition || definition.type !== 'TABULAR_MONTH_SERIES') {
+    throw new Error(`Dashboard CPM card definition not found: ${key}`)
+  }
+
+  return definition
+}) as readonly DashboardTabularMonthSeriesCardDefinition[]
+
+export const dashboardLumbungCardDefinition = getDashboardCardDefinition('lumbung-pangan') as DashboardTabularSummaryCardDefinition
 
 /** Dashboard Produksi Pangan composition: six REGIONAL_METRIC cards in display order. */
 export const dashboardProduksiCardKeys = [
@@ -597,6 +715,11 @@ export const dashboardProyeksiCardDefinitions = dashboardProyeksiCardKeys.map((k
   return definition
 }) as readonly DashboardProyeksiCardDefinition[]
 
+/** Produksi dan Ketersediaan combines the approved actual and projection sections in one bounded payload. */
+export const dashboardIndicatorCardKeys: Readonly<Partial<Record<DashboardIndicatorKey, readonly DashboardCardKey[]>>> = {
+  'produksi-ketersediaan': [...dashboardProduksiCardKeys, ...dashboardProyeksiCardKeys]
+}
+
 /** Dashboard Harga Pangan Harian composition: the single canonical FIELD_TIME_SERIES card. */
 export const dashboardHargaPanganCardKeys = [
   'harga-pangan'
@@ -667,9 +790,24 @@ export interface DashboardCardDetailContext {
   periodDate: string | null
 }
 
+export interface DashboardEmptyPayload {
+  key: DashboardKey
+  kind: 'empty'
+  meta: DashboardMeta
+  cards: Record<never, never>
+}
+
+export interface DashboardConfiguredPayload {
+  key: DashboardKey
+  kind: 'configured'
+  meta: DashboardMeta
+  cards: Partial<Record<DashboardCardKey, DashboardDatasetBundle>>
+}
+
+/** Legacy grid payload contracts retained until new group compositions are defined. */
 export interface DashboardUtamaPayload {
-  key: 'utama'
-  kind: 'utama'
+  key: 'dashboard-utama'
+  kind: 'dashboard-utama'
   meta: DashboardMeta
   cards: Record<DashboardUtamaCardKey, DashboardDatasetBundle>
 }
@@ -696,15 +834,14 @@ export interface DashboardHargaPanganPayload {
 }
 
 export type DashboardPayload
-  = | DashboardUtamaPayload
-    | DashboardProduksiPayload
-    | DashboardProyeksiPayload
-    | DashboardHargaPanganPayload
+  = | DashboardEmptyPayload
+    | DashboardConfiguredPayload
+    | DashboardUtamaPayload
 
-const dashboardKeySet = new Set<DashboardKey>(dashboardOptions.map(option => option.key))
+const dashboardKeySet = new Set<DashboardViewKey>(dashboardOptions.map(option => option.key))
 
-export function isDashboardKey(value: unknown): value is DashboardKey {
-  return typeof value === 'string' && dashboardKeySet.has(value as DashboardKey)
+export function isDashboardKey(value: unknown): value is DashboardViewKey {
+  return typeof value === 'string' && dashboardKeySet.has(value as DashboardViewKey)
 }
 
 /** Checks that a Dashboard-only period bound is a canonical period inside Dataset coverage. */
@@ -804,6 +941,8 @@ export function getDashboardRequiredFieldKeys(card: DashboardCardDefinition): re
       return card.fieldKeys
     case 'TABULAR_MONTH_SERIES':
       return card.monthFieldKeys
+    case 'TABULAR_SUMMARY':
+      return []
     case 'REGIONAL_METRIC':
       return card.selectableFieldKeys ?? []
     case 'FIELD_TIME_SERIES':
@@ -857,6 +996,42 @@ export function readDashboardRecordNumber(
   const normalized = Number(value)
 
   return Number.isFinite(normalized) ? normalized : null
+}
+
+/**
+ * Sums only meaningful numeric values. Zero remains a real observation while
+ * null, blanks, and non-numeric values are excluded.
+ */
+export function sumDashboardRecordFields(
+  records: readonly DashboardDatasetRecord[],
+  fieldKeys: readonly string[]
+) {
+  let total = 0
+  let found = false
+
+  for (const record of records) {
+    for (const fieldKey of fieldKeys) {
+      const value = readDashboardRecordNumber(record, fieldKey)
+
+      if (value !== null) {
+        total += value
+        found = true
+      }
+    }
+  }
+
+  return found ? total : null
+}
+
+export type DashboardNeracaStatus = 'Surplus' | 'Defisit' | 'Seimbang'
+
+/** The status always follows the stored Neraca value; a missing value has no status. */
+export function getDashboardNeracaStatus(value: number | null): DashboardNeracaStatus | null {
+  if (value === null) {
+    return null
+  }
+
+  return value > 0 ? 'Surplus' : value < 0 ? 'Defisit' : 'Seimbang'
 }
 
 export function readDashboardRecordText(

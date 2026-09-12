@@ -5,6 +5,7 @@ const props = defineProps<{
   source?: string
   icon?: string
   muted?: boolean
+  compact?: boolean
   interactive?: boolean
   activationLabel?: string
 }>()
@@ -44,8 +45,9 @@ function activateFromKeyboard(event: KeyboardEvent) {
 
 <template>
   <section
-    class="flex h-full flex-col gap-4 rounded-[calc(var(--radius-shell)-0.55rem)] border px-4 py-4 shadow-sm sm:px-5"
+    class="flex h-full flex-col rounded-[calc(var(--radius-shell)-0.55rem)] border shadow-sm"
     :class="[
+      compact ? 'gap-3 px-3 py-3 sm:px-4' : 'gap-4 px-4 py-4 sm:px-5',
       muted
         ? 'border-[var(--app-border)] bg-[var(--app-surface-muted)]'
         : 'border-[var(--app-border)] bg-[var(--app-surface)]',

@@ -85,7 +85,7 @@ type LeafletNamespace = {
     addTo: (target: LeafletMapInstance) => void
   }
   geoJSON: (data: LeafletGeoJsonData, options: {
-    style: LeafletPathStyle
+    style: LeafletPathStyle | ((feature: LeafletGeoJsonFeature) => LeafletPathStyle)
     onEachFeature?: (
       feature: LeafletGeoJsonFeature,
       layer: LeafletGeoJsonFeatureLayerInstance
@@ -101,6 +101,12 @@ type BoundaryDesaValue = {
   readonly valueLabel?: string | null
 }
 
+type BoundaryKecamatanValue = {
+  readonly regionName: string
+  readonly valueKey?: string | null
+  readonly valueLabel?: string | null
+}
+
 const props = withDefaults(defineProps<{
   title?: string
   description?: string
@@ -110,12 +116,17 @@ const props = withDefaults(defineProps<{
   kecamatanGeoJsonPath?: string
   desaGeoJsonPath?: string
   desaValues?: readonly BoundaryDesaValue[]
+  kecamatanValues?: readonly BoundaryKecamatanValue[]
   valueColorMap?: Record<string, string>
   noDataColor?: string
   noDataLabel?: string
   popupYear?: string | number | null
   showDesaTooltips?: boolean
+  /** Omits village geometry for Kecamatan-only overview maps. */
+  showDesaLayer?: boolean
   stopInteractionPropagation?: boolean
+  /** Presentation mode: camera framing remains programmatic while manual map navigation is disabled. */
+  frozen?: boolean
 }>(), {
   title: undefined,
   description: undefined,
@@ -125,12 +136,15 @@ const props = withDefaults(defineProps<{
   kecamatanGeoJsonPath: '/json/kec.geojson',
   desaGeoJsonPath: '/json/desa.geojson',
   desaValues: () => [],
+  kecamatanValues: () => [],
   valueColorMap: () => ({}),
   noDataColor: '#e2e8f0',
   noDataLabel: 'Data belum tersedia',
   popupYear: null,
   showDesaTooltips: false,
-  stopInteractionPropagation: false
+  showDesaLayer: true,
+  stopInteractionPropagation: false,
+  frozen: false
 })
 
 const mapEl = useTemplateRef('mapEl')
@@ -149,21 +163,30 @@ const desaValueMap = computed(() => {
   return new Map(props.desaValues.map(item => [item.regionId.trim(), item]))
 })
 
+const kecamatanValueMap = computed(() => {
+  return new Map(props.kecamatanValues.map(item => [normalizeName(item.regionName), item]))
+})
+
 const useDesaValueStyling = computed(() => {
   return props.desaValues.length > 0
     || Object.keys(props.valueColorMap).length > 0
     || props.popupYear !== null
 })
 
+const useKecamatanValueStyling = computed(() => props.kecamatanValues.length > 0)
+
 const renderSignature = computed(() => {
   return JSON.stringify({
     selectedKecamatan: props.selectedKecamatan,
     popupYear: props.popupYear,
     desaValues: props.desaValues,
+    kecamatanValues: props.kecamatanValues,
     valueColorMap: props.valueColorMap,
     noDataColor: props.noDataColor,
     noDataLabel: props.noDataLabel,
-    showDesaTooltips: props.showDesaTooltips
+    showDesaTooltips: props.showDesaTooltips,
+    showDesaLayer: props.showDesaLayer,
+    frozen: props.frozen
   })
 })
 
@@ -317,6 +340,46 @@ function getDesaStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
   }
 }
 
+function getKecamatanStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
+  if (!useKecamatanValueStyling.value) {
+    return {
+      color: '#111111',
+      weight: 1.6,
+      opacity: 0.9,
+      fillOpacity: 0
+    }
+  }
+
+  const record = kecamatanValueMap.value.get(normalizeName(getKecamatanName(feature)))
+  const fillColor = record?.valueKey
+    ? props.valueColorMap[record.valueKey] ?? props.noDataColor
+    : props.noDataColor
+  const hasValueColor = Boolean(record?.valueKey && props.valueColorMap[record.valueKey])
+
+  return {
+    color: hasValueColor ? '#15803d' : '#94a3b8',
+    weight: 1.3,
+    opacity: 0.9,
+    fillColor,
+    fillOpacity: hasValueColor ? 0.76 : 0.35,
+    dashArray: hasValueColor ? undefined : '4 4'
+  }
+}
+
+function buildKecamatanPopupContent(feature: LeafletGeoJsonFeature) {
+  const kecamatanName = getKecamatanName(feature)
+  const record = kecamatanValueMap.value.get(normalizeName(kecamatanName))
+  const yearLine = props.popupYear ? `<div><strong>Tahun:</strong> ${props.popupYear}</div>` : ''
+
+  return `
+    <div style="min-width: 170px; font-family: sans-serif; line-height: 1.45;">
+      <strong>${kecamatanName}</strong>
+      <div>${record?.valueLabel ?? props.noDataLabel}</div>
+      ${yearLine}
+    </div>
+  `
+}
+
 function buildDesaPopupContent(feature: LeafletGeoJsonFeature) {
   const desaName = getDesaName(feature)
   const kecamatanName = getKecamatanName(feature)
@@ -360,6 +423,17 @@ function getHoverStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
   }
 }
 
+function getKecamatanHoverStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
+  const baseStyle = getKecamatanStyle(feature)
+
+  return {
+    ...baseStyle,
+    weight: (baseStyle.weight ?? 1.6) + 0.7,
+    opacity: 1,
+    fillOpacity: Math.min((baseStyle.fillOpacity ?? 0) + 0.12, 0.88)
+  }
+}
+
 async function renderMap() {
   const L = await ensureLeaflet()
 
@@ -370,18 +444,20 @@ async function renderMap() {
   if (!map) {
     map = L.map(mapId, {
       zoomControl: false,
-      scrollWheelZoom: true,
+      scrollWheelZoom: !props.frozen,
       attributionControl: true,
-      dragging: true,
-      doubleClickZoom: true,
-      touchZoom: true,
-      boxZoom: true,
-      keyboard: true
+      dragging: !props.frozen,
+      doubleClickZoom: !props.frozen,
+      touchZoom: !props.frozen,
+      boxZoom: !props.frozen,
+      keyboard: !props.frozen
     }).setView([-8.8, 116.78], 10)
 
-    L.control.zoom({
-      position: 'topleft'
-    }).addTo(map)
+    if (!props.frozen) {
+      L.control.zoom({
+        position: 'topleft'
+      }).addTo(map)
+    }
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
@@ -392,10 +468,10 @@ async function renderMap() {
   try {
     const [kabupatenData, desaData, kecamatanData] = await Promise.all([
       loadKabupatenGeoJson(),
-      loadDesaGeoJson(),
+      props.showDesaLayer ? loadDesaGeoJson() : Promise.resolve(null),
       loadKecamatanGeoJson()
     ])
-    const filteredDesaData = filterGeoJsonByKecamatan(desaData, props.selectedKecamatan)
+    const filteredDesaData = desaData ? filterGeoJsonByKecamatan(desaData, props.selectedKecamatan) : null
     const filteredKecamatanData = filterGeoJsonByKecamatan(kecamatanData, props.selectedKecamatan)
 
     if (kabupatenLayer) {
@@ -420,56 +496,14 @@ async function renderMap() {
     }).addTo(map)
 
     kecamatanLayer = L.geoJSON(filteredKecamatanData, {
-      style: {
-        color: '#111111',
-        weight: 1.6,
-        opacity: 0.9,
-        fillOpacity: 0
-      },
+      style: getKecamatanStyle,
       onEachFeature(feature, layer) {
-        const kecamatanName = getKecamatanName(feature)
+        layer.bindPopup(useKecamatanValueStyling.value
+          ? buildKecamatanPopupContent(feature)
+          : `<div style="min-width: 180px; font-family: sans-serif;"><strong>Kecamatan ${getKecamatanName(feature)}</strong></div>`)
 
-        layer.bindPopup(`
-          <div style="min-width: 180px; font-family: sans-serif;">
-            <strong>Kecamatan ${kecamatanName}</strong>
-          </div>
-        `)
-
-        layer.on('mouseover', () => {
-          layer.setStyle({
-            color: '#000000',
-            weight: 2.2,
-            opacity: 1,
-            fillOpacity: 0.04
-          })
-        })
-
-        layer.on('mouseout', () => {
-          layer.setStyle({
-            color: '#111111',
-            weight: 1.6,
-            opacity: 0.9,
-            fillOpacity: 0
-          })
-        })
-      }
-    }).addTo(map)
-
-    desaLayer = L.geoJSON(filteredDesaData, {
-      style: {
-        color: '#111111',
-        weight: 1.1,
-        opacity: 0.7,
-        fillOpacity: 0
-      },
-      onEachFeature(feature, layer) {
-        const baseStyle = getDesaStyle(feature)
-
-        layer.setStyle(baseStyle)
-        layer.bindPopup(buildDesaPopupContent(feature))
-
-        if (props.showDesaTooltips) {
-          layer.bindTooltip(buildDesaPopupContent(feature), {
+        if (useKecamatanValueStyling.value) {
+          layer.bindTooltip(buildKecamatanPopupContent(feature), {
             direction: 'top',
             sticky: true,
             opacity: 0.96,
@@ -478,27 +512,61 @@ async function renderMap() {
         }
 
         layer.on('mouseover', () => {
-          layer.setStyle(getHoverStyle(feature))
+          layer.setStyle(getKecamatanHoverStyle(feature))
         })
 
         layer.on('mouseout', () => {
-          layer.setStyle(getDesaStyle(feature))
-        })
-
-        layer.on('click', () => {
-          layer.openPopup()
+          layer.setStyle(getKecamatanStyle(feature))
         })
       }
     }).addTo(map)
 
+    desaLayer = filteredDesaData
+      ? L.geoJSON(filteredDesaData, {
+          style: {
+            color: '#111111',
+            weight: 1.1,
+            opacity: 0.7,
+            fillOpacity: 0
+          },
+          onEachFeature(feature, layer) {
+            const baseStyle = getDesaStyle(feature)
+
+            layer.setStyle(baseStyle)
+            layer.bindPopup(buildDesaPopupContent(feature))
+
+            if (props.showDesaTooltips) {
+              layer.bindTooltip(buildDesaPopupContent(feature), {
+                direction: 'top',
+                sticky: true,
+                opacity: 0.96,
+                className: 'administrative-boundary-tooltip'
+              })
+            }
+
+            layer.on('mouseover', () => {
+              layer.setStyle(getHoverStyle(feature))
+            })
+
+            layer.on('mouseout', () => {
+              layer.setStyle(getDesaStyle(feature))
+            })
+
+            layer.on('click', () => {
+              layer.openPopup()
+            })
+          }
+        }).addTo(map)
+      : null
+
     if (!hasFittedBoundary) {
-      const bounds = props.selectedKecamatan
+      const bounds = props.selectedKecamatan || !props.showDesaLayer
         ? kecamatanLayer.getBounds()
         : kabupatenLayer.getBounds()
 
       if (bounds.isValid()) {
         map.fitBounds(bounds, {
-          padding: [16, 16],
+          padding: props.showDesaLayer ? [16, 16] : [8, 8],
           maxZoom: 11
         })
         hasFittedBoundary = true

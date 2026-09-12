@@ -17,10 +17,12 @@ const props = withDefaults(defineProps<{
   description?: string
   height?: number | string
   color?: string
+  colorAccessor?: ChartAccessor<Datum, string>
   orientation?: 'vertical' | 'horizontal'
   xLabel?: string
   yLabel?: string
   xTickFormat?: TickFormatter
+  showAllXAxisLabels?: boolean
   yTickFormat?: TickFormatter
   showTooltip?: boolean
   roundedCorners?: boolean | number
@@ -30,10 +32,12 @@ const props = withDefaults(defineProps<{
   description: undefined,
   height: 320,
   color: undefined,
+  colorAccessor: undefined,
   orientation: 'vertical',
   xLabel: undefined,
   yLabel: undefined,
   xTickFormat: undefined,
+  showAllXAxisLabels: false,
   yTickFormat: undefined,
   showTooltip: true,
   roundedCorners: 6,
@@ -41,9 +45,17 @@ const props = withDefaults(defineProps<{
 })
 
 const colorAccessor = computed(() => {
+  if (props.colorAccessor) {
+    return props.colorAccessor
+  }
+
   const color = resolveChartColor(props.color, 0)
   return () => color
 })
+const xTickValues = computed(() => props.showAllXAxisLabels
+  ? props.data.map((datum, index) => props.x(datum, index))
+  : undefined)
+const xTickTextHideOverlapping = computed(() => props.showAllXAxisLabels ? false : undefined)
 </script>
 
 <template>
@@ -68,6 +80,8 @@ const colorAccessor = computed(() => {
         type="x"
         :label="xLabel"
         :tick-format="xTickFormat"
+        :tick-values="xTickValues"
+        :tick-text-hide-overlapping="xTickTextHideOverlapping"
         :grid-line="false"
         :tick-line="false"
       />

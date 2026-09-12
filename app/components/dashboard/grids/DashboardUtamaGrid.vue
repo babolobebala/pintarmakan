@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type {
   DashboardCardDetailContext,
+  DashboardCpmCardKey,
+  DashboardDatasetBundle,
   DashboardUtamaCardDefinition,
   DashboardUtamaCardKey,
   DashboardUtamaPayload,
@@ -8,6 +10,10 @@ import type {
 } from '~~/shared/dashboard'
 
 import {
+  dashboardCpmCardDefinitions,
+  dashboardHargaPanganCardDefinitions,
+  dashboardLumbungCardDefinition,
+  dashboardProyeksiCardDefinitions,
   dashboardUtamaCardDefinitions,
   dashboardUtamaSummaryCards
 } from '~~/shared/dashboard'
@@ -15,6 +21,11 @@ import {
 import DashboardCardDetailModal from '../DashboardCardDetailModal.vue'
 import DashboardCardRenderer from '../DashboardCardRenderer.vue'
 import DashboardUtamaSummaryCard from '../widgets/utama/DashboardUtamaSummaryCard.vue'
+import DashboardUtamaCpmCard from '../widgets/utama/DashboardUtamaCpmCard.vue'
+import DashboardUtamaHargaCard from '../widgets/utama/DashboardUtamaHargaCard.vue'
+import DashboardUtamaLumbungCard from '../widgets/utama/DashboardUtamaLumbungCard.vue'
+import DashboardUtamaNeracaCard from '../widgets/utama/DashboardUtamaNeracaCard.vue'
+import DashboardUtamaProduksiCard from '../widgets/utama/DashboardUtamaProduksiCard.vue'
 
 const props = defineProps<{
   payload: DashboardUtamaPayload
@@ -23,6 +34,10 @@ const props = defineProps<{
 
 const detailOpen = ref(false)
 const selectedDetail = shallowRef<DashboardCardDetailContext | null>(null)
+const datasets = computed(() => props.payload.cards as Record<string, DashboardDatasetBundle>)
+const cpmDatasets = computed(() => props.payload.cards as Record<DashboardCpmCardKey, DashboardDatasetBundle>)
+const statusCard = dashboardUtamaCardDefinitions.find(card => card.type === 'DISTRIBUTION')
+const hargaCard = dashboardHargaPanganCardDefinitions[0]!
 
 const summaryEntries = computed(() => dashboardUtamaSummaryCards.flatMap((descriptor) => {
   const card = dashboardUtamaCardDefinitions.find(definition => definition.key === descriptor.cardKey)
@@ -79,13 +94,28 @@ function openSummaryDetail(descriptor: DashboardUtamaSummaryCardDescriptor, peri
       />
     </section>
 
-    <section>
+    <section class="grid items-start gap-3 xl:grid-cols-12">
       <DashboardCardRenderer
-        v-for="card in dashboardUtamaCardDefinitions.filter(card => card.type === 'DISTRIBUTION')"
-        :key="card.key"
-        :card="card"
-        :dataset="props.payload.cards[card.key as DashboardUtamaCardKey]"
-        @open-detail="openDetail(card, $event)"
+        v-if="statusCard"
+        class="xl:col-span-5"
+        :card="statusCard"
+        :dataset="props.payload.cards[statusCard.key as DashboardUtamaCardKey]"
+        @open-detail="openDetail(statusCard, $event)"
+      />
+      <div class="grid gap-3 sm:grid-cols-2 xl:col-span-7 xl:grid-cols-1">
+        <DashboardUtamaNeracaCard :cards="dashboardProyeksiCardDefinitions" :datasets="datasets" />
+        <DashboardUtamaHargaCard :card="hargaCard" :dataset="props.payload.cards[hargaCard.key]" />
+      </div>
+    </section>
+
+    <section class="grid items-start gap-3 xl:grid-cols-12">
+      <DashboardUtamaProduksiCard class="xl:col-span-5" :payload="payload" />
+      <DashboardUtamaCpmCard class="xl:col-span-4" :cards="dashboardCpmCardDefinitions" :datasets="cpmDatasets" />
+      <DashboardUtamaLumbungCard
+        class="xl:col-span-3"
+        :card="dashboardLumbungCardDefinition"
+        :dataset="props.payload.cards[dashboardLumbungCardDefinition.key]"
+        @open-detail="openDetail(dashboardLumbungCardDefinition, $event)"
       />
     </section>
 

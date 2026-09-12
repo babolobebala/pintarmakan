@@ -12,10 +12,12 @@ const props = withDefaults(defineProps<{
   description?: string
   height?: number | string
   color?: string
+  colorAccessor?: ChartAccessor<Datum, string>
   orientation?: 'vertical' | 'horizontal'
   xLabel?: string
   yLabel?: string
   xTickFormat?: TickFormatter
+  showAllXAxisLabels?: boolean
   yTickFormat?: TickFormatter
   showTooltip?: boolean
   roundedCorners?: boolean | number
@@ -25,10 +27,12 @@ const props = withDefaults(defineProps<{
   description: undefined,
   height: 320,
   color: undefined,
+  colorAccessor: undefined,
   orientation: 'vertical',
   xLabel: undefined,
   yLabel: undefined,
   xTickFormat: undefined,
+  showAllXAxisLabels: false,
   yTickFormat: undefined,
   showTooltip: true,
   roundedCorners: 6,

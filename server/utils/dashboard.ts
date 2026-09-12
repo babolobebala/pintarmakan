@@ -6,21 +6,19 @@ import type {
   DashboardDatasetDefinition,
   DashboardDatasetRecord,
   DashboardDatasetTableRecord,
-  DashboardHargaPanganPayload,
+  DashboardConfiguredPayload,
+  DashboardEmptyPayload,
   DashboardKey,
-  DashboardPayload,
-  DashboardProduksiPayload,
-  DashboardProyeksiPayload,
-  DashboardUtamaPayload
+  DashboardUtamaPayload,
+  DashboardPayload
 } from '~~/shared/dashboard'
 
 import {
-  dashboardHargaPanganCardDefinitions,
-  dashboardProduksiCardDefinitions,
-  dashboardProyeksiCardDefinitions,
-  dashboardUtamaCardDefinitions,
+  getDashboardIndicatorCardDefinitions,
+  getDashboardOption,
   isDashboardCardDefinitionCompatible,
-  isDashboardCardDisplayCoverageCompatible
+  isDashboardCardDisplayCoverageCompatible,
+  dashboardUtamaCardDefinitions
 } from '~~/shared/dashboard'
 import {
   getDatasetSource,
@@ -291,79 +289,46 @@ async function loadDashboardCardBundles(
   }
 }
 
-async function loadDashboardUtamaPayload(): Promise<DashboardUtamaPayload> {
-  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardUtamaCardDefinitions)
-
-  return {
-    key: 'utama',
-    kind: 'utama',
-    meta: {
-      title: 'Dashboard Ketahanan Pangan',
-      updatedAt: updatedAt.toISOString()
-    },
-    cards: Object.fromEntries(
-      dashboardUtamaCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
-    ) as DashboardUtamaPayload['cards']
-  }
-}
-
-async function loadDashboardProduksiPayload(): Promise<DashboardProduksiPayload> {
-  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardProduksiCardDefinitions)
-
-  return {
-    key: 'produksi-pangan',
-    kind: 'produksi-pangan',
-    meta: {
-      title: 'Dashboard Produksi Pangan',
-      updatedAt: updatedAt.toISOString()
-    },
-    cards: Object.fromEntries(
-      dashboardProduksiCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
-    ) as DashboardProduksiPayload['cards']
-  }
-}
-
-async function loadDashboardProyeksiPayload(): Promise<DashboardProyeksiPayload> {
-  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardProyeksiCardDefinitions)
-
-  return {
-    key: 'proyeksi-pangan',
-    kind: 'proyeksi-pangan',
-    meta: {
-      title: 'Dashboard Proyeksi Pangan',
-      updatedAt: updatedAt.toISOString()
-    },
-    cards: Object.fromEntries(
-      dashboardProyeksiCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
-    ) as DashboardProyeksiPayload['cards']
-  }
-}
-
-async function loadDashboardHargaPanganPayload(): Promise<DashboardHargaPanganPayload> {
-  const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardHargaPanganCardDefinitions)
-
-  return {
-    key: 'harga-pangan-harian',
-    kind: 'harga-pangan-harian',
-    meta: {
-      title: 'Dashboard Harga Pangan Harian',
-      updatedAt: updatedAt.toISOString()
-    },
-    cards: Object.fromEntries(
-      dashboardHargaPanganCardDefinitions.map(card => [card.key, bundles.get(card.key)!])
-    ) as DashboardHargaPanganPayload['cards']
-  }
-}
-
 export async function getDashboardPayload(dashboard: DashboardKey): Promise<DashboardPayload> {
-  switch (dashboard) {
-    case 'utama':
-      return loadDashboardUtamaPayload()
-    case 'produksi-pangan':
-      return loadDashboardProduksiPayload()
-    case 'proyeksi-pangan':
-      return loadDashboardProyeksiPayload()
-    case 'harga-pangan-harian':
-      return loadDashboardHargaPanganPayload()
+  const option = getDashboardOption(dashboard)
+
+  if (dashboard === 'dashboard-utama') {
+    const { bundles, updatedAt } = await loadDashboardCardBundles(dashboardUtamaCardDefinitions)
+
+    return {
+      key: dashboard,
+      kind: 'dashboard-utama',
+      meta: {
+        title: option.label,
+        updatedAt: updatedAt.toISOString()
+      },
+      cards: Object.fromEntries(dashboardUtamaCardDefinitions.map(card => [card.key, bundles.get(card.key)!]))
+    } as DashboardUtamaPayload
   }
+
+  const cards = getDashboardIndicatorCardDefinitions(dashboard)
+
+  if (cards.length === 0) {
+    return {
+      key: dashboard,
+      kind: 'empty',
+      meta: {
+        title: option.label,
+        updatedAt: new Date().toISOString()
+      },
+      cards: {}
+    } satisfies DashboardEmptyPayload
+  }
+
+  const { bundles, updatedAt } = await loadDashboardCardBundles(cards)
+
+  return {
+    key: dashboard,
+    kind: 'configured',
+    meta: {
+      title: option.label,
+      updatedAt: updatedAt.toISOString()
+    },
+    cards: Object.fromEntries(cards.map(card => [card.key, bundles.get(card.key)!]))
+  } satisfies DashboardConfiguredPayload
 }

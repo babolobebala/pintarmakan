@@ -150,7 +150,7 @@ export async function createDatasetDashboardFlatSpreadsheet(user: ScopedUser, op
     rows = workspaces.flatMap((workspace) => {
       const periodLabel = formatFlatExportPeriod(periodicity, workspace.periodDate)
 
-      return workspace.rows.map((row) => [
+      return workspace.rows.map(row => [
         periodLabel,
         ...(omitKabupatenIdentity
           ? []

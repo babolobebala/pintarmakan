@@ -76,6 +76,8 @@ export function getDashboardOption(key: DashboardViewKey) {
 export type DashboardCardKey
   = | 'ikp'
     | 'pph'
+    | 'pph-kecamatan'
+    | 'pph-desa'
     | 'status-ketahanan-pangan'
     | 'cppd'
     | 'harga-pangan'
@@ -178,6 +180,14 @@ export type DashboardRegionalMetricCardDefinition = DashboardRegionalCardBaseDef
   readonly defaultFieldKey?: string
 }
 
+export type DashboardRegionalPphCardDefinition = DashboardRegionalCardBaseDefinition & {
+  readonly key: 'pph-kecamatan' | 'pph-desa'
+  readonly type: 'REGIONAL_PPH'
+  readonly periodicity: 'TAHUNAN'
+  readonly regionLevel: 'KECAMATAN' | 'DESA'
+  readonly fieldKey: 'pph'
+}
+
 export type DashboardTabularMonthSeriesCardDefinition = DashboardTabularCardBaseDefinition & {
   readonly key: 'cpm-gabah' | 'cpm-jagung'
   readonly type: 'TABULAR_MONTH_SERIES'
@@ -215,6 +225,7 @@ export type DashboardCardDefinition
     | DashboardDistributionCardDefinition
     | DashboardFieldTimeSeriesCardDefinition
     | DashboardRegionalMetricCardDefinition
+    | DashboardRegionalPphCardDefinition
     | DashboardTabularMonthSeriesCardDefinition
     | DashboardTabularSummaryCardDefinition
     | DashboardNeracaTimeSeriesCardDefinition
@@ -289,6 +300,26 @@ export const dashboardCardDefinitions = [
     displayEndPeriod: '2025-01-01',
     regionLevel: 'KABUPATEN',
     fieldKeys: ['pph_konsumsi', 'pph_ketersediaan']
+  },
+  {
+    key: 'pph-kecamatan',
+    datasetId: 'PPH_KECAMATAN_TAHUNAN',
+    title: 'PPH Kecamatan',
+    type: 'REGIONAL_PPH',
+    mode: 'REGIONAL',
+    periodicity: 'TAHUNAN',
+    regionLevel: 'KECAMATAN',
+    fieldKey: 'pph'
+  },
+  {
+    key: 'pph-desa',
+    datasetId: 'PPH_DESA_TAHUNAN',
+    title: 'PPH Desa',
+    type: 'REGIONAL_PPH',
+    mode: 'REGIONAL',
+    periodicity: 'TAHUNAN',
+    regionLevel: 'DESA',
+    fieldKey: 'pph'
   },
   {
     key: 'status-ketahanan-pangan',
@@ -730,6 +761,8 @@ export const dashboardIndicatorCardKeys: Readonly<Partial<Record<DashboardIndica
   'stok-pangan': [...dashboardCpmCardKeys],
   'cadangan-pangan-pemerintah': ['cppd'],
   'harga-pangan': ['harga-pangan'],
+  'konsumsi-pph': ['pph', 'pph-kecamatan', 'pph-desa'],
+  'data-pendukung': ['lumbung-pangan'],
   'kerawanan-pangan': ['ikp', 'status-ketahanan-pangan'],
   'produksi-ketersediaan': [...dashboardProduksiCardKeys, ...dashboardProyeksiCardKeys]
 }
@@ -950,6 +983,7 @@ export function getDashboardRequiredFieldKeys(card: DashboardCardDefinition): re
   switch (card.type) {
     case 'KPI':
     case 'DISTRIBUTION':
+    case 'REGIONAL_PPH':
       return [card.fieldKey]
     case 'DUAL_KPI':
     case 'MULTI_KPI':

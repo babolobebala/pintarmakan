@@ -158,7 +158,7 @@ async function loadDashboardCardBundles(
       .filter(card => card.mode === 'REGIONAL' && card.regionLevel === 'KABUPATEN')
       .map(card => card.datasetId)
   )
-  const needsCanonicalKecamatanNames = requestedCards.some(card => card.type === 'TABULAR_MONTH_SERIES')
+  const needsCanonicalKecamatanNames = requestedCards.some(card => card.type === 'TABULAR_MONTH_SERIES' || card.key === 'lumbung-pangan')
 
   const [datasetDefinitions, regionalRecords, tabularRecords, kecamatanRegions] = await Promise.all([
     db.dataset.findMany({
@@ -283,7 +283,7 @@ async function loadDashboardCardBundles(
       tableRecords: available && card.mode === 'TABULAR'
         ? tableRecordsByDataset.get(card.datasetId) ?? []
         : [],
-      canonicalKecamatanNames: card.type === 'TABULAR_MONTH_SERIES'
+      canonicalKecamatanNames: card.type === 'TABULAR_MONTH_SERIES' || card.key === 'lumbung-pangan'
         ? kecamatanRegions.map(region => region.name)
         : [],
       available

@@ -99,6 +99,10 @@ type BoundaryDesaValue = {
   readonly parentLabel?: string | null
   readonly valueKey?: string | null
   readonly valueLabel?: string | null
+  readonly detailLines?: readonly {
+    readonly label: string
+    readonly value: string
+  }[]
 }
 
 type BoundaryKecamatanValue = {
@@ -121,6 +125,7 @@ const props = withDefaults(defineProps<{
   noDataColor?: string
   noDataLabel?: string
   popupYear?: string | number | null
+  popupPeriodLabel?: string
   showDesaTooltips?: boolean
   /** Omits village geometry for Kecamatan-only overview maps. */
   showDesaLayer?: boolean
@@ -141,6 +146,7 @@ const props = withDefaults(defineProps<{
   noDataColor: '#e2e8f0',
   noDataLabel: 'Data belum tersedia',
   popupYear: null,
+  popupPeriodLabel: 'Tahun',
   showDesaTooltips: false,
   showDesaLayer: true,
   stopInteractionPropagation: false,
@@ -179,6 +185,7 @@ const renderSignature = computed(() => {
   return JSON.stringify({
     selectedKecamatan: props.selectedKecamatan,
     popupYear: props.popupYear,
+    popupPeriodLabel: props.popupPeriodLabel,
     desaValues: props.desaValues,
     kecamatanValues: props.kecamatanValues,
     valueColorMap: props.valueColorMap,
@@ -369,7 +376,7 @@ function getKecamatanStyle(feature: LeafletGeoJsonFeature): LeafletPathStyle {
 function buildKecamatanPopupContent(feature: LeafletGeoJsonFeature) {
   const kecamatanName = getKecamatanName(feature)
   const record = kecamatanValueMap.value.get(normalizeName(kecamatanName))
-  const yearLine = props.popupYear ? `<div><strong>Tahun:</strong> ${props.popupYear}</div>` : ''
+  const yearLine = props.popupYear ? `<div><strong>${props.popupPeriodLabel}:</strong> ${props.popupYear}</div>` : ''
 
   return `
     <div style="min-width: 170px; font-family: sans-serif; line-height: 1.45;">
@@ -400,13 +407,17 @@ function buildDesaPopupContent(feature: LeafletGeoJsonFeature) {
   const valueColor = record?.valueKey
     ? props.valueColorMap[record.valueKey] ?? props.noDataColor
     : props.noDataColor
-  const yearLine = props.popupYear ? `<div><strong>Tahun:</strong> ${props.popupYear}</div>` : ''
+  const detailLines = record?.detailLines
+    ?.map(line => `<div><strong>${line.label}:</strong> ${line.value}</div>`)
+    .join('') ?? ''
+  const yearLine = props.popupYear ? `<div><strong>${props.popupPeriodLabel}:</strong> ${props.popupYear}</div>` : ''
 
   return `
     <div style="min-width: 190px; font-family: sans-serif; line-height: 1.45;">
       <div><strong>Desa:</strong> ${popupDesaName}</div>
       <div><strong>Kecamatan:</strong> ${popupKecamatanName}</div>
       <div><strong>Prioritas:</strong> <span style="display: inline-block; border-radius: 999px; background: ${valueColor}; padding: 1px 7px;">${valueLabel}</span></div>
+      ${detailLines}
       ${yearLine}
     </div>
   `

@@ -5,6 +5,7 @@ import {
   dashboardFoodSecurityPriorityLegend,
   getDashboardAvailablePeriods,
   getDashboardDatasetField,
+  readDashboardRecordNumber,
   readDashboardRecordText
 } from '~~/shared/dashboard'
 import { formatDatasetPeriod } from '~~/shared/datasets'
@@ -30,6 +31,8 @@ const selectedPeriodValue = ref('')
 const selectedKecamatan = ref(ALL_KECAMATAN)
 
 const priorityField = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, props.card.fieldKey))
+const indeksKompositField = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, 'indeks_komposit'))
+const peringkatField = computed(() => getDashboardDatasetField(props.dataset.definition.dataSchema, 'peringkat'))
 const selectedPeriodDate = computed(() => selectedPeriodValue.value || null)
 const selectedPeriodLabel = computed(() => selectedPeriodDate.value
   ? formatDatasetPeriod(props.dataset.definition.coverage?.periodicity ?? null, selectedPeriodDate.value)
@@ -95,16 +98,26 @@ const desaValues = computed(() => {
   return filteredRecords.value.map((record) => {
     const priorityKey = readDashboardRecordText(record, priorityField.value?.key ?? null)
     const priority = priorityByValueKey.get(priorityKey ?? '')
+    const indeksKomposit = readDashboardRecordNumber(record, indeksKompositField.value?.key ?? null)
+    const peringkat = readDashboardRecordNumber(record, peringkatField.value?.key ?? null)
 
     return {
       regionId: record.regionId,
       label: record.regionName,
       parentLabel: record.parentRegionName,
       valueKey: priority?.valueKey ?? null,
-      valueLabel: priority ? `${priority.code} · ${priority.category}` : 'Data belum tersedia'
+      valueLabel: priority ? `${priority.code} · ${priority.category}` : 'Data belum tersedia',
+      detailLines: [
+        ...(indeksKomposit === null ? [] : [{ label: 'Indeks Komposit', value: formatFsvaNumber(indeksKomposit) }]),
+        ...(peringkat === null ? [] : [{ label: 'Peringkat', value: formatFsvaNumber(peringkat, 0) }])
+      ]
     }
   })
 })
+
+function formatFsvaNumber(value: number, maximumFractionDigits = 2) {
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits }).format(value)
+}
 </script>
 
 <template>
@@ -116,7 +129,7 @@ const desaValues = computed(() => {
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-map" class="size-4 shrink-0 text-[var(--app-foreground-soft)]" />
               <h2 class="truncate text-sm font-semibold text-[var(--app-foreground)]">
-                {{ card.title }}
+                FSVA Desa
               </h2>
             </div>
           </div>

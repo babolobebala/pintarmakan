@@ -79,6 +79,7 @@ export type DashboardCardKey
     | 'pph-kecamatan'
     | 'pph-desa'
     | 'status-ketahanan-pangan'
+    | 'skpg-status-kecamatan'
     | 'cppd'
     | 'harga-pangan'
     | 'cpm-gabah'
@@ -156,6 +157,15 @@ export type DashboardDistributionCardDefinition = DashboardRegionalCardBaseDefin
   readonly values: readonly [1, 2, 3, 4, 5, 6]
 }
 
+export type DashboardSkpgStatusCardDefinition = DashboardRegionalCardBaseDefinition & {
+  readonly key: 'skpg-status-kecamatan'
+  readonly type: 'SKPG_STATUS'
+  readonly periodicity: 'BULANAN'
+  readonly regionLevel: 'KECAMATAN'
+  readonly fieldKey: 'status'
+  readonly values: readonly ['AMAN', 'WASPADA', 'RENTAN']
+}
+
 export type DashboardFieldTimeSeriesCardDefinition = DashboardRegionalCardBaseDefinition & {
   readonly key: 'harga-pangan'
   readonly type: 'FIELD_TIME_SERIES'
@@ -223,6 +233,7 @@ export type DashboardCardDefinition
     | DashboardDualKpiCardDefinition
     | DashboardMultiKpiCardDefinition
     | DashboardDistributionCardDefinition
+    | DashboardSkpgStatusCardDefinition
     | DashboardFieldTimeSeriesCardDefinition
     | DashboardRegionalMetricCardDefinition
     | DashboardRegionalPphCardDefinition
@@ -331,6 +342,17 @@ export const dashboardCardDefinitions = [
     regionLevel: 'DESA',
     fieldKey: 'priority',
     values: [1, 2, 3, 4, 5, 6]
+  },
+  {
+    key: 'skpg-status-kecamatan',
+    datasetId: 'SKPG_STATUS_KECAMATAN_BULANAN',
+    title: 'Status SKPG Kecamatan',
+    type: 'SKPG_STATUS',
+    mode: 'REGIONAL',
+    periodicity: 'BULANAN',
+    regionLevel: 'KECAMATAN',
+    fieldKey: 'status',
+    values: ['AMAN', 'WASPADA', 'RENTAN']
   },
   {
     key: 'cppd',
@@ -456,6 +478,13 @@ export const dashboardFoodSecurityPriorityLegend = [
   { valueKey: '4', code: 'P4', category: 'Cukup tahan', color: '#D9EF8B' },
   { valueKey: '5', code: 'P5', category: 'Tahan', color: '#91CF60' },
   { valueKey: '6', code: 'P6', category: 'Sangat tahan', color: '#1A9850' }
+] as const
+
+/** Canonical status labels and visual mapping for the monthly SKPG dashboard. */
+export const dashboardSkpgStatusLegend = [
+  { valueKey: 'AMAN', label: 'Aman', shortLabel: 'A', color: '#16A34A' },
+  { valueKey: 'WASPADA', label: 'Waspada', shortLabel: 'W', color: '#F59E0B' },
+  { valueKey: 'RENTAN', label: 'Rentan', shortLabel: 'R', color: '#DC2626' }
 ] as const
 
 export type DashboardCatalogCardDefinition = (typeof dashboardCardDefinitions)[number]
@@ -763,7 +792,7 @@ export const dashboardIndicatorCardKeys: Readonly<Partial<Record<DashboardIndica
   'harga-pangan': ['harga-pangan'],
   'konsumsi-pph': ['pph', 'pph-kecamatan', 'pph-desa'],
   'data-pendukung': ['lumbung-pangan'],
-  'kerawanan-pangan': ['ikp', 'status-ketahanan-pangan'],
+  'kerawanan-pangan': ['ikp', 'status-ketahanan-pangan', 'skpg-status-kecamatan'],
   'produksi-ketersediaan': [...dashboardProduksiCardKeys, ...dashboardProyeksiCardKeys]
 }
 
@@ -983,6 +1012,7 @@ export function getDashboardRequiredFieldKeys(card: DashboardCardDefinition): re
   switch (card.type) {
     case 'KPI':
     case 'DISTRIBUTION':
+    case 'SKPG_STATUS':
     case 'REGIONAL_PPH':
       return [card.fieldKey]
     case 'DUAL_KPI':

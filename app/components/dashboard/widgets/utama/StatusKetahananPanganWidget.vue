@@ -2,20 +2,14 @@
 import type { DashboardDatasetBundle, DashboardDistributionCardDefinition } from '~~/shared/dashboard'
 
 import {
+  dashboardFoodSecurityPriorityLegend,
   getDashboardAvailablePeriods,
   getDashboardDatasetField,
   readDashboardRecordText
 } from '~~/shared/dashboard'
 import { formatDatasetPeriod } from '~~/shared/datasets'
 
-const priorityLegend = [
-  { valueKey: '1', code: 'P1', category: 'Sangat rentan', color: '#D73027' },
-  { valueKey: '2', code: 'P2', category: 'Rentan', color: '#FC8D59' },
-  { valueKey: '3', code: 'P3', category: 'Cukup rentan', color: '#FEE08B' },
-  { valueKey: '4', code: 'P4', category: 'Cukup tahan', color: '#D9EF8B' },
-  { valueKey: '5', code: 'P5', category: 'Tahan', color: '#91CF60' },
-  { valueKey: '6', code: 'P6', category: 'Sangat tahan', color: '#1A9850' }
-] as const
+const priorityLegend = dashboardFoodSecurityPriorityLegend
 const priorityByValueKey = new Map<string, (typeof priorityLegend)[number]>(
   priorityLegend.map(item => [item.valueKey, item])
 )

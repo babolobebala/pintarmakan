@@ -3,6 +3,7 @@ import type { ChartAccessor, CartesianChartSeries } from './shared'
 
 type Datum = Record<string, unknown>
 type TickFormatter = (tick: number | Date, index: number, ticks: Array<number | Date>) => string
+type TooltipTemplate = (datum: Datum) => string
 
 const props = withDefaults(defineProps<{
   data: Datum[]
@@ -21,6 +22,8 @@ const props = withDefaults(defineProps<{
   yDomain?: [number | undefined, number | undefined]
   showLegend?: boolean
   showTooltip?: boolean
+  /** Optional exact-datum tooltip content for chart-specific presentation. */
+  tooltipTemplate?: TooltipTemplate
   ariaLabel?: string
   /** Optional vertical reference line drawn at the given x value (chart coordinate). */
   verticalLineValue?: number | null
@@ -40,6 +43,7 @@ const props = withDefaults(defineProps<{
   yDomain: undefined,
   showLegend: true,
   showTooltip: true,
+  tooltipTemplate: undefined,
   ariaLabel: undefined,
   verticalLineValue: null,
   verticalLineLabel: undefined,

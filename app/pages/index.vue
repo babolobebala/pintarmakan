@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import DashboardSelector from '~/components/dashboard/DashboardSelector.vue'
+import DashboardCadanganPanganPemerintahGrid from '~/components/dashboard/grids/DashboardCadanganPanganPemerintahGrid.vue'
+import DashboardHargaPanganGrid from '~/components/dashboard/grids/DashboardHargaPanganGrid.vue'
+import DashboardKerawananPanganGrid from '~/components/dashboard/grids/DashboardKerawananPanganGrid.vue'
 import DashboardProduksiGrid from '~/components/dashboard/grids/DashboardProduksiGrid.vue'
 import DashboardStokPanganGrid from '~/components/dashboard/grids/DashboardStokPanganGrid.vue'
 import DashboardUtamaGrid from '~/components/dashboard/grids/DashboardUtamaGrid.vue'
@@ -108,6 +111,24 @@ async function updateDashboard(dashboard: (typeof options)[number]['key']) {
 
     <DashboardStokPanganGrid
       v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'stok-pangan'"
+      :payload="dashboardData"
+      :pending="pending"
+    />
+
+    <DashboardCadanganPanganPemerintahGrid
+      v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'cadangan-pangan-pemerintah'"
+      :payload="dashboardData"
+      :pending="pending"
+    />
+
+    <DashboardHargaPanganGrid
+      v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'harga-pangan'"
+      :payload="dashboardData"
+      :pending="pending"
+    />
+
+    <DashboardKerawananPanganGrid
+      v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'kerawanan-pangan'"
       :payload="dashboardData"
       :pending="pending"
     />

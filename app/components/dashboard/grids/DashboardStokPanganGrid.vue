@@ -15,35 +15,14 @@ import {
 } from '~~/shared/dashboard'
 import { getDatasetSchemaFields } from '~~/shared/datasets'
 
-type Commodity = {
-  key: DashboardCpmCardKey
-  label: string
-  icon: string
-}
-
-type KecamatanSummary = {
-  key: string
-  label: string
-  canonicalLabel: string | null
-  value: number | null
-  totalUnits: number
-  stockedUnits: number
-}
-
-type UnitStockRow = {
-  index: number
-  unit: string | null
-  owner: string | null
-  desa: string | null
-  kecamatan: string | null
-  value: number
-}
+type Commodity = { key: DashboardCpmCardKey, label: string, icon: string }
+type MonthSummary = { key: string, label: string, total: number | null, stockedUnits: number }
+type KecamatanMatrixRow = { key: string, label: string, values: Array<number | null> }
 
 const props = defineProps<{ payload: DashboardConfiguredPayload, pending?: boolean }>()
 const number = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 const selectedCommodityKey = ref<DashboardCpmCardKey>('cpm-gabah')
 const selectedPeriod = ref('')
-const selectedMonthKey = ref('')
 const detailOpen = ref(false)
 const selectedDetail = shallowRef<DashboardCardDetailContext | null>(null)
 
@@ -51,63 +30,28 @@ const commodities: readonly Commodity[] = [
   { key: 'cpm-gabah', label: 'CPM Gabah', icon: 'i-lucide-wheat' },
   { key: 'cpm-jagung', label: 'CPM Jagung', icon: 'i-lucide-sprout' }
 ]
-
 const cardsByKey = new Map(dashboardCpmCardDefinitions.map(card => [card.key, card]))
 const commodity = computed(() => commodities.find(item => item.key === selectedCommodityKey.value) ?? commodities[0]!)
 const activeCard = computed(() => cardsByKey.get(selectedCommodityKey.value) ?? dashboardCpmCardDefinitions[0]!)
 const activeDataset = computed<DashboardDatasetBundle | null>(() => props.payload.cards[selectedCommodityKey.value] ?? null)
-const availablePeriods = computed(() => activeDataset.value
-  ? getDashboardAvailablePeriods(activeDataset.value.definition.coverage, activeCard.value)
-  : [])
+const availablePeriods = computed(() => activeDataset.value ? getDashboardAvailablePeriods(activeDataset.value.definition.coverage, activeCard.value) : [])
 const schemaFields = computed(() => getDatasetSchemaFields(activeDataset.value?.definition.dataSchema))
 const monthFields = computed(() => activeCard.value.monthFieldKeys.flatMap((key) => {
   const field = schemaFields.value.find(item => item.key === key)
   return field ? [{ key: field.key, label: field.label.replace(/\s*\([^)]*\)\s*$/, '') }] : []
 }))
-const monthOptions = computed(() => monthFields.value.map(field => ({ value: field.key, label: field.label })))
-const selectedRows = computed(() => !activeDataset.value || !selectedPeriod.value
-  ? []
-  : activeDataset.value.tableRecords.filter(record => record.periodDate === selectedPeriod.value))
-const selectedMonth = computed(() => monthFields.value.find(field => field.key === selectedMonthKey.value) ?? null)
+const selectedRows = computed(() => !activeDataset.value || !selectedPeriod.value ? [] : activeDataset.value.tableRecords.filter(record => record.periodDate === selectedPeriod.value))
 
 function fieldKeyForLabel(label: string) {
   return schemaFields.value.find(field => field.label.trim().toLocaleLowerCase('id-ID') === label.toLocaleLowerCase('id-ID'))?.key ?? null
 }
 
-const fieldKeys = computed(() => ({
-  kecamatan: fieldKeyForLabel('Kecamatan'),
-  desa: fieldKeyForLabel('Desa'),
-  unit: fieldKeyForLabel('Nama Perusahaan'),
-  owner: fieldKeyForLabel('Nama Pemilik')
-}))
-
-function rowValue(row: DashboardDatasetTableRecord) {
-  return readDashboardRecordNumber(row, selectedMonth.value?.key ?? null)
-}
-
-function hasMeaningfulMonth(periodDate: string, monthKey: string) {
-  const dataset = activeDataset.value
-  return Boolean(dataset?.tableRecords.some(record => record.periodDate === periodDate && readDashboardRecordNumber(record, monthKey) !== null))
-}
-
-function latestMeaningfulMonth(periodDate: string) {
-  return [...monthFields.value].reverse().find(field => hasMeaningfulMonth(periodDate, field.key))?.key ?? ''
-}
+const kecamatanFieldKey = computed(() => fieldKeyForLabel('Kecamatan'))
+const kecamatanLabel = computed(() => schemaFields.value.find(field => field.key === kecamatanFieldKey.value)?.label ?? 'Kecamatan')
 
 watch(availablePeriods, (periods) => {
   if (!periods.includes(selectedPeriod.value)) {
     selectedPeriod.value = periods[0] ?? ''
-  }
-}, { immediate: true })
-
-watch(selectedPeriod, (periodDate) => {
-  if (!periodDate) {
-    selectedMonthKey.value = ''
-    return
-  }
-
-  if (!hasMeaningfulMonth(periodDate, selectedMonthKey.value)) {
-    selectedMonthKey.value = latestMeaningfulMonth(periodDate)
   }
 }, { immediate: true })
 
@@ -116,122 +60,86 @@ function normalizeIdentity(value: string) {
 }
 
 function canonicalKecamatanName(value: string | null) {
-  if (!value) {
-    return null
-  }
+  if (!value) return null
 
   return activeDataset.value?.canonicalKecamatanNames.find(name => normalizeIdentity(name) === normalizeIdentity(value)) ?? null
 }
 
-function kecamatanIdentity(value: string | null) {
-  if (!value) {
-    return null
-  }
-
-  return normalizeIdentity(canonicalKecamatanName(value) ?? value)
+function readMonthValue(row: DashboardDatasetTableRecord, monthKey: string) {
+  return readDashboardRecordNumber(row, monthKey)
 }
 
-const observations = computed(() => selectedRows.value
-  .map(row => ({ row, value: rowValue(row) }))
-  .filter((item): item is { row: DashboardDatasetTableRecord, value: number } => item.value !== null))
-const hasMonthData = computed(() => observations.value.length > 0)
-const totalStock = computed(() => hasMonthData.value
-  ? observations.value.reduce((sum, item) => sum + item.value, 0)
-  : null)
-const stockedObservations = computed(() => observations.value.filter(item => item.value > 0))
-const stockedUnitCount = computed(() => stockedObservations.value.length)
-const stockedKecamatanCount = computed(() => new Set(stockedObservations.value
-  .map(({ row }) => kecamatanIdentity(readDashboardRecordText(row, fieldKeys.value.kecamatan)))
-  .filter((identity): identity is string => Boolean(identity))).size)
-const stockedDesaCount = computed(() => new Set(stockedObservations.value.flatMap(({ row }) => {
-  const kecamatan = kecamatanIdentity(readDashboardRecordText(row, fieldKeys.value.kecamatan))
-  const desa = readDashboardRecordText(row, fieldKeys.value.desa)
-  return kecamatan && desa ? [`${kecamatan}::${normalizeIdentity(desa)}`] : []
-})).size)
+const monthlySummaries = computed<MonthSummary[]>(() => monthFields.value.map((field) => {
+  const values = selectedRows.value.map(row => readMonthValue(row, field.key)).filter((value): value is number => value !== null)
+  return {
+    key: field.key,
+    label: field.label,
+    total: values.length ? values.reduce((sum, value) => sum + value, 0) : null,
+    stockedUnits: values.filter(value => value > 0).length
+  }
+}))
+const maximumMonthlyTotal = computed(() => Math.max(0, ...monthlySummaries.value.flatMap(month => month.total === null ? [] : [month.total])))
 
-const kecamatanSummaries = computed<KecamatanSummary[]>(() => {
-  const grouped = new Map<string, KecamatanSummary>()
+const matrixRows = computed<KecamatanMatrixRow[]>(() => {
+  const grouped = new Map<string, KecamatanMatrixRow>()
 
   for (const row of selectedRows.value) {
-    const rawKecamatan = readDashboardRecordText(row, fieldKeys.value.kecamatan)
-    if (!rawKecamatan) {
-      continue
-    }
+    const rawKecamatan = readDashboardRecordText(row, kecamatanFieldKey.value)
+    if (!rawKecamatan) continue
 
-    const canonicalLabel = canonicalKecamatanName(rawKecamatan)
-    const label = canonicalLabel ?? rawKecamatan
+    const label = canonicalKecamatanName(rawKecamatan) ?? rawKecamatan
     const key = normalizeIdentity(label)
-    const summary = grouped.get(key) ?? {
-      key,
-      label,
-      canonicalLabel,
-      value: null,
-      totalUnits: 0,
-      stockedUnits: 0
-    }
-    const value = rowValue(row)
+    const matrixRow = grouped.get(key) ?? { key, label, values: monthFields.value.map(() => null) }
 
-    summary.totalUnits += 1
-    if (value !== null) {
-      summary.value = (summary.value ?? 0) + value
-      if (value > 0) {
-        summary.stockedUnits += 1
-      }
+    for (const [index, month] of monthFields.value.entries()) {
+      const value = readMonthValue(row, month.key)
+      if (value !== null) matrixRow.values[index] = (matrixRow.values[index] ?? 0) + value
     }
-    grouped.set(key, summary)
+
+    grouped.set(key, matrixRow)
   }
 
-  return [...grouped.values()].sort((left, right) => (right.value ?? -Infinity) - (left.value ?? -Infinity) || left.label.localeCompare(right.label, 'id-ID'))
+  const canonicalOrder = new Map((activeDataset.value?.canonicalKecamatanNames ?? []).map((name, index) => [normalizeIdentity(name), index]))
+  return [...grouped.values()].sort((left, right) => {
+    const leftOrder = canonicalOrder.get(left.key)
+    const rightOrder = canonicalOrder.get(right.key)
+    if (leftOrder !== undefined || rightOrder !== undefined) return (leftOrder ?? Number.MAX_SAFE_INTEGER) - (rightOrder ?? Number.MAX_SAFE_INTEGER)
+    return left.label.localeCompare(right.label, 'id-ID')
+  })
 })
-const rankingMaximum = computed(() => Math.max(0, ...kecamatanSummaries.value.flatMap(row => row.value === null ? [] : [row.value])))
-const mapColorMap = { zero: '#dcfce7', low: '#bbf7d0', medium: '#86efac', high: '#4ade80', highest: '#16a34a' }
-const mapValues = computed(() => kecamatanSummaries.value.flatMap((row) => {
-  if (!row.canonicalLabel || row.value === null) {
-    return []
-  }
-
-  const ratio = rankingMaximum.value > 0 ? row.value / rankingMaximum.value : 0
-  const valueKey = row.value === 0 ? 'zero' : ratio <= 0.25 ? 'low' : ratio <= 0.5 ? 'medium' : ratio <= 0.75 ? 'high' : 'highest'
-  const periodLabel = `${selectedMonth.value?.label ?? 'Bulan'} ${selectedPeriod.value.slice(0, 4)}`
-
-  return [{
-    regionName: row.canonicalLabel,
-    valueKey,
-    valueLabel: `${commodity.value.label}<br><strong>${number.format(row.value)} Ton</strong><br>${periodLabel}`
-  }]
-}))
-const topUnits = computed<UnitStockRow[]>(() => stockedObservations.value
-  .map(({ row, value }) => ({
-    unit: readDashboardRecordText(row, fieldKeys.value.unit),
-    owner: readDashboardRecordText(row, fieldKeys.value.owner),
-    desa: readDashboardRecordText(row, fieldKeys.value.desa),
-    kecamatan: readDashboardRecordText(row, fieldKeys.value.kecamatan),
-    value
-  }))
-  .sort((left, right) => right.value - left.value || (left.unit ?? '').localeCompare(right.unit ?? '', 'id-ID'))
-  .slice(0, 5)
-  .map((row, index) => ({ ...row, index: index + 1 })))
-const unitSummaries = computed(() => [...kecamatanSummaries.value].sort((left, right) => right.stockedUnits - left.stockedUnits || (right.value ?? -Infinity) - (left.value ?? -Infinity) || left.label.localeCompare(right.label, 'id-ID')))
+const matrixValues = computed(() => matrixRows.value.flatMap(row => row.values.filter((value): value is number => value !== null)))
+const matrixMinimum = computed(() => matrixValues.value.length ? Math.min(...matrixValues.value) : 0)
+const matrixMaximum = computed(() => matrixValues.value.length ? Math.max(...matrixValues.value) : 0)
 const source = computed(() => activeDataset.value?.definition.source ?? null)
 
 function formatValue(value: number | null) {
   return value === null ? '—' : number.format(value)
 }
 
-function stockPercentage(row: KecamatanSummary) {
-  return row.totalUnits > 0 ? (row.stockedUnits / row.totalUnits) * 100 : 0
+function monthCardClass(month: MonthSummary) {
+  if (month.total === null) return 'border-[var(--app-border)] bg-[var(--app-surface-muted)]'
+  if (month.total === 0) return 'border-success/15 bg-success/5'
+
+  const ratio = maximumMonthlyTotal.value > 0 ? month.total / maximumMonthlyTotal.value : 0
+  return ratio > 0.75 ? 'border-success/25 bg-success/15' : ratio > 0.4 ? 'border-success/20 bg-success/10' : 'border-success/15 bg-success/5'
+}
+
+function matrixCellClass(value: number | null) {
+  if (value === null) return 'bg-[var(--app-surface-muted)] text-[var(--app-foreground-soft)]'
+  if (value === 0) return 'bg-success/5 text-[var(--app-foreground-muted)]'
+  if (matrixMaximum.value === matrixMinimum.value) return 'bg-success/18 text-[var(--app-foreground)]'
+
+  const ratio = (value - matrixMinimum.value) / (matrixMaximum.value - matrixMinimum.value)
+  if (ratio > 0.75) return 'bg-success/30 text-[var(--app-foreground)]'
+  if (ratio > 0.5) return 'bg-success/22 text-[var(--app-foreground)]'
+  if (ratio > 0.25) return 'bg-success/14 text-[var(--app-foreground)]'
+  return 'bg-success/8 text-[var(--app-foreground)]'
 }
 
 function openDetail() {
-  if (!activeDataset.value) {
-    return
-  }
+  if (!activeDataset.value) return
 
-  selectedDetail.value = {
-    card: activeCard.value,
-    dataset: activeDataset.value,
-    periodDate: selectedPeriod.value || null
-  }
+  selectedDetail.value = { card: activeCard.value, dataset: activeDataset.value, periodDate: selectedPeriod.value || null }
   detailOpen.value = true
 }
 </script>
@@ -241,17 +149,23 @@ function openDetail() {
     <header class="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
       <div class="min-w-0">
         <div class="flex items-center gap-2">
-          <span class="flex size-8 items-center justify-center rounded-lg bg-success/10 text-success"><UIcon name="i-lucide-package-open" class="size-4" /></span>
-          <div>
+          <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
+            <UIcon name="i-lucide-package-open" class="size-4" />
+          </span>
+          <div class="min-w-0">
             <h2 class="text-xl leading-7 font-semibold tracking-tight text-[var(--app-foreground)]">
               Stok Pangan
             </h2>
-            <p class="mt-0.5 text-sm text-[var(--app-foreground-muted)]">
+            <p class="mt-0.5 text-sm font-medium text-[var(--app-foreground-muted)]">
               Cadangan Pangan Masyarakat Kabupaten Sumbawa Barat
+            </p>
+            <p class="mt-0.5 text-xs text-[var(--app-foreground-soft)]">
+              Informasi stok gabah dan jagung menurut waktu, wilayah, dan pelaku usaha.
             </p>
           </div>
         </div>
       </div>
+
       <div class="flex flex-wrap items-center gap-2">
         <div class="inline-flex rounded-[var(--radius-control)] border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-1" aria-label="Pilih komoditas CPM">
           <UButton
@@ -261,42 +175,25 @@ function openDetail() {
             :color="selectedCommodityKey === item.key ? 'primary' : 'neutral'"
             :variant="selectedCommodityKey === item.key ? 'solid' : 'ghost'"
             :aria-pressed="selectedCommodityKey === item.key"
-            class="cursor-pointer"
+            class="cursor-pointer whitespace-nowrap"
             @click="selectedCommodityKey = item.key"
           >
             {{ item.label }}
           </UButton>
         </div>
-        <div class="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1">
-          <span class="text-xs font-medium text-[var(--app-foreground-muted)]">Tahun</span>
-          <DashboardPeriodSelector v-model="selectedPeriod" periodicity="TAHUNAN" :periods="availablePeriods" />
-        </div>
-        <div class="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1">
-          <span class="text-xs font-medium text-[var(--app-foreground-muted)]">Bulan</span>
-          <USelectMenu
-            v-model="selectedMonthKey"
-            :items="monthOptions"
-            value-key="value"
-            label-key="label"
-            size="sm"
-            color="neutral"
-            variant="ghost"
-            class="min-w-28"
-            :disabled="!monthOptions.length"
-            aria-label="Pilih bulan stok"
-            :ui="{ base: 'cursor-pointer', item: 'cursor-pointer' }"
-          />
-        </div>
+
+        <DashboardPeriodSelector v-model="selectedPeriod" periodicity="TAHUNAN" :periods="availablePeriods" />
+
         <UButton
           size="sm"
           color="neutral"
           variant="outline"
           trailing-icon="i-lucide-arrow-right"
-          class="cursor-pointer"
+          class="cursor-pointer whitespace-nowrap"
           :disabled="!activeDataset"
           @click="openDetail"
         >
-          Lihat detail
+          Lihat seluruh data
         </UButton>
       </div>
     </header>
@@ -304,182 +201,113 @@ function openDetail() {
     <div v-if="!selectedPeriod" class="rounded-[var(--radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-8 text-sm text-[var(--app-foreground-muted)]">
       Belum ada periode CPM yang tersedia.
     </div>
+
     <template v-else>
-      <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ringkasan stok pangan masyarakat">
-        <article
-          v-for="metric in [
-            { label: 'Total Stok', value: totalStock === null ? 'Data belum tersedia' : `${formatValue(totalStock)} Ton`, icon: 'i-lucide-package' },
-            { label: 'Unit Berstok', value: hasMonthData ? `${stockedUnitCount} Unit` : 'Data belum tersedia', icon: 'i-lucide-building-2' },
-            { label: 'Kecamatan Berstok', value: hasMonthData ? `${stockedKecamatanCount} Kecamatan` : 'Data belum tersedia', icon: 'i-lucide-map-pinned' },
-            { label: 'Desa Berstok', value: hasMonthData ? `${stockedDesaCount} Desa` : 'Data belum tersedia', icon: 'i-lucide-landmark' }
-          ]"
-          :key="metric.label"
-          class="min-w-0 rounded-[var(--radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2.5 shadow-sm"
-        >
-          <div class="flex items-center gap-2.5">
-            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success"><UIcon :name="metric.icon" class="size-4" /></span>
-            <div class="min-w-0">
-              <p class="text-xs font-medium text-[var(--app-foreground-muted)]">
-                {{ metric.label }}
-              </p>
-              <p class="mt-0.5 truncate text-lg font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">
-                {{ metric.value }}
-              </p>
-              <p class="mt-0.5 text-[0.68rem] text-[var(--app-foreground-soft)]">
-                {{ selectedMonth?.label ?? 'Bulan' }} {{ selectedPeriod.slice(0, 4) }}
+      <DashboardWidget compact>
+        <template #header>
+          <div class="flex w-full flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
+                Ringkasan Stok Bulanan
+              </h3>
+              <p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                Total stok dan jumlah unit berstok pada setiap bulan di tahun {{ selectedPeriod.slice(0, 4) }}.
               </p>
             </div>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-[var(--app-foreground-muted)]">
+              <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-success" />Ada stok</span>
+              <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full border border-success/40 bg-success/5" />Nol</span>
+              <span class="inline-flex items-center gap-1.5">— Belum tersedia</span>
+            </div>
           </div>
-        </article>
-      </section>
+        </template>
 
-      <section class="grid gap-3 xl:grid-cols-2">
-        <DashboardWidget compact>
-          <template #header>
-            <div class="flex min-w-0 items-center gap-2">
-              <UIcon name="i-lucide-chart-no-axes-column-increasing" class="size-4 text-success" />
-              <div>
-                <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
-                  Stok Menurut Kecamatan
-                </h3><p class="text-xs text-[var(--app-foreground-muted)]">
-                  {{ commodity.label }} · {{ selectedMonth?.label }} {{ selectedPeriod.slice(0, 4) }}
-                </p>
-              </div>
-            </div>
-          </template>
-          <p v-if="!kecamatanSummaries.length" class="text-sm text-[var(--app-foreground-muted)]">
-            Data Kecamatan belum tersedia untuk periode ini.
-          </p>
-          <div v-else class="space-y-2.5">
-            <div v-for="row in kecamatanSummaries" :key="row.key" class="grid grid-cols-[minmax(6rem,0.75fr)_minmax(0,1.5fr)_auto] items-center gap-2 text-xs">
-              <span class="min-w-0 truncate font-medium text-[var(--app-foreground)]">{{ row.label }}</span>
-              <span class="h-4 overflow-hidden rounded-sm bg-[var(--app-surface-muted)]"><span v-if="row.value !== null" class="block h-full rounded-sm bg-success" :style="{ width: `${rankingMaximum ? (row.value / rankingMaximum) * 100 : 0}%` }" /></span>
-              <span class="whitespace-nowrap text-right tabular-nums text-[var(--app-foreground-muted)]">{{ row.value === null ? '—' : `${formatValue(row.value)} Ton` }}</span>
-            </div>
-          </div>
-          <template #footer>
-            <DashboardCardSource :source="source" />
-          </template>
-        </DashboardWidget>
+        <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+          <article v-for="month in monthlySummaries" :key="month.key" :class="['min-w-0 rounded-lg border px-3 py-2.5', monthCardClass(month)]">
+            <p class="text-xs font-semibold text-[var(--app-foreground)]">
+              {{ month.label }}
+            </p>
+            <template v-if="month.total !== null">
+              <p class="mt-1 text-lg font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">
+                {{ formatValue(month.total) }} <span class="text-xs font-medium text-[var(--app-foreground-muted)]">Ton</span>
+              </p>
+              <p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                {{ month.stockedUnits }} unit
+              </p>
+            </template>
+            <template v-else>
+              <p class="mt-1 text-lg font-semibold text-[var(--app-foreground-soft)]">
+                —
+              </p>
+              <p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                Belum tersedia
+              </p>
+            </template>
+          </article>
+        </div>
 
-        <DashboardWidget compact>
-          <template #header>
-            <div class="flex min-w-0 items-center gap-2">
-              <UIcon name="i-lucide-map" class="size-4 text-success" /><div>
-                <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
-                  Peta Sebaran Stok
-                </h3><p class="text-xs text-[var(--app-foreground-muted)]">
-                  Warna lebih gelap menunjukkan stok lebih tinggi.
-                </p>
-              </div>
-            </div>
-          </template>
-          <MapAdministrativeBoundaryMap
-            map-height="clamp(220px, 23vw, 280px)"
-            :kecamatan-values="mapValues"
-            :value-color-map="mapColorMap"
-            :show-desa-layer="false"
-            frozen
-            stop-interaction-propagation
-            no-data-color="#e2e8f0"
-            no-data-label="Data belum tersedia"
-          />
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-[var(--app-foreground-muted)]">
-            <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-sm" :style="{ backgroundColor: mapColorMap.zero }" />Nol</span>
-            <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-sm" :style="{ backgroundColor: mapColorMap.highest }" />Lebih tinggi</span>
-            <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-sm border border-dashed border-[var(--app-border-strong)] bg-[var(--app-surface-muted)]" />Tidak ada data</span>
-          </div>
-          <template #footer>
-            <DashboardCardSource :source="source" />
-          </template>
-        </DashboardWidget>
-      </section>
+        <template #footer>
+          <DashboardCardSource :source="source" />
+        </template>
+      </DashboardWidget>
 
-      <section class="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <DashboardWidget compact>
-          <template #header>
-            <div class="flex min-w-0 items-center gap-2">
-              <UIcon name="i-lucide-trophy" class="size-4 text-success" /><div>
-                <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
-                  Unit/Pemilik dengan Stok Terbesar
-                </h3><p class="text-xs text-[var(--app-foreground-muted)]">
-                  Lima observasi unit dengan stok aktif tertinggi.
-                </p>
-              </div>
+      <DashboardWidget compact>
+        <template #header>
+          <div class="flex w-full flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
+                Stok Menurut Kecamatan
+              </h3>
+              <p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                Stok {{ commodity.label.toLowerCase() }} per Kecamatan pada setiap bulan di tahun {{ selectedPeriod.slice(0, 4) }}.
+              </p>
             </div>
-          </template>
-          <p v-if="!topUnits.length" class="text-sm text-[var(--app-foreground-muted)]">
-            Belum ada unit dengan stok pada bulan yang dipilih.
-          </p>
-          <div v-else class="overflow-x-auto">
-            <table class="w-full min-w-[560px] text-left text-xs">
-              <thead class="border-b border-[var(--app-border)] text-[0.68rem] font-medium tracking-[0.12em] text-[var(--app-foreground-muted)] uppercase">
-                <tr>
-                  <th class="pb-2 pr-2">
-                    #
-                  </th><th class="pb-2 pr-3">
-                    Nama Perusahaan
-                  </th><th class="pb-2 pr-3">
-                    Nama Pemilik
-                  </th><th class="pb-2 pr-3">
-                    Desa / Kecamatan
-                  </th><th class="pb-2 text-right">
-                    Stok
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-[var(--app-border)]">
-                <tr v-for="row in topUnits" :key="`${row.index}-${row.unit}-${row.owner}`">
-                  <td class="py-2 pr-2 font-medium text-[var(--app-foreground-muted)]">
-                    {{ row.index }}
-                  </td><td class="max-w-36 py-2 pr-3 font-medium text-[var(--app-foreground)]">
-                    {{ row.unit ?? '—' }}
-                  </td><td class="max-w-36 py-2 pr-3 text-[var(--app-foreground-muted)]">
-                    {{ row.owner ?? '—' }}
-                  </td><td class="py-2 pr-3 text-[var(--app-foreground-muted)]">
-                    {{ [row.desa, row.kecamatan].filter(Boolean).join(' / ') || '—' }}
-                  </td><td class="py-2 text-right font-semibold tabular-nums text-[var(--app-foreground)]">
-                    {{ formatValue(row.value) }} Ton
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-[var(--app-foreground-muted)]">
+              <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-sm bg-success/30" />Lebih tinggi</span>
+              <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-sm border border-success/40 bg-success/5" />Nol</span>
+              <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-sm bg-[var(--app-surface-muted)]" />Tidak ada data</span>
+            </div>
           </div>
-          <template #footer>
-            <DashboardCardSource :source="source" />
-          </template>
-        </DashboardWidget>
+        </template>
 
-        <DashboardWidget compact>
-          <template #header>
-            <div class="flex min-w-0 items-center gap-2">
-              <UIcon name="i-lucide-building-2" class="size-4 text-success" /><div>
-                <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
-                  Sebaran Unit Menurut Kecamatan
-                </h3><p class="text-xs text-[var(--app-foreground-muted)]">
-                  Unit berstok dibanding seluruh observasi unit.
-                </p>
-              </div>
-            </div>
-          </template>
-          <p v-if="!unitSummaries.length" class="text-sm text-[var(--app-foreground-muted)]">
-            Data unit per Kecamatan belum tersedia.
-          </p>
-          <div v-else class="space-y-2.5">
-            <div v-for="row in unitSummaries" :key="row.key" class="grid grid-cols-[minmax(6rem,1fr)_auto] gap-x-2 text-xs">
-              <div class="min-w-0">
-                <div class="flex justify-between gap-2">
-                  <span class="truncate font-medium text-[var(--app-foreground)]">{{ row.label }}</span><span class="whitespace-nowrap tabular-nums text-[var(--app-foreground-muted)]">{{ row.stockedUnits }} / {{ row.totalUnits }} Unit</span>
-                </div><span class="mt-1 block h-1.5 overflow-hidden rounded-sm bg-[var(--app-surface-muted)]"><span class="block h-full rounded-sm bg-success" :style="{ width: `${stockPercentage(row)}%` }" /></span>
-              </div><span class="self-center font-medium tabular-nums text-[var(--app-foreground)]">{{ number.format(stockPercentage(row)) }}%</span>
-            </div>
-          </div>
-          <template #footer>
-            <DashboardCardSource :source="source" />
-          </template>
-        </DashboardWidget>
-      </section>
+        <p v-if="!matrixRows.length" class="text-sm text-[var(--app-foreground-muted)]">
+          Data Kecamatan belum tersedia untuk periode ini.
+        </p>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[780px] border-separate border-spacing-px text-center text-xs">
+            <thead class="text-[0.68rem] font-medium text-[var(--app-foreground-muted)]">
+              <tr>
+                <th class="sticky left-0 z-10 min-w-32 bg-[var(--app-surface)] px-2 py-2 text-left">
+                  {{ kecamatanLabel }}
+                </th>
+                <th v-for="month in monthFields" :key="month.key" class="min-w-12 bg-[var(--app-surface-muted)] px-1 py-2">
+                  {{ month.label }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in matrixRows" :key="row.key">
+                <th class="sticky left-0 z-10 bg-[var(--app-surface)] px-2 py-2 text-left font-medium text-[var(--app-foreground)]">
+                  {{ row.label }}
+                </th>
+                <td
+                  v-for="(value, index) in row.values"
+                  :key="monthFields[index]?.key"
+                  :class="['px-1 py-2 font-medium tabular-nums', matrixCellClass(value)]"
+                >
+                  {{ value === null ? '—' : formatValue(value) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <template #footer>
+          <DashboardCardSource :source="source" />
+        </template>
+      </DashboardWidget>
     </template>
+
     <DashboardCardDetailModal v-model:open="detailOpen" :context="selectedDetail" />
   </section>
 </template>

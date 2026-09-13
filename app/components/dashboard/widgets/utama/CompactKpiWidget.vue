@@ -23,10 +23,6 @@ const formatter = new Intl.NumberFormat('id-ID', {
 })
 
 const availablePeriods = computed(() => getDashboardAvailablePeriods(props.dataset.definition.coverage, props.card))
-const periodOptions = computed(() => availablePeriods.value.map(periodDate => ({
-  value: periodDate,
-  label: formatDatasetPeriod(props.dataset.definition.coverage?.periodicity ?? null, periodDate)
-})))
 const selectedPeriodValue = ref('')
 
 watch(availablePeriods, (periods) => {
@@ -137,19 +133,11 @@ const trendMeta = computed(() => {
           </div>
         </div>
 
-        <div @click.stop @keydown.stop>
-          <USelectMenu
-            v-model="selectedPeriodValue"
-            :items="periodOptions"
-            value-key="value"
-            label-key="label"
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            class="w-24 shrink-0"
-            :disabled="!periodOptions.length"
-          />
-        </div>
+        <DashboardPeriodSelector
+          v-model="selectedPeriodValue"
+          :periodicity="dataset.definition.coverage?.periodicity ?? null"
+          :periods="availablePeriods"
+        />
       </div>
     </template>
 

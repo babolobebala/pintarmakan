@@ -6,200 +6,135 @@ import { readDashboardRecordNumber } from '~~/shared/dashboard'
 import { formatDatasetPeriod } from '~~/shared/datasets'
 
 import {
-  formatChangePercent,
   formatRupiah,
-  getHargaPriceRangeOption,
-  parseCommodityField,
-  shiftIsoDate
+  parseCommodityField
 } from './commodityPrice'
-import type { HargaPriceRangeKey } from './commodityPrice'
+
+type ChartPoint = Record<string, unknown> & {
+  periodDate: string
+  day: number
+  dateLabel: string
+  value: number | null
+}
 
 const props = defineProps<{
   field: DatasetSchemaField
   dataset: DashboardDatasetBundle
-  /** Effective HARIAN coverage days, newest first. */
+  /** Exact HARIAN coverage days in the selected month, newest first. */
   days: readonly string[]
-  range: HargaPriceRangeKey
+  /** First canonical day of the selected calendar month. */
+  month: string
 }>()
 
 const emit = defineEmits<{
   'open-detail': [periodDate: string | null]
 }>()
 
-const parsed = parseCommodityField(props.field)
+const recordsByDate = computed(() => new Map(props.dataset.records.map(record => [record.periodDate, record])))
+const chartData = computed<ChartPoint[]>(() => props.days
+  .slice()
+  .sort((left, right) => left.localeCompare(right))
+  .map(periodDate => ({
+    periodDate,
+    day: Number(periodDate.slice(8, 10)),
+    dateLabel: formatDatasetPeriod('HARIAN', periodDate),
+    value: readDashboardRecordNumber(recordsByDate.value.get(periodDate), props.field.key)
+  })))
+const latestObservation = computed(() => chartData.value
+  .filter((point): point is ChartPoint & { value: number } => point.value !== null)
+  .at(-1) ?? null)
+const parsed = computed(() => parseCommodityField(props.field))
+const priceText = computed(() => latestObservation.value === null ? null : formatRupiah(latestObservation.value.value))
+const monthLabel = computed(() => formatDatasetPeriod('BULANAN', props.month))
+const xTickValues = computed(() => {
+  const lastIndex = chartData.value.length - 1
 
-const observations = computed(() => {
-  const map = new Map<string, number>()
-
-  for (const record of props.dataset.records) {
-    const value = readDashboardRecordNumber(record, props.field.key)
-
-    if (value !== null) {
-      map.set(record.periodDate, value)
-    }
-  }
-
-  return map
-})
-const observationDates = computed(() => [...observations.value.keys()].sort())
-const latestDate = computed(() => {
-  const dates = observationDates.value
-  return dates.length ? dates[dates.length - 1] ?? null : null
-})
-const previousDate = computed(() => {
-  const dates = observationDates.value
-  return dates.length > 1 ? dates[dates.length - 2] ?? null : null
-})
-const latestValue = computed(() => latestDate.value === null
-  ? null
-  : observations.value.get(latestDate.value) ?? null)
-const previousValue = computed(() => previousDate.value === null
-  ? null
-  : observations.value.get(previousDate.value) ?? null)
-const delta = computed(() => latestValue.value === null || previousValue.value === null
-  ? null
-  : latestValue.value - previousValue.value)
-
-const changeText = computed(() => {
-  if (delta.value === null || latestValue.value === null) {
-    return null
-  }
-
-  const deltaText = delta.value > 0 ? `+${formatRupiah(delta.value)}` : formatRupiah(delta.value)
-  const percent = previousValue.value === 0
-    ? null
-    : (delta.value / (previousValue.value ?? 1)) * 100
-  const percentText = percent === null
-    ? '—'
-    : percent > 0 ? `+${formatChangePercent(percent)}` : formatChangePercent(percent)
-
-  return `${deltaText} (${percentText}%)`
+  return [...new Set([0, 0.2, 0.4, 0.6, 0.8, 1]
+    .map(ratio => Math.round(lastIndex * ratio))
+    .flatMap(index => chartData.value[index] ? [chartData.value[index].day] : []))]
 })
 
-const changeTone = computed<'positive' | 'negative' | 'neutral' | null>(() => {
-  if (delta.value === null) {
-    return null
-  }
+function chartValue(point: Record<string, unknown>) {
+  const value = point.value
+  return typeof value === 'number' ? value : Number.NaN
+}
 
-  return delta.value > 0 ? 'positive' : delta.value < 0 ? 'negative' : 'neutral'
-})
+function chartDay(point: Record<string, unknown>) {
+  return Number(point.day)
+}
 
-const changeBadge = computed(() => {
-  if (!changeTone.value) {
-    return null
-  }
+function formatPrice(value: number) {
+  return parsed.value.unitLabel ? `Rp${formatRupiah(value)}` : formatRupiah(value)
+}
 
-  if (changeTone.value === 'positive') {
-    return { icon: 'i-lucide-arrow-up-right', color: 'success' as const }
-  }
+function tooltipTemplate(point: Record<string, unknown>) {
+  const dateLabel = typeof point.dateLabel === 'string' ? point.dateLabel : ''
+  const value = point.value
 
-  if (changeTone.value === 'negative') {
-    return { icon: 'i-lucide-arrow-down-right', color: 'error' as const }
-  }
-
-  return { icon: 'i-lucide-minus', color: 'neutral' as const }
-})
-
-const rangeOption = computed(() => getHargaPriceRangeOption(props.range))
-
-/** Trailing calendar window ending at the latest observation for this commodity. */
-const windowDates = computed(() => {
-  if (!latestDate.value) {
-    return []
-  }
-
-  const startDate = shiftIsoDate(latestDate.value, -(rangeOption.value.days - 1))
-
-  return props.days
-    .filter(periodDate => periodDate >= startDate && periodDate <= latestDate.value!)
-    .slice()
-    .reverse()
-})
-
-const sparkData = computed(() => windowDates.value.map((periodDate, index) => ({
-  index,
-  value: observations.value.get(periodDate) ?? Number.NaN
-})))
-const sparkValueCount = computed(() => windowDates.value.reduce(
-  (count, periodDate) => count + (observations.value.has(periodDate) ? 1 : 0),
-  0
-))
-const hasSparkline = computed(() => sparkValueCount.value >= 2)
-
-const priceText = computed(() => latestValue.value === null ? null : formatRupiah(latestValue.value))
-const observationDateText = computed(() => latestDate.value
-  ? formatDatasetPeriod('HARIAN', latestDate.value)
-  : null)
+  return typeof value === 'number'
+    ? `${dateLabel}: ${formatPrice(value)}${parsed.value.unitLabel ? ` ${parsed.value.unitLabel}` : ''}`
+    : `${dateLabel}: Data belum tersedia`
+}
 
 function activate() {
-  emit('open-detail', latestDate.value)
+  emit('open-detail', latestObservation.value?.periodDate ?? null)
 }
 </script>
 
 <template>
-  <DashboardWidget
-    interactive
-    :activation-label="`Buka detail ${parsed.name}`"
-    @activate="activate"
-  >
+  <DashboardWidget compact>
     <template #header>
-      <div class="flex w-full items-center gap-2">
+      <div class="flex min-w-0 items-center gap-2">
         <UIcon name="i-lucide-tag" class="size-4 shrink-0 text-[var(--app-foreground-soft)]" />
-        <h2 class="truncate text-sm font-semibold text-[var(--app-foreground)]">
+        <h3 class="min-w-0 text-sm font-semibold text-[var(--app-foreground)]">
           {{ parsed.name }}
-        </h2>
+        </h3>
       </div>
     </template>
 
-    <div class="flex items-center gap-3">
-      <div class="min-w-0 flex-1 space-y-1.5">
-        <p v-if="priceText !== null" class="text-xl font-semibold tabular-nums text-[var(--app-foreground)]">
-          Rp{{ priceText }}
-          <span class="ml-1 text-xs font-medium text-[var(--app-foreground-muted)]">
-            {{ parsed.unitLabel }}
-          </span>
-        </p>
-        <p v-else class="text-sm text-[var(--app-foreground-muted)]">
-          Data belum tersedia
-        </p>
-
-        <UBadge
-          v-if="changeBadge && changeText"
-          :color="changeBadge.color"
-          variant="subtle"
-        >
-          <UIcon :name="changeBadge.icon" class="mr-1 size-3" />
-          {{ changeText }}
-        </UBadge>
-        <p v-else-if="latestValue !== null" class="text-xs text-[var(--app-foreground-muted)]">
-          Belum ada data pembanding
-        </p>
-      </div>
-
-      <div
-        class="flex h-14 w-24 shrink-0 items-center sm:w-32"
-        @click.stop
-        @keydown.stop
-      >
-        <ChartsMiniTrendChart
-          v-if="hasSparkline"
-          :data="sparkData"
-          color="#2563eb"
-          :height="56"
-          class="h-full w-full"
-        />
-        <p v-else class="text-[0.65rem] leading-4 text-[var(--app-foreground-muted)]">
-          {{ latestDate ? 'Riwayat singkat' : 'Belum ada riwayat' }}
-        </p>
-      </div>
+    <template v-if="latestObservation && priceText !== null">
+      <p class="text-xl font-semibold tabular-nums text-[var(--app-foreground)]">
+        {{ formatPrice(latestObservation.value) }}
+        <span v-if="parsed.unitLabel" class="ml-1 text-xs font-medium text-[var(--app-foreground-muted)]">
+          {{ parsed.unitLabel }}
+        </span>
+      </p>
+      <p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+        Terakhir: {{ latestObservation.dateLabel }}
+      </p>
+      <ChartsLineChart
+        :data="chartData"
+        :x="chartDay"
+        :series="[{ key: 'value', label: parsed.name, y: chartValue, color: '#16a34a' }]"
+        :height="168"
+        :show-legend="false"
+        :x-tick-values="xTickValues"
+        :x-tick-format="(tick) => String(tick)"
+        :y-tick-format="(tick) => formatRupiah(Number(tick))"
+        :tooltip-template="tooltipTemplate"
+        :aria-label="`Grafik harga ${parsed.name} pada ${monthLabel}`"
+      />
+    </template>
+    <div v-else class="flex min-h-44 flex-col justify-center">
+      <p class="text-sm font-medium text-[var(--app-foreground-muted)]">
+        Belum ada data
+      </p>
+      <p class="mt-0.5 text-xs text-[var(--app-foreground-soft)]">
+        untuk {{ monthLabel }}
+      </p>
     </div>
 
-    <p v-if="observationDateText" class="mt-1 text-xs text-[var(--app-foreground-muted)]">
-      {{ observationDateText }}
-    </p>
-
     <template #footer>
-      <DashboardCardSource :source="dataset.definition.source" />
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        trailing-icon="i-lucide-arrow-right"
+        class="-ml-1 cursor-pointer"
+        @click="activate"
+      >
+        Lihat detail
+      </UButton>
     </template>
   </DashboardWidget>
 </template>

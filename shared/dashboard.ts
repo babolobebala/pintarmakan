@@ -417,6 +417,16 @@ export const dashboardCardDefinitions = [
   createNeracaCard('proyeksi-neraca-minyak-goreng', 'PROYEKSI_NERACA_MINYAK_GORENG_TAHUNAN', 'Proyeksi Neraca Minyak Goreng')
 ] as const satisfies readonly DashboardCardDefinition[]
 
+/** Canonical P1–P6 labels and visual mapping used by food-security dashboard views. */
+export const dashboardFoodSecurityPriorityLegend = [
+  { valueKey: '1', code: 'P1', category: 'Sangat rentan', color: '#D73027' },
+  { valueKey: '2', code: 'P2', category: 'Rentan', color: '#FC8D59' },
+  { valueKey: '3', code: 'P3', category: 'Cukup rentan', color: '#FEE08B' },
+  { valueKey: '4', code: 'P4', category: 'Cukup tahan', color: '#D9EF8B' },
+  { valueKey: '5', code: 'P5', category: 'Tahan', color: '#91CF60' },
+  { valueKey: '6', code: 'P6', category: 'Sangat tahan', color: '#1A9850' }
+] as const
+
 export type DashboardCatalogCardDefinition = (typeof dashboardCardDefinitions)[number]
 
 const cardDefinitionMap = new Map<DashboardCardKey, DashboardCardDefinition>(
@@ -718,6 +728,9 @@ export const dashboardProyeksiCardDefinitions = dashboardProyeksiCardKeys.map((k
 /** Produksi dan Ketersediaan combines the approved actual and projection sections in one bounded payload. */
 export const dashboardIndicatorCardKeys: Readonly<Partial<Record<DashboardIndicatorKey, readonly DashboardCardKey[]>>> = {
   'stok-pangan': [...dashboardCpmCardKeys],
+  'cadangan-pangan-pemerintah': ['cppd'],
+  'harga-pangan': ['harga-pangan'],
+  'kerawanan-pangan': ['ikp', 'status-ketahanan-pangan'],
   'produksi-ketersediaan': [...dashboardProduksiCardKeys, ...dashboardProyeksiCardKeys]
 }
 

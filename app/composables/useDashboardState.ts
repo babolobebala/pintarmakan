@@ -1,6 +1,6 @@
-import type { DashboardKey, DashboardPayload } from '~~/shared/dashboard'
+import type { DashboardKey, DashboardPayload, KeamananPanganSection } from '~~/shared/dashboard'
 
-import { dashboardOptions, isDashboardKey } from '~~/shared/dashboard'
+import { dashboardOptions, isDashboardKey, isKeamananPanganSection } from '~~/shared/dashboard'
 
 function readQueryValue(value: unknown) {
   if (typeof value === 'string') {
@@ -30,6 +30,11 @@ export function useDashboardState() {
 
     return isDashboardKey(queryDashboard) ? queryDashboard : fallbackDashboard
   })
+  const activeKeamananPanganSection = computed<KeamananPanganSection>(() => {
+    const section = readQueryValue(route.query.keamananSection)
+
+    return isKeamananPanganSection(section) ? section : 'PENDATAAN'
+  })
 
   async function loadDashboard(dashboard: DashboardKey) {
     const currentRequestId = ++requestId
@@ -37,7 +42,11 @@ export function useDashboardState() {
     error.value = null
 
     try {
-      const payload = await $fetch<DashboardPayload>(`/api/dashboard/${dashboard}`)
+      const payload = await $fetch<DashboardPayload>(`/api/dashboard/${dashboard}`, {
+        query: dashboard === 'keamanan-pangan'
+          ? { section: activeKeamananPanganSection.value }
+          : undefined
+      })
 
       if (currentRequestId !== requestId) {
         return
@@ -74,9 +83,28 @@ export function useDashboardState() {
     await loadDashboard(activeDashboard.value)
   }
 
+  async function selectKeamananPanganSection(section: KeamananPanganSection) {
+    if (section === activeKeamananPanganSection.value) {
+      return
+    }
+
+    await router.replace({
+      query: {
+        ...route.query,
+        keamananSection: section
+      }
+    })
+  }
+
   watch(activeDashboard, async (dashboard) => {
     await loadDashboard(dashboard)
   }, { immediate: true })
+
+  watch(activeKeamananPanganSection, async () => {
+    if (activeDashboard.value === 'keamanan-pangan') {
+      await loadDashboard(activeDashboard.value)
+    }
+  })
 
   watch(() => route.query.dashboard, async (value) => {
     if (value === undefined) {
@@ -95,11 +123,13 @@ export function useDashboardState() {
 
   return {
     activeDashboard,
+    activeKeamananPanganSection,
     data,
     error,
     options,
     pending,
     refreshDashboard,
+    selectKeamananPanganSection,
     selectDashboard
   }
 }

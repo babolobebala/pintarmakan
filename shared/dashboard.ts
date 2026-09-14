@@ -57,6 +57,19 @@ export type DashboardViewKey = 'dashboard-utama' | DashboardIndicatorKey
 /** @deprecated Use DashboardViewKey for selector/API state and DashboardIndicatorKey for the ten canonical groups. */
 export type DashboardKey = DashboardViewKey
 
+export const keamananPanganSections = [
+  'PENDATAAN',
+  'PENGAWASAN_RAPID_TEST',
+  'PENGAWASAN_MUTU',
+  'REGISTRASI_SERTIFIKASI'
+] as const
+
+export type KeamananPanganSection = (typeof keamananPanganSections)[number]
+
+export function isKeamananPanganSection(value: unknown): value is KeamananPanganSection {
+  return typeof value === 'string' && keamananPanganSections.includes(value as KeamananPanganSection)
+}
+
 export const dashboardOptions = [{
   key: 'dashboard-utama',
   label: 'Dashboard Utama',
@@ -85,6 +98,10 @@ export type DashboardCardKey
     | 'cpm-gabah'
     | 'cpm-jagung'
     | 'lumbung-pangan'
+    | 'keamanan-pangan-pendataan'
+    | 'keamanan-pangan-rapid-test'
+    | 'keamanan-pangan-mutu-beras'
+    | 'keamanan-pangan-sertifikasi-prima-3'
     | 'produksi-padi'
     | 'produksi-jagung'
     | 'produksi-daging-hewan-ternak'
@@ -215,6 +232,17 @@ export type DashboardTabularSummaryCardDefinition = DashboardTabularCardBaseDefi
   readonly periodicity: 'TAHUNAN'
 }
 
+export type DashboardKeamananPanganTabularCardDefinition = DashboardTabularCardBaseDefinition & {
+  readonly key:
+    | 'keamanan-pangan-pendataan'
+    | 'keamanan-pangan-rapid-test'
+    | 'keamanan-pangan-mutu-beras'
+    | 'keamanan-pangan-sertifikasi-prima-3'
+  readonly type: 'KEAMANAN_PANGAN_TABULAR'
+  readonly periodicity: 'TAHUNAN'
+  readonly requiredFieldKeys: readonly string[]
+}
+
 export type DashboardNeracaTimeSeriesCardDefinition = DashboardRegionalCardBaseDefinition & {
   readonly key: Extract<DashboardCardKey, `proyeksi-neraca-${string}`>
   readonly type: 'NERACA_TIME_SERIES'
@@ -239,6 +267,7 @@ export type DashboardCardDefinition
     | DashboardRegionalPphCardDefinition
     | DashboardTabularMonthSeriesCardDefinition
     | DashboardTabularSummaryCardDefinition
+    | DashboardKeamananPanganTabularCardDefinition
     | DashboardNeracaTimeSeriesCardDefinition
 
 const neracaFieldKeys = [
@@ -300,6 +329,42 @@ export const dashboardCardDefinitions = [
     type: 'TABULAR_SUMMARY',
     mode: 'TABULAR',
     periodicity: 'TAHUNAN'
+  },
+  {
+    key: 'keamanan-pangan-pendataan',
+    datasetId: 'PENDATAAN_PELAKU_USAHA_PSAT',
+    title: 'Pendataan Pelaku Usaha PSAT',
+    type: 'KEAMANAN_PANGAN_TABULAR',
+    mode: 'TABULAR',
+    periodicity: 'TAHUNAN',
+    requiredFieldKeys: ['nama_pelaku_usaha', 'kontak', 'alamat', 'jenis_usaha', 'izin_registrasi', 'komoditas', 'nomor_pendataan']
+  },
+  {
+    key: 'keamanan-pangan-rapid-test',
+    datasetId: 'PENGAWASAN_RAPID_TEST_PSAT',
+    title: 'Hasil Uji Rapid Test PSAT',
+    type: 'KEAMANAN_PANGAN_TABULAR',
+    mode: 'TABULAR',
+    periodicity: 'TAHUNAN',
+    requiredFieldKeys: ['nama_pelaku_usaha', 'lokasi_sampel', 'komoditas', 'asal_komoditas', 'parameter_pengujian', 'hasil']
+  },
+  {
+    key: 'keamanan-pangan-mutu-beras',
+    datasetId: 'PENGAWASAN_MUTU_BERAS_KEMASAN',
+    title: 'Pengujian Kelas Mutu Beras Kemasan',
+    type: 'KEAMANAN_PANGAN_TABULAR',
+    mode: 'TABULAR',
+    periodicity: 'TAHUNAN',
+    requiredFieldKeys: ['jenis_sampel', 'nama_produk', 'asal_sampel', 'kode_sampel', 'pengujian', 'kelas_mutu', 'keterangan']
+  },
+  {
+    key: 'keamanan-pangan-sertifikasi-prima-3',
+    datasetId: 'SERTIFIKASI_PRIMA_3_PSAT',
+    title: 'Sertifikasi Prima 3 PSAT',
+    type: 'KEAMANAN_PANGAN_TABULAR',
+    mode: 'TABULAR',
+    periodicity: 'TAHUNAN',
+    requiredFieldKeys: ['penerima', 'komoditas', 'nomor_sertifikat', 'tanggal_kedaluwarsa', 'alamat']
   },
   {
     key: 'pph',
@@ -499,6 +564,25 @@ export function getDashboardCardDefinition(key: DashboardCardKey) {
 
 export function getDashboardIndicatorCardDefinitions(indicator: DashboardIndicatorKey) {
   return (dashboardIndicatorCardKeys[indicator] ?? []).map((key) => {
+    const definition = getDashboardCardDefinition(key)
+
+    if (!definition) {
+      throw new Error(`Dashboard card definition not found: ${key}`)
+    }
+
+    return definition
+  })
+}
+
+export function getDashboardKeamananPanganCardDefinitions(section: KeamananPanganSection = 'PENDATAAN') {
+  const keys: Record<KeamananPanganSection, readonly DashboardCardKey[]> = {
+    PENDATAAN: ['keamanan-pangan-pendataan'],
+    PENGAWASAN_RAPID_TEST: ['keamanan-pangan-rapid-test'],
+    PENGAWASAN_MUTU: ['keamanan-pangan-mutu-beras'],
+    REGISTRASI_SERTIFIKASI: ['keamanan-pangan-sertifikasi-prima-3']
+  }
+
+  return keys[section].map((key) => {
     const definition = getDashboardCardDefinition(key)
 
     if (!definition) {
@@ -787,6 +871,7 @@ export const dashboardProyeksiCardDefinitions = dashboardProyeksiCardKeys.map((k
 
 /** Produksi dan Ketersediaan combines the approved actual and projection sections in one bounded payload. */
 export const dashboardIndicatorCardKeys: Readonly<Partial<Record<DashboardIndicatorKey, readonly DashboardCardKey[]>>> = {
+  'keamanan-pangan': ['keamanan-pangan-pendataan'],
   'stok-pangan': [...dashboardCpmCardKeys],
   'cadangan-pangan-pemerintah': ['cppd'],
   'harga-pangan': ['harga-pangan'],
@@ -1021,6 +1106,8 @@ export function getDashboardRequiredFieldKeys(card: DashboardCardDefinition): re
       return card.fieldKeys
     case 'TABULAR_MONTH_SERIES':
       return card.monthFieldKeys
+    case 'KEAMANAN_PANGAN_TABULAR':
+      return card.requiredFieldKeys
     case 'TABULAR_SUMMARY':
       return []
     case 'REGIONAL_METRIC':

@@ -4,6 +4,7 @@ import DashboardCadanganPanganPemerintahGrid from '~/components/dashboard/grids/
 import DashboardHargaPanganGrid from '~/components/dashboard/grids/DashboardHargaPanganGrid.vue'
 import DashboardKerawananPanganGrid from '~/components/dashboard/grids/DashboardKerawananPanganGrid.vue'
 import DashboardKonsumsiPphGrid from '~/components/dashboard/grids/DashboardKonsumsiPphGrid.vue'
+import DashboardKeamananPanganGrid from '~/components/dashboard/grids/DashboardKeamananPanganGrid.vue'
 import DashboardLumbungPanganGrid from '~/components/dashboard/grids/DashboardLumbungPanganGrid.vue'
 import DashboardProduksiGrid from '~/components/dashboard/grids/DashboardProduksiGrid.vue'
 import DashboardStokPanganGrid from '~/components/dashboard/grids/DashboardStokPanganGrid.vue'
@@ -17,11 +18,13 @@ definePageMeta({
 
 const {
   activeDashboard,
+  activeKeamananPanganSection,
   data: dashboardData,
   error,
   options,
   pending,
   refreshDashboard,
+  selectKeamananPanganSection,
   selectDashboard
 } = useDashboardState()
 
@@ -139,6 +142,14 @@ async function updateDashboard(dashboard: (typeof options)[number]['key']) {
       v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'konsumsi-pph'"
       :payload="dashboardData"
       :pending="pending"
+    />
+
+    <DashboardKeamananPanganGrid
+      v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'keamanan-pangan'"
+      :payload="dashboardData"
+      :section="activeKeamananPanganSection"
+      :pending="pending"
+      @update:section="selectKeamananPanganSection"
     />
 
     <DashboardLumbungPanganGrid

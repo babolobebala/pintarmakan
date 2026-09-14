@@ -8,6 +8,7 @@ import type {
   DashboardDatasetTableRecord,
   DashboardConfiguredPayload,
   DashboardEmptyPayload,
+  KeamananPanganSection,
   DashboardKey,
   DashboardUtamaPayload,
   DashboardPayload
@@ -15,6 +16,7 @@ import type {
 
 import {
   getDashboardIndicatorCardDefinitions,
+  getDashboardKeamananPanganCardDefinitions,
   getDashboardOption,
   isDashboardCardDefinitionCompatible,
   isDashboardCardDisplayCoverageCompatible,
@@ -300,7 +302,7 @@ async function loadDashboardCardBundles(
   }
 }
 
-export async function getDashboardPayload(dashboard: DashboardKey): Promise<DashboardPayload> {
+export async function getDashboardPayload(dashboard: DashboardKey, keamananPanganSection?: KeamananPanganSection): Promise<DashboardPayload> {
   const option = getDashboardOption(dashboard)
 
   if (dashboard === 'dashboard-utama') {
@@ -317,7 +319,9 @@ export async function getDashboardPayload(dashboard: DashboardKey): Promise<Dash
     } as DashboardUtamaPayload
   }
 
-  const cards = getDashboardIndicatorCardDefinitions(dashboard)
+  const cards = dashboard === 'keamanan-pangan'
+    ? getDashboardKeamananPanganCardDefinitions(keamananPanganSection)
+    : getDashboardIndicatorCardDefinitions(dashboard)
 
   if (cards.length === 0) {
     return {

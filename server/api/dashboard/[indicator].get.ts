@@ -1,5 +1,5 @@
 import { appPermissions } from '~~/auth/permissions'
-import { isDashboardKey } from '~~/shared/dashboard'
+import { isDashboardKey, isKeamananPanganSection } from '~~/shared/dashboard'
 import { requirePermission } from '~~/server/utils/access'
 import { getDashboardPayload } from '~~/server/utils/dashboard'
 
@@ -15,5 +15,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return getDashboardPayload(dashboard)
+  const section = getQuery(event).section
+
+  return getDashboardPayload(dashboard, isKeamananPanganSection(section) ? section : undefined)
 })

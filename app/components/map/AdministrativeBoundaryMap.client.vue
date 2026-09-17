@@ -124,6 +124,8 @@ const props = withDefaults(defineProps<{
   valueColorMap?: Record<string, string>
   noDataColor?: string
   noDataLabel?: string
+  /** Label shown before the primary value in Desa popups. */
+  valueLabel?: string
   popupYear?: string | number | null
   popupPeriodLabel?: string
   showDesaTooltips?: boolean
@@ -145,6 +147,7 @@ const props = withDefaults(defineProps<{
   valueColorMap: () => ({}),
   noDataColor: '#e2e8f0',
   noDataLabel: 'Data belum tersedia',
+  valueLabel: 'Prioritas',
   popupYear: null,
   popupPeriodLabel: 'Tahun',
   showDesaTooltips: false,
@@ -416,7 +419,7 @@ function buildDesaPopupContent(feature: LeafletGeoJsonFeature) {
     <div style="min-width: 190px; font-family: sans-serif; line-height: 1.45;">
       <div><strong>Desa:</strong> ${popupDesaName}</div>
       <div><strong>Kecamatan:</strong> ${popupKecamatanName}</div>
-      <div><strong>Prioritas:</strong> <span style="display: inline-block; border-radius: 999px; background: ${valueColor}; padding: 1px 7px;">${valueLabel}</span></div>
+      <div><strong>${props.valueLabel}:</strong> <span style="display: inline-block; border-radius: 999px; background: ${valueColor}; padding: 1px 7px;">${valueLabel}</span></div>
       ${detailLines}
       ${yearLine}
     </div>

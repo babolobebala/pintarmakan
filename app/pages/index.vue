@@ -8,6 +8,7 @@ import DashboardKeamananPanganGrid from '~/components/dashboard/grids/DashboardK
 import DashboardLumbungPanganGrid from '~/components/dashboard/grids/DashboardLumbungPanganGrid.vue'
 import DashboardProduksiGrid from '~/components/dashboard/grids/DashboardProduksiGrid.vue'
 import DashboardStokPanganGrid from '~/components/dashboard/grids/DashboardStokPanganGrid.vue'
+import DashboardStuntingGrid from '~/components/dashboard/grids/DashboardStuntingGrid.vue'
 import DashboardUtamaGrid from '~/components/dashboard/grids/DashboardUtamaGrid.vue'
 
 import { appPermissions } from '~~/auth/permissions'
@@ -140,6 +141,12 @@ async function updateDashboard(dashboard: (typeof options)[number]['key']) {
 
     <DashboardKonsumsiPphGrid
       v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'konsumsi-pph'"
+      :payload="dashboardData"
+      :pending="pending"
+    />
+
+    <DashboardStuntingGrid
+      v-else-if="dashboardData?.kind === 'configured' && activeDashboard === 'wilayah-kelompok-rentan'"
       :payload="dashboardData"
       :pending="pending"
     />

@@ -93,6 +93,7 @@ export type DashboardCardKey
     | 'pph-desa'
     | 'status-ketahanan-pangan'
     | 'skpg-status-kecamatan'
+    | 'stunting-desa'
     | 'cppd'
     | 'harga-pangan'
     | 'cpm-gabah'
@@ -183,6 +184,14 @@ export type DashboardSkpgStatusCardDefinition = DashboardRegionalCardBaseDefinit
   readonly values: readonly ['AMAN', 'WASPADA', 'RENTAN']
 }
 
+export type DashboardStuntingCardDefinition = DashboardRegionalCardBaseDefinition & {
+  readonly key: 'stunting-desa'
+  readonly type: 'STUNTING'
+  readonly periodicity: 'BULANAN'
+  readonly regionLevel: 'DESA'
+  readonly fieldKeys: readonly ['jumlah_balita', 'jumlah_stunting', 'persentase_stunting']
+}
+
 export type DashboardFieldTimeSeriesCardDefinition = DashboardRegionalCardBaseDefinition & {
   readonly key: 'harga-pangan'
   readonly type: 'FIELD_TIME_SERIES'
@@ -262,6 +271,7 @@ export type DashboardCardDefinition
     | DashboardMultiKpiCardDefinition
     | DashboardDistributionCardDefinition
     | DashboardSkpgStatusCardDefinition
+    | DashboardStuntingCardDefinition
     | DashboardFieldTimeSeriesCardDefinition
     | DashboardRegionalMetricCardDefinition
     | DashboardRegionalPphCardDefinition
@@ -418,6 +428,16 @@ export const dashboardCardDefinitions = [
     regionLevel: 'KECAMATAN',
     fieldKey: 'status',
     values: ['AMAN', 'WASPADA', 'RENTAN']
+  },
+  {
+    key: 'stunting-desa',
+    datasetId: 'PERKEMBANGAN_STUNTING_DESA_BULANAN',
+    title: 'Stunting',
+    type: 'STUNTING',
+    mode: 'REGIONAL',
+    periodicity: 'BULANAN',
+    regionLevel: 'DESA',
+    fieldKeys: ['jumlah_balita', 'jumlah_stunting', 'persentase_stunting']
   },
   {
     key: 'cppd',
@@ -878,6 +898,7 @@ export const dashboardIndicatorCardKeys: Readonly<Partial<Record<DashboardIndica
   'konsumsi-pph': ['pph', 'pph-kecamatan', 'pph-desa'],
   'data-pendukung': ['lumbung-pangan'],
   'kerawanan-pangan': ['ikp', 'status-ketahanan-pangan', 'skpg-status-kecamatan'],
+  'wilayah-kelompok-rentan': ['stunting-desa'],
   'produksi-ketersediaan': [...dashboardProduksiCardKeys, ...dashboardProyeksiCardKeys]
 }
 
@@ -1103,6 +1124,7 @@ export function getDashboardRequiredFieldKeys(card: DashboardCardDefinition): re
     case 'DUAL_KPI':
     case 'MULTI_KPI':
     case 'NERACA_TIME_SERIES':
+    case 'STUNTING':
       return card.fieldKeys
     case 'TABULAR_MONTH_SERIES':
       return card.monthFieldKeys

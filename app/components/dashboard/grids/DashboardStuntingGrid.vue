@@ -191,23 +191,69 @@ function relativeKecamatanPercentage(value: number) {
     <template v-else>
       <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ringkasan Stunting">
         <article class="min-w-0 rounded-[var(--radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3 shadow-sm">
-          <div class="flex items-start gap-3"><span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-baby" class="size-5" /></span><div><p class="text-xs font-medium text-[var(--app-foreground-muted)]">Jumlah Balita</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">{{ formatNumber(totalBalita) }}</p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">balita</p></div></div>
+          <div class="flex items-start gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-baby" class="size-5" /></span><div>
+              <p class="text-xs font-medium text-[var(--app-foreground-muted)]">
+                Jumlah Balita
+              </p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">
+                {{ formatNumber(totalBalita) }}
+              </p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                balita
+              </p>
+            </div>
+          </div>
         </article>
         <article class="min-w-0 rounded-[var(--radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3 shadow-sm">
-          <div class="flex items-start gap-3"><span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-error/10 text-error"><UIcon name="i-lucide-heart-pulse" class="size-5" /></span><div><p class="text-xs font-medium text-[var(--app-foreground-muted)]">Balita Stunting</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">{{ formatNumber(totalStunting) }}</p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">balita</p></div></div>
+          <div class="flex items-start gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-error/10 text-error"><UIcon name="i-lucide-heart-pulse" class="size-5" /></span><div>
+              <p class="text-xs font-medium text-[var(--app-foreground-muted)]">
+                Balita Stunting
+              </p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">
+                {{ formatNumber(totalStunting) }}
+              </p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                balita
+              </p>
+            </div>
+          </div>
         </article>
         <article class="min-w-0 rounded-[var(--radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3 shadow-sm">
-          <div class="flex items-start gap-3"><span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning"><UIcon name="i-lucide-percent" class="size-5" /></span><div><p class="text-xs font-medium text-[var(--app-foreground-muted)]">Persentase Stunting</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">{{ formatPercentage(totalPersentaseStunting) }}</p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">Kabupaten Sumbawa Barat</p></div></div>
+          <div class="flex items-start gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning"><UIcon name="i-lucide-percent" class="size-5" /></span><div>
+              <p class="text-xs font-medium text-[var(--app-foreground-muted)]">
+                Persentase Stunting
+              </p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">
+                {{ formatPercentage(totalPersentaseStunting) }}
+              </p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                Kabupaten Sumbawa Barat
+              </p>
+            </div>
+          </div>
         </article>
         <article class="min-w-0 rounded-[var(--radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3 shadow-sm">
-          <div class="flex items-start gap-3"><span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info"><UIcon name="i-lucide-house" class="size-5" /></span><div><p class="text-xs font-medium text-[var(--app-foreground-muted)]">Jumlah Desa/Kelurahan</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">{{ formatNumber(selectedMonthRows.length) }}</p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">dari {{ formatNumber(kecamatanRows.length) }} kecamatan</p></div></div>
+          <div class="flex items-start gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info"><UIcon name="i-lucide-house" class="size-5" /></span><div>
+              <p class="text-xs font-medium text-[var(--app-foreground-muted)]">
+                Jumlah Desa/Kelurahan
+              </p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--app-foreground)]">
+                {{ formatNumber(selectedMonthRows.length) }}
+              </p><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                dari {{ formatNumber(kecamatanRows.length) }} kecamatan
+              </p>
+            </div>
+          </div>
         </article>
       </section>
 
       <section v-if="selectedMonthRows.length" class="grid items-start gap-3 xl:grid-cols-12">
         <DashboardWidget compact class="xl:col-span-7">
           <template #header>
-            <div><h3 class="text-sm font-semibold text-[var(--app-foreground)]">Persentase Stunting per Kecamatan</h3><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">Kabupaten: {{ formatPercentage(totalPersentaseStunting) }} · dihitung dari total balita dan stunting desa/kelurahan.</p></div>
+            <div>
+              <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
+                Persentase Stunting per Kecamatan
+              </h3><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                Kabupaten: {{ formatPercentage(totalPersentaseStunting) }} · dihitung dari total balita dan stunting desa/kelurahan.
+              </p>
+            </div>
           </template>
 
           <div v-if="kecamatanRows.length" class="space-y-2.5">
@@ -223,30 +269,104 @@ function relativeKecamatanPercentage(value: number) {
             Belum ada rekap kecamatan untuk ditampilkan.
           </p>
 
-          <template #footer><DashboardCardSource :source="source" /></template>
+          <template #footer>
+            <DashboardCardSource :source="source" />
+          </template>
         </DashboardWidget>
 
         <DashboardWidget compact class="xl:col-span-5">
-          <template #header><div><h3 class="text-sm font-semibold text-[var(--app-foreground)]">Desa/Kelurahan dengan Persentase Stunting Tertinggi</h3><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">5 desa/kelurahan teratas menurut persentase yang tersimpan.</p></div></template>
+          <template #header>
+            <div>
+              <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
+                Desa/Kelurahan dengan Persentase Stunting Tertinggi
+              </h3><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                5 desa/kelurahan teratas menurut persentase yang tersimpan.
+              </p>
+            </div>
+          </template>
           <div class="space-y-2.5">
             <div v-for="row in rankedDesaRows" :key="row.record.regionId" class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs">
               <span class="min-w-0"><span class="block truncate font-medium text-[var(--app-foreground)]">{{ row.desaName }}</span><span class="block truncate text-[var(--app-foreground-muted)]">{{ row.kecamatanName }} · {{ formatNumber(row.jumlahStunting) }} dari {{ formatNumber(row.jumlahBalita) }} balita</span></span>
               <span class="font-medium tabular-nums text-[var(--app-foreground)]">{{ formatPercentage(row.persentaseStunting) }}</span>
             </div>
           </div>
-          <template #footer><DashboardCardSource :source="source" /></template>
+          <template #footer>
+            <DashboardCardSource :source="source" />
+          </template>
         </DashboardWidget>
       </section>
 
       <DashboardWidget v-if="selectedMonthRows.length" compact>
         <template #header>
           <div class="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div><h3 class="text-sm font-semibold text-[var(--app-foreground)]">Daftar Desa/Kelurahan</h3><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">{{ filteredDesaRows.length }} dari {{ selectedMonthRows.length }} desa/kelurahan · diurutkan menurut persentase stunting.</p></div>
-            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row"><UInput v-model="search" icon="i-lucide-search" placeholder="Cari desa/kelurahan..." size="sm" class="sm:w-56" /><USelectMenu v-model="selectedKecamatan" :items="kecamatanOptions" value-key="value" label-key="label" size="sm" color="neutral" variant="outline" class="sm:w-48" aria-label="Filter kecamatan" /></div>
+            <div>
+              <h3 class="text-sm font-semibold text-[var(--app-foreground)]">
+                Daftar Desa/Kelurahan
+              </h3><p class="mt-0.5 text-xs text-[var(--app-foreground-muted)]">
+                {{ filteredDesaRows.length }} dari {{ selectedMonthRows.length }} desa/kelurahan · diurutkan menurut persentase stunting.
+              </p>
+            </div>
+            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <UInput
+                v-model="search"
+                icon="i-lucide-search"
+                placeholder="Cari desa/kelurahan..."
+                size="sm"
+                class="sm:w-56"
+              /><USelectMenu
+                v-model="selectedKecamatan"
+                :items="kecamatanOptions"
+                value-key="value"
+                label-key="label"
+                size="sm"
+                color="neutral"
+                variant="outline"
+                class="sm:w-48"
+                aria-label="Filter kecamatan"
+              />
+            </div>
           </div>
         </template>
-        <div class="overflow-x-auto"><table class="w-full min-w-[760px] text-sm"><thead class="border-y border-[var(--app-border)] bg-[var(--app-surface-muted)] text-left text-[0.68rem] font-medium tracking-[0.08em] text-[var(--app-foreground-muted)] uppercase"><tr><th class="px-3 py-2">Desa/Kelurahan</th><th class="px-3 py-2">Kecamatan</th><th class="px-3 py-2 text-right">Jumlah Balita</th><th class="px-3 py-2 text-right">Jumlah Balita Stunting</th><th class="px-3 py-2 text-right">Persentase Stunting</th></tr></thead><tbody class="divide-y divide-[var(--app-border)]"><tr v-for="row in filteredDesaRows" :key="row.record.regionId"><td class="px-3 py-2 font-medium text-[var(--app-foreground)]">{{ row.desaName }}</td><td class="px-3 py-2 text-[var(--app-foreground-muted)]">{{ row.kecamatanName }}</td><td class="px-3 py-2 text-right tabular-nums">{{ formatNumber(row.jumlahBalita) }}</td><td class="px-3 py-2 text-right tabular-nums">{{ formatNumber(row.jumlahStunting) }}</td><td class="px-3 py-2 text-right font-medium tabular-nums">{{ formatPercentage(row.persentaseStunting) }}</td></tr><tr v-if="!filteredDesaRows.length"><td colspan="5" class="px-3 py-6 text-center text-sm text-[var(--app-foreground-muted)]">Desa/kelurahan tidak ditemukan.</td></tr></tbody></table></div>
-        <template #footer><DashboardCardSource :source="source" /></template>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] text-sm">
+            <thead class="border-y border-[var(--app-border)] bg-[var(--app-surface-muted)] text-left text-[0.68rem] font-medium tracking-[0.08em] text-[var(--app-foreground-muted)] uppercase">
+              <tr>
+                <th class="px-3 py-2">
+                  Desa/Kelurahan
+                </th><th class="px-3 py-2">
+                  Kecamatan
+                </th><th class="px-3 py-2 text-right">
+                  Jumlah Balita
+                </th><th class="px-3 py-2 text-right">
+                  Jumlah Balita Stunting
+                </th><th class="px-3 py-2 text-right">
+                  Persentase Stunting
+                </th>
+              </tr>
+            </thead><tbody class="divide-y divide-[var(--app-border)]">
+              <tr v-for="row in filteredDesaRows" :key="row.record.regionId">
+                <td class="px-3 py-2 font-medium text-[var(--app-foreground)]">
+                  {{ row.desaName }}
+                </td><td class="px-3 py-2 text-[var(--app-foreground-muted)]">
+                  {{ row.kecamatanName }}
+                </td><td class="px-3 py-2 text-right tabular-nums">
+                  {{ formatNumber(row.jumlahBalita) }}
+                </td><td class="px-3 py-2 text-right tabular-nums">
+                  {{ formatNumber(row.jumlahStunting) }}
+                </td><td class="px-3 py-2 text-right font-medium tabular-nums">
+                  {{ formatPercentage(row.persentaseStunting) }}
+                </td>
+              </tr><tr v-if="!filteredDesaRows.length">
+                <td colspan="5" class="px-3 py-6 text-center text-sm text-[var(--app-foreground-muted)]">
+                  Desa/kelurahan tidak ditemukan.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <template #footer>
+          <DashboardCardSource :source="source" />
+        </template>
       </DashboardWidget>
 
       <div v-else class="rounded-[var(--radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-8 text-sm text-[var(--app-foreground-muted)]">
